@@ -131,7 +131,16 @@ function R:update(veh)
       local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end)
       local hit = ok and data and data.decalPos and vec3(data.decalPos)
       -- Treffer weit weg = Strahl hat das Auto verfehlt (M1.1 Lauf 3: Welt-Koordinaten wie (12711, 1490, …))
-      local near = hit and hit.x == hit.x and (hit - d.pos):length() <= math.max(0.6, d.depth * 2)
+      -- M1.3: Strahl durch eine Lücke trifft innen liegende Lackflächen (D-Serie: Unterboden → Motorhaube von
+      -- innen, Vertex: Seite → 0.43 m innen) → getrennt prüfen: entlang der Normalen ≤ 0.2 m, seitlich ≤ 0.25 m.
+      -- Gute Treffer: ≤ 0.13 m entlang n (testScratch ab AABB), ≤ 0.1 m seitlich.
+      local near = false
+      if hit and hit.x == hit.x then
+        local off = hit - d.pos
+        local nn = d.normal:normalized()
+        local along = off:dot(nn)
+        near = math.abs(along) <= 0.2 and (off - nn * along):length() <= 0.25
+      end
       if near then
         data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
         data.patinaColor, data.patinaStrength = d.color, d.strength

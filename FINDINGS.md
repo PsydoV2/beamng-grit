@@ -698,3 +698,14 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Dach sichtbar und längs ✅, rechts 30° geneigt vorne höher ✅, Seiten längs ✅.
 - Bestätigt: Decal-Ausrichtung = `decalRotation` (negativer Drehsinn) ab Bezugsachse „z in die Fläche
   projiziert, auf waagerechten Flächen y“. Kamera-Rolle egal.
+
+### M1.3 Fahrzeugtest, Lauf 1 (2026-11-06)
+- Gavril D-Serie (`pickup`, 2 Lackmat., Neuspawn 499 ms), Ibishu Covet (`covet`, 2, 517 ms), Gavril Vertex
+  (`gavril_vertex`, 2, 737 ms): Lack normal, Kratzer an der Schrammstelle und längs ✅. Noch kein Mod-Fahrzeug.
+- Chromstoßstange D-Serie: Kratzer unsichtbar (hell auf hell) → offen, Farbwahl.
+- Weiße Flecken D-Serie Motorhaube hinten links: Frontaufprall, Unterboden-Knoten (n ≈ −z); Strahl geht durch
+  die Lücke und trifft die Motorhaube von innen (z. B. angefragt z 0.03 → Treffer z 0.91, 0.6-m-Grenze ließ
+  Ähnliches durch). Vertex: seitliche Anfrage → Treffer 0.43 m weiter innen.
+- Fix: Treffer getrennt prüfen, entlang n ≤ 0.2 m und seitlich ≤ 0.25 m.
+- Vertex testScratch("top") verworfen (Treffer z 0.11): AABB-Oberkante 1.36 liegt über einer Nicht-Lack-Fläche,
+  Strahl geht durch → Verwerfen funktioniert.
