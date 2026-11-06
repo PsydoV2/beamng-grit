@@ -153,7 +153,8 @@ local function buildStacks()
 end
 
 local function rebake()
-  local veh = getVeh(); if not veh or not state then return end
+  if not state then return end
+  local veh = be:getObjectByID(state.vehId); if not veh then return end
   refresh(veh)
   local cs, ms = buildStacks()
   local t = hptimer()
@@ -211,12 +212,18 @@ M.start = function()
   if #skipped > 0 then L("W", "Übersprungen: %s", table.concat(skipped, ", ")) end
   if #targets == 0 then L("E", "Keine lackierten Materialien gefunden."); return end
 
-  local cp, mp = newProj(veh, targets), newProj(veh, targets)
+  local cp, mp, ep = newProj(veh, targets), newProj(veh, targets), newProj(veh, targets)
   state = {
     vehId = veh:getID(), targets = targets, layers = {},
     color = { proj = cp, set = cp:getTextureSet() },
     mask  = { proj = mp, set = mp:getTextureSet() },
+    -- Lauf K: das Material ist pro Modell geteilt. Andere Fahrzeuge ohne gebundenes Texture-Set zeigen
+    -- Datenreste (zweiter ETKI gelb). Sie bekommen eine leere, schwarze Maske = Deckkraft 0.
+    empty = { proj = ep, set = ep:getTextureSet() },
   }
+  refreshProj(veh, ep, MASK_PREFIX, state.empty.set)
+  ep:clearBakedTextures()
+  ep:bakeLayers({ baseLayer() }, veh.jbeam)
   applyStages()
   rebake()
   L("I", "start(): bereit. coat(0.7) oder decal(\"left\").")
@@ -351,10 +358,21 @@ M.stop = function()
   state = nil
 end
 
+local function bindEmpty()
+  for _, v in ipairs(getAllVehicles()) do
+    if v:getID() ~= state.vehId then
+      v:setTextureSet(MASK_PREFIX, state.empty.set)
+      v:setTextureSet(COLOR_PREFIX, state.empty.set)
+    end
+  end
+  state.empty.proj:combineTextures(state.empty.set)
+end
+
 M.onUpdate = function()
   if not state then return end
-  local veh = getPlayerVehicle(0)
-  if not veh or veh:getID() ~= state.vehId then return end
+  bindEmpty()
+  local veh = be:getObjectByID(state.vehId)
+  if not veh then return end
   refresh(veh)
   if state.queue and #state.queue > 0 then processPending() end
   if not state then return end
