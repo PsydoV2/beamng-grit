@@ -768,3 +768,7 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Deutung: Während der 3 Projektions-Frames zeigt die Farb-Projektion eine Vorschau mit `decalColor` (1,1,1,1)
   in der Live-Textur (`combineTextures` jeden Frame) → weißer Blitz, wo die Maske schon Dreck hat. Bei Kratzern
   (hell) fiel das nicht auf. Fix: Vorschau-Alpha 0; die Layer-Farbe kommt ohnehin aus `variants()`.
+
+### M2.1, Lauf 4 (2026-11-06) ✅ Radspritzer
+- Flackern weg ✅, Kratzer weiter sichtbar ✅. Reihenfolge stimmt: erst Kratzer, dann Dreck → Dreck deckt zu ✅;
+  erst Dreck, dann Schrammen → Kratzer liegen oben (gewollt: Schrammen reibt den Dreck ab).
