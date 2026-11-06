@@ -12,6 +12,7 @@ local UV_LAYER = 1
 R.COLOR_PREFIX, R.MASK_PREFIX = "@PatinaTexture", "@PatinaMask"
 local USE_MOUSE_POS = bit.lshift(1, 2)
 local FRAMES_BEFORE_READ, FRAMES_MAX = 3, 30
+R.PROJECT_EVERY = 3        -- Projektion einmal, dann 3 Frames warten bis getDecalData (Spike 3: 3 Frames nötig)
 R.MAX_LAYERS = 500   -- Budget. Spike 3: Voll-Bake wächst überlinear – gebraucht nur bei clear (leer) und Neuanlage (leer);
                      -- inkrementell 0.8 ms/Decal unabhängig von der Anzahl. M2: 100 reicht für Kratzer + Dreck nicht.
 
@@ -51,19 +52,22 @@ function R.new(veh, targets, log)
   self.color = newProj(veh, targets)
   self.mask = newProj(veh, targets)
   self.colorSet, self.maskSet = self.color:getTextureSet(), self.mask:getTextureSet()
-  self:refresh(veh)
+  self:refresh(veh, true)
   self:rebake(veh)
   return self
 end
 
-function R:refresh(veh)
+-- full: Form neu setzen. M2.2 Lauf 4: projectDynamicDecals kostet 8–16 ms CPU je Aufruf; Verdacht, dass setShape
+-- jeden Frame die Mesh-Aufbereitung neu anstößt → Form nur bei Neuanlage/Rebake setzen.
+function R:refresh(veh, full)
   for _, x in ipairs({ { self.color, R.COLOR_PREFIX, self.colorSet }, { self.mask, R.MASK_PREFIX, self.maskSet } }) do
     local p = x[1]
     veh:setTextureSet(x[2], x[3])
-    p:setShape(veh:getDecalProjectionShape())
+    if full or not self.shapeSet then p:setShape(veh:getDecalProjectionShape()) end
     p:setWorldTransform(veh:getRefNodeMatrix())
     p:setTransform(veh:getRefNodeMatrix():copy():setPosition(vec3(0, 0, 0)):inverse())
   end
+  self.shapeSet = true
 end
 
 -- alles neu backen (teuer, nur bei Spawn/Reset)
@@ -80,6 +84,7 @@ function R:rebake(veh)
 end
 
 function R:clear(veh)
+  self:refresh(veh, true)   -- Reparatur kann die Form ändern
   self.layers, self.queue = {}, {}
   self:rebake(veh)
 end
@@ -134,7 +139,8 @@ function R:update(veh)
     if bit.band(p:getSettings(), USE_MOUSE_POS) == USE_MOUSE_POS then p:toggleSetting(USE_MOUSE_POS) end
     p.cursorPosition = Point2F(0.5, 0.5)
     mark("setup")
-    p:projectDynamicDecals(req.camM, req.projM); mark("project")
+    -- nur jeden PROJECT_EVERY-ten Frame projizieren (vorher jeden Frame = 3 Aufrufe je Decal, M2.2 Lauf 4)
+    if req.frames % R.PROJECT_EVERY == 0 then p:projectDynamicDecals(req.camM, req.projM) end; mark("project")
     req.frames = req.frames + 1
     if req.frames >= FRAMES_BEFORE_READ then
       local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end); mark("getDecalData")

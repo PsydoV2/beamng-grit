@@ -316,9 +316,9 @@ local DUST = {
   -- M2.2 Lauf 3: „zu wenig, feiner Staub nimmt viel größere Flächen ein“ → größer, häufiger, auch an den Seiten
   -- (untere Hälfte). Abweichung vom Konzept (nur Heck + Oberseiten), von Sebastian gewünscht.
   texture = "/art/patina/dust.png", depth = 0.3,
-  rear = { chance = 0.35, minSize = 1.0, maxSize = 1.5, start = 0.12, step = 0.01,  max = 0.5,  tol = 0.6 },
-  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.10, step = 0.008, max = 0.4,  tol = 0.5 },
-  top  = {                minSize = 1.0, maxSize = 1.5, start = 0.08, step = 0.006, max = 0.28, tol = 0.8 },
+  rear = { chance = 0.35, minSize = 1.0, maxSize = 1.5, start = 0.18, step = 0.01,  max = 0.5,  tol = 0.6 },
+  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.15, step = 0.008, max = 0.4,  tol = 0.5 },
+  top  = {                minSize = 1.0, maxSize = 1.5, start = 0.12, step = 0.006, max = 0.28, tol = 1.2 },  -- tol: Ladefläche 1 m unter AABB-Oberkante
   maxEvents = 220,
 }
 

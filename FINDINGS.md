@@ -811,3 +811,17 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Messung: „Patina arbeitet“ Ø 12.7 vs. Leerlauf 11.5 ms (vorher +3.7, jetzt +1.2 ms) ✅. Bake Ø 0.72–0.77 ms.
   `render:update` CPU weiterhin Einzelspitze 35.9 ms; Leerlauf-CPU Ø 0.6 ms kommt aus `refresh()`.
   → Abschnitts-Zeiten eingebaut: `render:update` > 8 ms loggt refresh/setup/project/getDecalData/bake/combine.
+
+### M2.2, Lauf 4 (2026-11-06) – Ruckler-Ursache gefunden
+- Sebastian: nach Strg+L wieder große geometrische Formen (Screenshot `22-17-49`: große schwarze/weiße Flächen
+  auf der Motorhaube), nach Reparatur nicht; Staub sehr klein; Zahlen besser, ruckelt aber spürbar.
+- Formen: 22:17:37 Fahrt durch Büsche (Untergrund 7 FOLIAGE, 13.7 m/s) → ~64 Schrammen vorne links mit Normale
+  (−0.53, −0.79, 0.30), also ins Auto/quer → Projektion streift schräg über die Haube, Kratzer 1.1 m lang, Stufe
+  „mittel“ dunkelgrau. Kein Strg+L-Effekt. Fix: FOLIAGE/CLOTH/WATER kratzen nicht; Normale, die zur Fahrzeugmitte
+  zeigt (n·Richtung-nach-außen < −0.3), wird verworfen.
+- **Ruckler: `projectDynamicDecals` kostet 8–16 ms CPU je Aufruf** (Aufschlüsselung `render:update`: refresh
+  0.5–0.7, project 8.4–15.9, getDecalData 0–0.7, bake 1.2–1.5, combine ≤ 0.5). Bisher 3 Aufrufe je Decal.
+  Fix-Versuch: nur jeden 3. Frame projizieren (1 Aufruf je Decal, getDecalData danach); `setShape` nur bei
+  Neuanlage/Rebake/clear statt jeden Frame (Verdacht: stößt Mesh-Aufbereitung neu an).
+- Staub: Oben-Strahlen trafen die Ladefläche ~1 m unter der AABB-Oberkante → verworfen; tol oben 1.2 m.
+  Start-Deckkraft Staub höher (Heck 0.18, Seite 0.15, oben 0.12).

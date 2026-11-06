@@ -25,6 +25,8 @@ local refPos
 -- Rad-Knoten (Felge/Nabe aus Metall rutschen am Reifenfilter vorbei, M1.1 Lauf 5): wheels.wheels[i].nodes/.treadNodes
 -- (vehicle/wheels.lua:183,200,1091-1092)
 local wheelNodes = {}
+local SOFT = { [7] = true, [8] = true, [9] = true }   -- FOLIAGE, CLOTH, WATER (particles.json:2-35)
+local center = vec3(0, 0, 0)  -- Mittelpunkt der Ausgangspositionen relativ zum Referenzknoten
 
 -- Weltvektor → Fahrzeugraum (jbeam: +x links, −y vorne, +z oben; Spike 1)
 local function toLocal(w)
@@ -113,6 +115,7 @@ end
 
 local function nodeCollision(p)
   if p.materialID2 == RUBBER or p.slipVel < SCRAPE_SLIP or not axF then return end
+  if SOFT[p.materialID1] then return end   -- Büsche/Stoff/Wasser kratzen nicht (M2.2 Lauf 4: Busch → schwarze Flächen)
   local cid = p.id1
   if wheelNodes[cid] then return end
   local now = obj:getSimTime()
@@ -125,6 +128,9 @@ local function nodeCollision(p)
   -- Unterboden (Fläche zeigt nach unten): unsichtbar, und die Projektion von unten färbte senkrechte Flächen in
   -- Streifen (M2.2 Lauf 2: Aufsetzen auf Schotter → 121 Schrammen, senkrechte Streifen an der Bordwand)
   if n.z < -0.6 then return end
+  -- Normale zeigt ins Auto (Büsche: n quer zur Karosserie, M2.2 Lauf 4) → Projektion streift schräg über Haube
+  local off = vec3(node.pos) - refPos - center
+  if off:length() > 0.1 and n:dot(off:normalized()) < -0.3 then return end
   local s = toLocal(vec3(p.slipVec))
   table.insert(pending, {
     c = cid, px = r3(node.pos.x - refPos.x), py = r3(node.pos.y - refPos.y), pz = r3(node.pos.z - refPos.z),
@@ -161,6 +167,11 @@ local function init()
   local n = rn and v.data.nodes[rn.ref]
   refPos = n and vec3(n.pos) or nil
   if not refPos then log("W", "patinaSensor", "Kein Referenzknoten – Schrammen aus") end
+  if refPos then
+    local sum, cnt = vec3(0, 0, 0), 0
+    for _, nd in pairs(v.data.nodes) do if nd.pos then sum = sum + vec3(nd.pos); cnt = cnt + 1 end end
+    center = cnt > 0 and (sum * (1 / cnt) - refPos) or vec3(0, 0, 0)
+  end
   wheelNodes = {}
   for i = 0, (wheels.wheelCount or 0) - 1 do
     local wd = wheels.wheels[i]
