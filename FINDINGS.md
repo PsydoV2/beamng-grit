@@ -359,3 +359,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - **Bake wandelt Layer-Farben sRGB → linear:** 0.7 → 116 (= 0.7^2.2), Dreckfarbe 0.3/0.2/0.1 → 18/7/2.
   Folge: Maske deckt nur ~45 % statt 70 %, Dreck fast schwarz → auf dem Auto kaum sichtbar.
   Abhilfe: Werte vor dem Bake mit ^(1/2.2) kodieren (`M.gammaFix`).
+
+### Spike 2b, Lauf 5 (2026-11-06, ETKI) – mit Gamma-Ausgleich
+- Gegencheck `coat2(1, 1,0,0)`: **ganzes Auto knallrot** (Sebastian). ✅
+- `coat2(0.6)`: Export Maske 153/255 = 0.6, Farbe 76/51/25 = 0.3/0.2/0.1 → Werte stimmen jetzt. ✅
+- Optik laut Sebastian „eher grau-oliv, Spiegel braun“. Screenshots: `screenshots/2026-11/screenshot_2026-11-06_15-16-45.png`
+  (sauber) und `…15-17-21.png` (Dreck). Gleichmäßige Fläche auf allen Lackteilen.
+  Grau-oliv ist die rechnerische Mischung 60 % Braun + 40 % Mint. Glanz wirkt weg (Stage-Roughness 1).
+  Spiegel brauner als der Rest: Ursache noch offen (anderes Material/UV?). ❓
+- **Damit deckt Weg A′ alle lackierten Teile des ETKI flächig ab.** Realistischer Look (Texturen, Verteilung, Glanz)
+  ist Gestaltungsarbeit für M1+, nicht Teil des Spikes.
