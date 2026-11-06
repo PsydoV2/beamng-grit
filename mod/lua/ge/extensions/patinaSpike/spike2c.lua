@@ -186,6 +186,11 @@ end
 
 local function cloneName(t) return (string.format("patina_%d_%s", state.vehId, t.objName):gsub("[^%w_]", "_")) end
 
+-- Diagnose (Lauf 2: Kopie feldgleich, trotzdem chrom):
+--   M.noStage = true      → Kopie ohne Patina-Stage. Chrom? → Problem ist Kopie/Umschalten, nicht die Stage.
+--   M.switchToOrig = true → auf den Original-Namen zurückschalten. Normal? → switchMaterial selbst ist ok.
+M.noStage, M.switchToOrig = false, false
+
 local function applyStages()
   local veh = be:getObjectByID(state.vehId)
   for _, t in ipairs(state.targets) do
@@ -212,6 +217,7 @@ local function applyStages()
     end
     if #diffs > 0 then L("W", "  Kopie %s weicht ab (%d): %s", name, #diffs, table.concat(diffs, "; "):sub(1, 1500)) end
     local s = t.stage
+    if M.noStage then goto nostage end
     c:setField("baseColorMap", s, COLOR_PREFIX .. "BaseColor")
     c:setField("diffuseMapUseUV", s, tostring(UV_LAYER))
     c:setField("opacityMap", s, MASK_PREFIX .. "BaseColor")
@@ -220,6 +226,7 @@ local function applyStages()
     c:setField("roughnessFactor", s, "1")
     c:setField("instanceDiffuse", s, "0")
     c:setField("activeLayers", 0, tostring(s + 1))
+    ::nostage::
     c:reload()
     t.obj, t.cloneName, t.switches = c, name, {}
 
@@ -228,7 +235,7 @@ local function applyStages()
       if mesh ~= "" then
         local msc = veh:getSwitchableMaterial(t.mesh, t.mesh, mesh)
         if msc and msc >= 0 then
-          veh:switchMaterial(msc, name)
+          veh:switchMaterial(msc, M.switchToOrig and t.mesh or name)
           table.insert(t.switches, msc)
         end
       end

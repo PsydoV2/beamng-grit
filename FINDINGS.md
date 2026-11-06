@@ -429,3 +429,8 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   `assignFieldsFromObject` (gibt es, `editor/api/dynamicDecals.lua:2105`) + `c.mapTo`.
 - Lauf 2: kopieren wie der Material-Editor (`editor/api/material.lua:265-279`, jedes Feld × 4 Stages +
   dynamische Felder; `name`/`mapTo` per `setField`), Kopie gegen Original vergleichen und loggen.
+
+### Spike 2c, Lauf 2 (2026-11-06)
+- Kopie wie Material-Editor: **keine einzige Feldabweichung** zum Original, trotzdem chrom sofort nach `start()`. ❌
+  → Ursache liegt im Umschalten auf ein zur Laufzeit erzeugtes Material, nicht in den Feldern.
+- Lauf 3: Diagnose-Schalter `noStage` (Kopie ohne Stage) und `switchToOrig` (auf Originalnamen schalten).
