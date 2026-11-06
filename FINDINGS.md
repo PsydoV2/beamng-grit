@@ -693,3 +693,8 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Dach unsichtbar, obwohl Treffer auf dem Dach (z 1.162) mit Drehung 90°. In Lauf 1 (Rotation 0) lag der
   Dach-Kratzer schon längs (Screenshot 20-52-12) → Annahme „Bezugsachse x auf dem Dach“ war falsch.
   Neu: Bezugsachse = z in die Fläche projiziert, auf waagerechten Flächen y; Drehung negativ.
+
+### M1.2, Lauf 5 (2026-11-06) ✅ Ausrichtung
+- Dach sichtbar und längs ✅, rechts 30° geneigt vorne höher ✅, Seiten längs ✅.
+- Bestätigt: Decal-Ausrichtung = `decalRotation` (negativer Drehsinn) ab Bezugsachse „z in die Fläche
+  projiziert, auf waagerechten Flächen y“. Kamera-Rolle egal.
