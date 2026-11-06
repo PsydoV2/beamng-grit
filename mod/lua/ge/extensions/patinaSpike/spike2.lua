@@ -119,9 +119,24 @@ end
 
 -- Frische Dynamic Textures enthalten Datenreste (Lauf 3: rechte Seite rot nach start()).
 -- Deshalb immer zuerst eine schwarze, transparente Fill-Ebene backen (Fill-Layer wie ui/liveries/fill.lua).
+-- Lauf 4: Mit opacity("Metallic") wurde das ganze Auto matt schwarz → die Grundebene schreibt Metallic = 1.
+-- Varianten für den Metallic-Hintergrund 0:
+--   "normal" Fill, blendMode Normal (Lauf 4)
+--   "clear"  Fill, blendMode Clear (0)
+--   "zero"   Fill, Normal + metallicIntensity/roughnessIntensity = 0 (Felder wie bei Decal-Layern)
+local baseMode = "clear"
 M._baseLayer = function()
-  return { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
-           enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
+  local l = { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
+              enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
+  if baseMode == "clear" then l.blendMode = 0 end
+  if baseMode == "zero" then l.metallicIntensity, l.roughnessIntensity = 0, 0 end
+  return l
+end
+
+M.base = function(mode)
+  baseMode = mode or "clear"
+  if state then state.layers[1] = M._baseLayer(); rebake() end
+  L("I", "base(): Grundebene = %s", baseMode)
 end
 
 M.start = function(meshName)

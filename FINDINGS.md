@@ -302,3 +302,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (`unexpected symbol near '~'`). Ergebnis A = wie Lauf 2 (schwache „1“ auf dem Dach).
 - Direkt nach `start()` (0 Layer gebacken) war „gefühlt die ganze rechte Seite rot“ → **frische Dynamic
   Textures enthalten Datenreste**. Fix: immer zuerst eine schwarze, transparente Fill-Ebene backen.
+
+### Spike 2, Lauf 4 (2026-11-06, ETKI)
+- Grundebene beseitigt die Datenreste ✅.
+- `opacity("BaseColor")`: weiße „1“ kräftig, braune schwach → Deckkraft = **Helligkeit** der Farbe. Für Dreck ungeeignet.
+- `opacity("Metallic")` + `intensity(1,1)`: braune „1“ **voll deckend** ✅ → Deckkraft über den Metallic-Kanal,
+  getrennt von der Farbe. Aber das ganze Auto wurde matt schwarz: Die Grundebene (Fill, Normal) schreibt Metallic = 1.
+- Nächster Test: Grundebene `clear` (blendMode 0) bzw. `zero` (metallic/roughnessIntensity 0).
