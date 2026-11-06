@@ -396,6 +396,12 @@ local function bindEmpty()
         L("I", "leere Projektion %s (ID %d) gebacken bei Frame %d, Materialien %d, code=%s", tostring(v.jbeam), id,
           o.age, #(o.proj:getShapeMaterialNames() or {}), tostring(r and r.status and r.status.code))
       end
+      -- Lauf 10: Textur stimmt (Export leer), wird vom neu gespawnten Auto aber nicht gelesen →
+      -- Material neu laden, damit die @Patina-Tags für dieses Fahrzeug neu aufgelöst werden.
+      if o.age == 2 or o.age == 61 then
+        for _, t in ipairs(state.targets) do t.obj:reload() end
+        L("I", "Materialien neu geladen für ID %d (Frame %d)", id, o.age)
+      end
       refreshProj(v, o.proj, MASK_PREFIX, o.set)
       v:setTextureSet(COLOR_PREFIX, o.set)
       o.proj:combineTextures(o.set)

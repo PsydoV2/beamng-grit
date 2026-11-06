@@ -390,3 +390,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Patina-Auto verdreckt ✅. **Danach neu gespawnter ETKI wieder lavendelblau** ❌, obwohl seine Projektion
   erzeugt wurde (Log 15:37:01, code=0). Vermutung: im Spawn-Frame ist die Form noch nicht fertig.
   Neuer Versuch: Projektion erst nach 30 Frames anlegen.
+
+### Spike 2b, Lauf 9 (2026-11-06)
+- Leere Projektion des neuen ETKI mehrfach gebacken (Frame 1/60/180/600, je 55 Form-Materialien, code 0).
+  `exportOthers`: Textur komplett 0 = korrekt. Trotzdem: Dach/Heck/Kotflügel lavendelblau, Seiten grün mit
+  feinen UV-Linien (Screenshot `…15-43-54.png`). → **Das Auto liest die gebundene Textur nicht.**
+- Vermutung: Fahrzeuge, die NACH dem Einbau der Stage spawnen, lösen `@Patina*` beim Spawn zu einem
+  Platzhalter auf und behalten ihn. Vorhandene Fahrzeuge wurden durch `mat:reload()` neu aufgelöst.
+  Test: nach dem Binden `mat:reload()`.
