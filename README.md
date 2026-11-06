@@ -1,3 +1,5 @@
+![Grit – Dynamic Dirt, Scratches & Cracks for every vehicle](branding/out/grit-banner.png)
+
 # Grit – Dynamic Dirt, Scratches & Cracks for every vehicle
 
 **Grit** gives every car in BeamNG.drive a history. Scrape along a guardrail and the paint shows it. Drive off-road
