@@ -251,6 +251,7 @@ M.onSensorEvents = function(vid, ev)
       end
       local ok = car.r:request({
         pos = pos, normal = vec3(s.nx, s.ny, s.nz), up = dir,
+        tolAlong = 0.1,   -- M1.3 Lauf 2: Spiegel-Knoten stehen ab → Strahl trifft Motorhaube/Kotflügel 0.12–0.2 m innen
         width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.texture,
         color = lv.color, strength = lv.strength, name = "Patina Kratzer " .. level,
       })

@@ -139,7 +139,7 @@ function R:update(veh)
         local off = hit - d.pos
         local nn = d.normal:normalized()
         local along = off:dot(nn)
-        near = math.abs(along) <= 0.2 and (off - nn * along):length() <= 0.25
+        near = math.abs(along) <= (d.tolAlong or 0.2) and (off - nn * along):length() <= 0.25
       end
       if near then
         data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}

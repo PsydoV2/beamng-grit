@@ -709,3 +709,14 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Fix: Treffer getrennt prüfen, entlang n ≤ 0.2 m und seitlich ≤ 0.25 m.
 - Vertex testScratch("top") verworfen (Treffer z 0.11): AABB-Oberkante 1.36 liegt über einer Nicht-Lack-Fläche,
   Strahl geht durch → Verwerfen funktioniert.
+
+### M1.3 Fahrzeugtest, Lauf 2 (2026-11-06)
+- Flecken weniger, nicht weg; entstehen beim Schleifen der Spiegel. D-Serie Spiegel-Knoten bei x −0.52…−0.60,
+  y 0.12–0.26, z 0.85–0.90 stehen vor dem Lack → Strahl trifft innen Motorhaube/Kotflügel. Abweichungen entlang n:
+  gute Schramm-Treffer meist ≤ 0.07 m, verworfene 0.2–0.6 m → für Sensor-Kratzer Grenze 0.1 m (`tolAlong`),
+  testScratch bleibt 0.2 m (startet an der AABB).
+- **Gavril Vertex NA2 ist ein Mod** (`mods/repo/innocent_gavril_vertex.zip`, nicht in content/vehicles) →
+  Mod-Fahrzeug-Test ✅. Damit 3 Vanilla (ETKI, D-Serie, Covet) + 1 Mod.
+- Chrom: erst einmal weglassen (Sebastian).
+- Achtung: `mods/repo/dynamic_scratches_mod_beta.zip` ist **aktiv** (db.json) – fremder Kratzer-Mod, kann Tests
+  verfälschen. Nicht angesehen (keine fremde Logik übernehmen).
