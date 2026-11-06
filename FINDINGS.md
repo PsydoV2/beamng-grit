@@ -825,3 +825,15 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Neuanlage/Rebake/clear statt jeden Frame (Verdacht: stößt Mesh-Aufbereitung neu an).
 - Staub: Oben-Strahlen trafen die Ladefläche ~1 m unter der AABB-Oberkante → verworfen; tol oben 1.2 m.
   Start-Deckkraft Staub höher (Heck 0.18, Seite 0.15, oben 0.12).
+
+### M2.2, Lauf 5 (2026-11-06)
+- Sebastian: ruckelt weniger ✅, keine Formen mehr, auch im Gebüsch ✅; Dreck hinter den Rädern, aber nicht
+  autodeckend.
+- Messung: `projectDynamicDecals` weiterhin 11.6–15.4 ms je Aufruf, jetzt 1× statt 3× je Decal. `setShape` war
+  nicht die Ursache. → Jedes Decal kostet einen Frame-Hänger von ~12–15 ms. Autodeckender Dreck braucht viele
+  Decals → so nicht tragfähig.
+- Nächster Schritt **Spike 6: Decals ohne Projektion** – Layer-Daten selbst bauen (Vorlage aus einem echten
+  `getDecalData`, eigene Kamera/Normale/Position). Felder laut Editor (`editor/api/dynamicDecals.lua:1787-1796`):
+  camPosition, camDirection, decalPos, decalNorm, viewToScreen, worldToViewToScreen, useZBufferDepth,
+  zBufferDepth, useLockedSurfaceNormal, surfaceNormal, cursorPosScreenUv, decalScale, decalSkew, decalRotation,
+  useSurfaceNormal, mirrored. Dafür Dump der ersten 3 Treffer samt eigener camM/projM ins Log eingebaut.

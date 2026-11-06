@@ -161,6 +161,23 @@ function R:update(veh)
         data.patinaColor, data.patinaStrength = d.color, d.strength
         data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4: Striche auf der Gegenseite
         table.insert(self.layers, data)
+        -- Spike 6 (Decals ohne Projektion): Felder der ersten 3 Treffer samt eigener Kamera ins Log
+        if self.log and (self.dumps or 0) < 3 then
+          self.dumps = (self.dumps or 0) + 1
+          local keys = {}
+          for k in pairs(data) do keys[#keys + 1] = k end
+          table.sort(keys)
+          self.log("I", "DUMP %d: angefragt pos %s n %s up %s Breite %.2f Länge %.2f Tiefe %.2f", self.dumps,
+            tostring(d.pos), tostring(d.normal), tostring(d.up), d.width, d.length, d.depth)
+          self.log("I", "DUMP %d: camM %s", self.dumps, tostring(req.camM))
+          self.log("I", "DUMP %d: projM %s", self.dumps, tostring(req.projM))
+          for _, k in ipairs(keys) do
+            local v = data[k]
+            if k ~= "children" then
+              self.log("I", "DUMP %d: %s = %s", self.dumps, k, type(v) == "table" and dumps(v):gsub("%s+", " ") or tostring(v))
+            end
+          end
+        end
         if self.log and #self.layers <= 15 then
           self.log("I", "Decal %d: Treffer %s (angefragt %s), Drehung %.0f° → Layer %.0f°", #self.layers, tostring(hit),
             tostring(d.pos), math.deg(d.rot or 0), math.deg(data.decalRotation or -1))
