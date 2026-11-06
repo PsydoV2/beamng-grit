@@ -13,9 +13,18 @@ local render = require("ge/extensions/patina/render")
 
 local SLOT = "patina"
 local SENSOR_FILE, SENSOR_NAME = "patina/sensor", "patinaSensor"
-local SCRATCH = {   -- M1-Platzhalter: gestreckter weißer Strich (Spiel-Textur), heller Ton = Grundierung
-  texture = "/art/dynamicDecals/textures/_one.png", color = { 0.78, 0.78, 0.76 },
-  width = 0.03, depth = 0.25, minLen = 0.06, lenPerMs = 0.05, maxLen = 0.35,
+-- Kratzer in drei Tiefen (Konzept: leicht = Klarlack, mittel = Grundierung, tief = blankes Metall).
+-- Masken aus tools/gen_textures.ps1. Wiederholtes Schrammen desselben Knotens vertieft: 1. Treffer leicht,
+-- 2. mittel, ab 3. tief; danach keine weiteren Ebenen für diesen Knoten (Budget). Harte Schramme springt tiefer.
+local SCRATCH = {
+  depth = 0.25, minLen = 0.12, lenPerMs = 0.03, maxLen = 0.4,
+  levels = {
+    { texture = "/art/patina/scratch_light.png",  color = { 0.88, 0.88, 0.86 }, strength = 0.55, width = 0.07 },
+    { texture = "/art/patina/scratch_medium.png", color = { 0.52, 0.52, 0.50 }, strength = 0.85, width = 0.08 },
+    { texture = "/art/patina/scratch_deep.png",   color = { 0.70, 0.71, 0.73 }, strength = 1.00, width = 0.08 },
+  },
+  hardSlip = 8,       -- m/s: ab hier mindestens mittel
+  maxPerNode = 3,
 }
 
 M.debugLog = true           -- Entwicklung: zusätzlich sofort in <User>/patina.log (beamng.log puffert Minuten)
@@ -184,7 +193,7 @@ local function attach(veh)
     return
   end
   car.retried = nil
-  car.r = render.new(veh, onSkin, L)
+  car.r, car.nodeHits = render.new(veh, onSkin, L), {}
   car.phase = "active"
   loadSensor(veh)
   L("I", "Fahrzeug %d aktiv: %d/%d Materialien auf Patina%s, Neuspawn %.0f ms", vid, #onSkin, #targets,
@@ -225,13 +234,20 @@ M.onSensorEvents = function(vid, ev)
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
         s.c, s.px, s.py, s.pz, s.nx, s.ny, s.nz, s.sx, s.sy, s.sz, s.v, s.m1, s.m2)
     end
-    local len = math.min(SCRATCH.maxLen, SCRATCH.minLen + s.v * SCRATCH.lenPerMs)
-    local ok = car.r:request({
-      pos = vec3(s.px, s.py, s.pz), normal = vec3(s.nx, s.ny, s.nz), up = vec3(s.sx, s.sy, s.sz),
-      width = SCRATCH.width, length = len, depth = SCRATCH.depth, texture = SCRATCH.texture,
-      color = SCRATCH.color, strength = math.min(1, 0.4 + s.v * 0.05), name = "Patina Kratzer",
-    })
-    if ok then car.scrapes = (car.scrapes or 0) + 1 end
+    car.nodeHits = car.nodeHits or {}
+    local hits = car.nodeHits[s.c] or 0
+    if hits < SCRATCH.maxPerNode then
+      local level = math.min(#SCRATCH.levels, hits + 1)
+      if s.v >= SCRATCH.hardSlip and level < 2 then level = 2 end
+      local lv = SCRATCH.levels[level]
+      local len = math.min(SCRATCH.maxLen, SCRATCH.minLen + s.v * SCRATCH.lenPerMs)
+      local ok = car.r:request({
+        pos = vec3(s.px, s.py, s.pz), normal = vec3(s.nx, s.ny, s.nz), up = vec3(s.sx, s.sy, s.sz),
+        width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.texture,
+        color = lv.color, strength = lv.strength, name = "Patina Kratzer " .. level,
+      })
+      if ok then car.scrapes = (car.scrapes or 0) + 1; car.nodeHits[s.c] = level end
+    end
   end
 end
 
@@ -295,7 +311,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh) end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits = {} end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -317,7 +333,7 @@ M.status = function()
   end
 end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
-M.testScratch = function(side)
+M.testScratch = function(side, level)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
   if not (car and car.r and veh) then L("W", "testScratch: Patina ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
@@ -325,14 +341,15 @@ M.testScratch = function(side)
   local c = (mn + mx) * 0.5
   local n = ({ left = vec3(1, 0, 0), right = vec3(-1, 0, 0), top = vec3(0, 0, 1) })[side or "left"]
   local pos = vec3(n.x > 0 and mx.x or (n.x < 0 and mn.x or c.x), c.y, n.z > 0 and mx.z or c.z)
-  car.r:request({ pos = pos, normal = n, up = vec3(0, -1, 0), width = 0.05, length = 0.6, depth = 0.4,
-    texture = SCRATCH.texture, color = SCRATCH.color, strength = 1, name = "Patina Test" })
+  local lv = SCRATCH.levels[level or 3] or SCRATCH.levels[3]
+  car.r:request({ pos = pos, normal = n, up = vec3(0, -1, 0), width = 0.2, length = 0.6, depth = 0.4,
+    texture = lv.texture, color = lv.color, strength = lv.strength, name = "Patina Test" })
   L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
 end
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)) end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits = {} end
 end
 
 return M

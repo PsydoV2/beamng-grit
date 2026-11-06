@@ -654,3 +654,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Treffer meist ≤ 0.1 m neben der Anfrage. Rest auf der „Gegenseite“: Anfragen bei x=−0.495, y=−1.1…−1.25,
   z=0.13–0.3 = Felge vorne rechts (Metall, am Reifenfilter vorbei) → Treffer ~0.4 m innen. Fix: alle Rad-Knoten
   (`wheels.wheels[i].nodes/.treadNodes`, `vehicle/wheels.lua:183,200,1091`) ausnehmen.
+
+### M1.2 (2026-11-06): Kratzer-Texturen + Tiefen
+- `tools/gen_textures.ps1` (PowerShell + System.Drawing, kein Python installiert; fester Seed → reproduzierbar)
+  erzeugt `mod/art/patina/scratch_light|medium|deep.png` (1024², weiß, Form im Alpha). Vanilla-Decals: RGBA PNG
+  2048² + optionale Sidecar `*.dynDecalTexture.json` für den Editor (`type 0` = Graustufen,
+  `editor/api/dynamicDecals/textures.lua:19`) – für die Projektion nicht nötig.
+- Tiefe pro Knoten: 1. Treffer leicht (hell, 0.55), 2. mittel (Grundierung grau, 0.85), ab 3. tief (silbern, 1.0);
+  ≥ 8 m/s mindestens mittel; max. 3 Ebenen pro Knoten. Reset leert auch die Zählung.
+- `patina_main.testScratch(side, level)` zum Ansehen der Texturen.
