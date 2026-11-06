@@ -341,7 +341,7 @@ M.status = function()
   end
 end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
-M.testScratch = function(side, level)
+M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorne geneigt (Vorzeichen-Test)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
   if not (car and car.r and veh) then L("W", "testScratch: Patina ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
@@ -350,7 +350,9 @@ M.testScratch = function(side, level)
   local n = ({ left = vec3(1, 0, 0), right = vec3(-1, 0, 0), top = vec3(0, 0, 1) })[side or "left"]
   local pos = vec3(n.x > 0 and mx.x or (n.x < 0 and mn.x or c.x), c.y, n.z > 0 and mx.z or c.z)
   local lv = SCRATCH.levels[level or 3] or SCRATCH.levels[3]
-  car.r:request({ pos = pos, normal = n, up = vec3(0, -1, 0), width = 0.2, length = 0.6, depth = 0.4,
+  local a = math.rad(tilt or 0)
+  local up = n.z > 0.5 and vec3(-math.sin(a), -math.cos(a), 0) or vec3(0, -math.cos(a), math.sin(a))
+  car.r:request({ pos = pos, normal = n, up = up, width = 0.2, length = 0.6, depth = 0.4,
     texture = lv.texture, color = lv.color, strength = lv.strength, name = "Patina Test" })
   L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
 end

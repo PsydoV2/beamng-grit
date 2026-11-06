@@ -679,3 +679,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Screenshot `20-58-37`: testScratch Seite (n=+x, up=−y, 0.2 × 0.6 m) liegt senkrecht → Länge entlang n × up
   (= −z); passt auch zu Lauf 1 (Dach quer). `quatFromDir(-n, up)` + `QuatF:getMatrix()` dreht für die
   Decal-Projektion offenbar um 90° um die Blickachse. Fix: `up = up × n` vor dem Bau der Kameramatrix.
+
+### M1.2, Lauf 3 (2026-11-06)
+- `up = up × n` änderte an den Seiten nichts (weiter senkrecht), Dach-Test verfehlt (Treffer −9e999) ❌
+  → Kamera-Rolle bestimmt die Decal-Ausrichtung **nicht**. Ausrichtung kommt aus `decalRotation` (Layer-Feld,
+  `editor/api/dynamicDecals.lua:905`, Radiant) relativ zu einer festen Bezugsachse.
+- Aus Lauf 1/2 bei Rotation 0: Seite → Länge entlang z, Dach → entlang x ⇒ Bezugsachse = n × (0,1,0) (Annahme).
+  Jetzt: Kamera wieder mit Schleifrichtung als up, `decalRotation` = Winkel Bezugsachse → Schleifrichtung um n.
+  Vorzeichen offen → `testScratch(side, level, tilt)` mit Neigung prüfen. Front/Heck (n ∥ y) noch Rotation 0.

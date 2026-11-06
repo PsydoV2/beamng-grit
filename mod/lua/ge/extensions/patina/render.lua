@@ -88,9 +88,19 @@ function R:request(d)
   local n = d.normal:normalized()
   local up = d.up - n * d.up:dot(n)
   if up:length() < 1e-3 then up = math.abs(n.z) < 0.9 and vec3(0, 0, 1) or vec3(0, 1, 0) end
-  -- Gemessen (M1.2 Lauf 2): Decal-Länge liegt entlang n × up statt entlang up (Seite: up=−y → senkrecht,
-  -- Dach: quer) → um −90° um n vordrehen, damit die Länge entlang der Schleifrichtung liegt.
-  up = up:cross(n)
+  up = up:normalized()
+  -- Ausrichtung: Die Projektion ignoriert die Kamera-Rolle (M1.2 Lauf 2/3: up gedreht → keine Änderung).
+  -- Sie richtet nach Normale + decalRotation aus (Layer-Felder decalNorm/decalRotation,
+  -- editor/api/dynamicDecals.lua:905,1789-1794). Gemessen bei Rotation 0: Länge liegt Seite (n=±x) entlang z,
+  -- Dach (n=z) entlang x → Bezugsachse = n × (0,1,0). Winkel von dort zur Schleifrichtung um n.
+  local ref = n:cross(vec3(0, 1, 0))
+  local rot = 0
+  if ref:length() > 0.2 then
+    ref = ref:normalized()
+    rot = math.atan2(ref:cross(up):dot(n), ref:dot(up)) * (R.ROT_SIGN or 1)
+    if rot < 0 then rot = rot + 2 * math.pi end
+  end
+  d.rot = rot
   local camPos = d.pos + n * (d.depth * 0.5 + 0.2)
   local q = quatFromDir(-n, up:normalized())
   local camM = QuatF(q.x, q.y, q.z, q.w):getMatrix()
@@ -109,7 +119,7 @@ function R:update(veh)
       p:setDecalTexturePath("color", d.texture)
       p.decalColor = Point4F(1, 1, 1, 1)
       p.decalScale = vec3(d.width, d.depth, d.length)
-      p.decalRotation = 0
+      p.decalRotation = d.rot or 0
       p.useSurfaceNormal = false
       p.mirrored = false          -- editor/api/dynamicDecals.lua:2484
     end
@@ -128,7 +138,8 @@ function R:update(veh)
         data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4: Striche auf der Gegenseite
         table.insert(self.layers, data)
         if self.log and #self.layers <= 15 then
-          self.log("I", "Decal %d: Treffer %s (angefragt %s)", #self.layers, tostring(hit), tostring(d.pos))
+          self.log("I", "Decal %d: Treffer %s (angefragt %s), Drehung %.0f° → Layer %.0f°", #self.layers, tostring(hit),
+            tostring(d.pos), math.deg(d.rot or 0), math.deg(data.decalRotation or -1))
         end
         local cl, ml = variants(data)
         self.color:bakeLayers({ cl }, veh.jbeam)
