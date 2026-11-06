@@ -309,3 +309,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - `opacity("Metallic")` + `intensity(1,1)`: braune „1“ **voll deckend** ✅ → Deckkraft über den Metallic-Kanal,
   getrennt von der Farbe. Aber das ganze Auto wurde matt schwarz: Die Grundebene (Fill, Normal) schreibt Metallic = 1.
 - Nächster Test: Grundebene `clear` (blendMode 0) bzw. `zero` (metallic/roughnessIntensity 0).
+
+### Spike 2, Lauf 5 (2026-11-06, ETKI)
+- Grundebene `clear` und `zero` ändern nichts: Auto bleibt matt schwarz mit kräftiger brauner „1“.
+  → `@PatinaTextureMetallic` wirkt als `opacityMap` offenbar **gar nicht** (Ebene überall voll deckend,
+  wie `opacity("none")`). Metallic/Roughness sind als Masken-Quelle verworfen.
+- Belegt bleibt: **Helligkeit** einer Dynamic-Texture-BaseColor wirkt als Deckkraft (schwarz = unsichtbar).
+- Neuer Ansatz: **zweite DecalProjection pro Fahrzeug als Maske** (`@PatinaMask`, dieselben Layer in
+  Weiß × Stärke auf schwarzem Grund). Stage: `baseColorMap = @PatinaTextureBaseColor`,
+  `opacityMap = @PatinaMaskBaseColor`.

@@ -5,7 +5,9 @@
 --   extensions.load("patinaSpike_spike2")
 --   patinaSpike_spike2.start()             -- Projektion + Stage auf dem Lack-Material
 --   patinaSpike_spike2.decal("left")       -- "left" | "right" | "top" | "front" | "rear"
---   patinaSpike_spike2.opacity("Metallic") -- Deckkraft-Quelle: "BaseColor" | "Metallic" | "Roughness" | "none"
+--   patinaSpike_spike2.opacity("Mask")     -- Deckkraft-Quelle: "Mask" (Standard) | "BaseColor" | "Metallic" | "Roughness" | "none"
+--   patinaSpike_spike2.color(r, g, b)      -- Farbe der nächsten Decals
+--   patinaSpike_spike2.strength(0.5)       -- Deckkraft der nächsten Decals (Grauwert in der Maske)
 --   patinaSpike_spike2.prefix("@DynamicTexture")  -- Textur-Set-Name umschalten (Standard "@PatinaTexture")
 --   patinaSpike_spike2.status()            -- aktuelle Material-Felder ausgeben
 --   patinaSpike_spike2.respawn()           -- Auto mit geändertem Material neu spawnen (falls reload() nicht reicht)
@@ -42,23 +44,51 @@ local function getVeh()
   return veh
 end
 
-local function refresh(veh)
-  local p = state.proj
-  veh:setTextureSet(state.prefix, state.textureSet)
+local MASK_PREFIX = "@PatinaMask"
+
+local function refreshProj(veh, p, prefix, set)
+  veh:setTextureSet(prefix, set)
   p:setShape(veh:getDecalProjectionShape())
   p:setWorldTransform(veh:getRefNodeMatrix())
   p:setTransform(veh:getRefNodeMatrix():copy():setPosition(vec3(0, 0, 0)):inverse())
+end
+
+local function refresh(veh)
+  refreshProj(veh, state.proj, state.prefix, state.textureSet)
+  refreshProj(veh, state.mask.proj, MASK_PREFIX, state.mask.textureSet)
+end
+
+-- Masken-Layer = dieselben Layer, Farbe = Weiß × Stärke. Grundebene bleibt schwarz (= unsichtbar).
+local function maskLayers()
+  local out = {}
+  for i, l in ipairs(state.layers) do
+    if i == 1 then
+      out[i] = l
+    else
+      local m = shallowcopy(l)
+      local s = l.patinaStrength or 1
+      m.color = Point4F(s, s, s, 1)
+      m.uid = l.uid .. "-m"
+      out[i] = m
+    end
+  end
+  return out
+end
+
+local function bakeOne(p, layers, jbeam)
+  p:clearBakedTextures()
+  local res = p:bakeLayers(layers, jbeam)
+  return res and res.status and res.status.code
 end
 
 local function rebake()
   local veh = getVeh(); if not veh or not state then return end
   refresh(veh)
   local t = hptimer()
-  state.proj:clearBakedTextures()
-  local res = state.proj:bakeLayers(state.layers, veh.jbeam)
+  local c1 = bakeOne(state.proj, state.layers, veh.jbeam)
+  local c2 = bakeOne(state.mask.proj, maskLayers(), veh.jbeam)
   local ms = t:stopAndReset()
-  local code = res and res.status and res.status.code
-  L("I", "bakeLayers: %d Layer, %.2f ms, code=%s", #state.layers, ms, tostring(code))
+  L("I", "bakeLayers (Farbe + Maske): %d Layer, %.2f ms, code=%s/%s", #state.layers, ms, tostring(c1), tostring(c2))
 end
 
 -- Stage schreiben ---------------------------------------------------------------
@@ -67,11 +97,13 @@ local function applyStage()
   local mat, stage = state.mat, state.stage
   mat:setField("baseColorMap", stage, state.prefix .. "BaseColor")
   mat:setField("diffuseMapUseUV", stage, tostring(UV_LAYER))
-  if state.opacitySrc == "none" then
-    mat:setField("opacityMap", stage, "")
-  else
-    mat:setField("opacityMap", stage, state.prefix .. state.opacitySrc)
+  local opacityTex = ""
+  if state.opacitySrc == "Mask" then
+    opacityTex = MASK_PREFIX .. "BaseColor"
+  elseif state.opacitySrc ~= "none" then
+    opacityTex = state.prefix .. state.opacitySrc
   end
+  mat:setField("opacityMap", stage, opacityTex)
   mat:setField("opacityMapUseUV", stage, tostring(UV_LAYER))
   mat:setField("metallicFactor", stage, "0")
   mat:setField("roughnessFactor", stage, "1")
@@ -81,7 +113,7 @@ local function applyStage()
   end
   mat:reload()
   L("I", "Stage %d auf '%s': baseColor=%sBaseColor, opacity=%s",
-    stage, state.matName, state.prefix, state.opacitySrc == "none" and "(keine)" or state.prefix .. state.opacitySrc)
+    stage, state.matName, state.prefix, opacityTex == "" and "(keine)" or opacityTex)
 end
 
 M.status = function()
@@ -124,7 +156,7 @@ end
 --   "normal" Fill, blendMode Normal (Lauf 4)
 --   "clear"  Fill, blendMode Clear (0)
 --   "zero"   Fill, Normal + metallicIntensity/roughnessIntensity = 0 (Felder wie bei Decal-Layern)
-local baseMode = "clear"
+local baseMode = "normal"   -- schwarz/Normal ist belegt unsichtbar bei Helligkeits-Deckkraft (Lauf 4, Frage 0)
 M._baseLayer = function()
   local l = { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
               enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
@@ -160,13 +192,21 @@ M.start = function(meshName)
   proj:addMaterialIdx(matIdx)
   proj:setEnabled(true)
 
+  -- zweite Projektion nur für die Deckkraft-Maske
+  local mproj = DecalProjection("", RESOLUTION, UV_LAYER, 0)
+  mproj:setShape(veh:getDecalProjectionShape())
+  mproj:clearMaterialIdx()
+  mproj:addMaterialIdx(matIdx)
+  mproj:setEnabled(true)
+
   local backup = { activeLayers = mat:getField("activeLayers", 0) }
   for _, f in ipairs(STAGE_FIELDS) do backup[f] = mat:getField(f, stage) end
 
   state = {
     vehId = veh:getID(), proj = proj, textureSet = proj:getTextureSet(), layers = { M._baseLayer() },
+    mask = { proj = mproj, textureSet = mproj:getTextureSet() },
     mat = mat, matName = matName .. " (Objekt " .. matObjName .. ")", meshName = meshName, stage = stage, backup = backup,
-    prefix = "@PatinaTexture", opacitySrc = "BaseColor", pending = nil,
+    prefix = "@PatinaTexture", opacitySrc = "Mask", pending = nil,
   }
   applyStage()
   rebake()
@@ -239,6 +279,7 @@ local function processPending()
     (toHit - req.dir * along):length())
 
   data.uid, data.name, data.enabled, data.locked, data.children = uid("decal"), "Patina " .. req.side, true, false, {}
+  data.patinaStrength = state.strength or 1
   table.insert(state.layers, data)
   p:flushDynamicTextures()
   state.pending = nil
@@ -250,6 +291,13 @@ M.color = function(r, g, b)
   if not state then L("E", "Erst start()."); return end
   state.color = { r or 1, g or 1, b or 1 }
   L("I", "color(): nächste Decals in %.2f/%.2f/%.2f", state.color[1], state.color[2], state.color[3])
+end
+
+-- Deckkraft der NÄCHSTEN Decals (0..1), landet als Grauwert in der Maske
+M.strength = function(s)
+  if not state then L("E", "Erst start()."); return end
+  state.strength = s or 1
+  L("I", "strength(): %.2f", state.strength)
 end
 
 M.intensity = function(metallic, roughness)
@@ -281,6 +329,7 @@ M.onUpdate = function()
   refresh(veh)
   if state.pending then processPending() end
   state.proj:combineTextures(state.textureSet)
+  state.mask.proj:combineTextures(state.mask.textureSet)
 end
 
 M.onVehicleDestroyed = function(vid)
@@ -307,6 +356,7 @@ M.onVehicleReplaced = function(vid)
     if not veh then return end
     state.vehId = veh:getID()
     state.proj:setShape(veh:getDecalProjectionShape())
+    state.mask.proj:setShape(veh:getDecalProjectionShape())
     rebake()
     L("I", "respawn(): fertig (id %d), Layer neu gebacken.", state.vehId)
     return
