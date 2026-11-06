@@ -44,9 +44,20 @@ end
 
 local function isTrue(v) return v == "1" or v == "true" end
 
--- lackiert = irgendeine Stage hat instanceDiffuse (Fahrzeugfarbe), z. B. etki_main Stage 1, covet Stage 2
+-- lackiert:
+--  * Material v1.5: irgendeine Stage hat colorPaletteMap (etki_main/covet_main Stage 0: nullcolormaskR,
+--    Skins: eigene Palette). Lauf 1 von 2b: etki_main hat KEIN instanceDiffuse.
+--  * Material v1.0 (Legacy): instanceDiffuse.
+--  * durchsichtige Materialien (Glas) nie – Lauf 1 erkannte sonst glass_invisible.
 local function isPaintable(m)
-  for s = 0, 3 do if isTrue(m:getField("instanceDiffuse", s)) then return true end end
+  if isTrue(m:getField("translucent", 0)) then return false end
+  for s = 0, 3 do
+    local cp = m:getField("colorPaletteMap", s)
+    if cp and cp ~= "" then return true end
+  end
+  if m:getField("version", 0) ~= "1.5" then
+    for s = 0, 3 do if isTrue(m:getField("instanceDiffuse", s)) then return true end end
+  end
   return false
 end
 

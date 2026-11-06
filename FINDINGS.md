@@ -327,3 +327,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   ohne Preset-Material, ohne Skin, ohne `paint_design`-Slot.
 - Offen für Spike 2: alle lackierten Materialien (Anbauteile/Bodykit), Mod-Fahrzeug, zweites Fahrzeug
   desselben Modells (Material ist geteilt), aktive Lackierung (Skin-Material statt `*_main`).
+
+### Spike 2b, Lauf 1 (2026-11-06, ETKI)
+- Erkennung „lackiert = instanceDiffuse“ falsch: gefunden wurden `etki_mechanicals` und `glass_invisible`,
+  nicht `etki_main`. Auto nicht überzogen.
+- **Regel:** Lack bei Material v1.5 = Stage mit `colorPaletteMap` (`etki_main`/`covet_main` Stage 0:
+  `/vehicles/common/nullcolormaskR.color.png`; Skins: eigene `*_palette_uv1.color.png`).
+  `instanceDiffuse` nur bei Legacy v1.0. Durchsichtige Materialien (`translucent`) ausschließen.
