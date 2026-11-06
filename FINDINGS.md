@@ -398,3 +398,8 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Vermutung: Fahrzeuge, die NACH dem Einbau der Stage spawnen, lösen `@Patina*` beim Spawn zu einem
   Platzhalter auf und behalten ihn. Vorhandene Fahrzeuge wurden durch `mat:reload()` neu aufgelöst.
   Test: nach dem Binden `mat:reload()`.
+
+### Spike 2b, Lauf 10 (2026-11-06)
+- Mit `mat:reload()` nach dem Binden: **neu gespawnter ETKI in Originalfarbe** ✅ (Screenshot `…15-47-09.png`).
+  Bestätigt: Fahrzeuge lösen `@Patina*` beim Spawn bzw. beim Material-Reload auf, nicht pro Frame.
+  Offen: bleibt das Patina-Auto nach dem Reload verdreckt? (am Bildrand wirkt es grün) ❓
