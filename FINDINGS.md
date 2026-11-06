@@ -410,3 +410,14 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (b) Bindung praktisch pro Material, das zuletzt gebundene Set gewinnt.
   Test: direkt vor dem Reload zuerst andere leer, dann Patina-Auto mit echten Sets binden.
   (a) → Patina-Auto dreckig, andere sauber. (b) → alle dreckig.
+
+### Spike 2b, Lauf 12 (2026-11-06) → Kurswechsel zu Spike 2c
+- Patina-Sets vor Reload binden: nach `start()` weiße/graue Flecken auf **beiden** Autos, nach `coat2` nur das
+  aktive dreckig, nach neuem Spawn alle wieder Originallack. ❌ Bindung des geteilten Materials ist nicht
+  beherrschbar (wird bei Spawn/Reload zu unklaren Zeitpunkten aufgelöst).
+- Vanilla bindet Dynamic Textures nur ans Spielerfahrzeug (`editor/api/dynamicDecals.lua:1489-1500`),
+  mehrere Fahrzeuge gleichzeitig sind dort kein Fall.
+- **Spike 2c:** geteiltes Material NICHT ändern. Pro Patina-Fahrzeug Material-**Kopie** mit Zusatz-Stage,
+  nur dessen Meshes umschalten: `veh:getMeshesContainingMaterial(mat)`, `veh:getSwitchableMaterial(org, off, mesh)`,
+  `veh:switchMaterial(msc, name)`, `veh:resetMaterials(msc)` – wie Lichter/Glowmap
+  (`common/jbeam/materials.lua:67-78`, `vehicle/material.lua:19-28`).
