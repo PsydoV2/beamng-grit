@@ -244,3 +244,15 @@ ist pro Fahrzeug)?
 
 **Fallback:** Spike 1 zuerst mit dem Vanilla-Preset (`covet`), um die Projektion per virtueller Kamera
 isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Preset.
+
+---
+
+## 7. Spike-Ergebnisse
+
+### Spike 1, Lauf 1 (2026-11-06, ETKI)
+- `DecalProjection(...)` eigene Instanz, `bakeLayers` → `status.code = 0`, Fill 1,4 ms, Decal 2–33 ms. ✅
+- `getDecalData(virtCamM, projM)` **ohne** vorheriges `projectDynamicDecals` liefert Müll
+  (`decalPos = vec3(-9e999, 0, 2.8e-45)`). Kein sichtbares Decal. ⚠️
+- Ursache laut Code: Der Treffer entsteht im GPU-Durchlauf `projectDynamicDecals(camM, projM)`, den der Editor
+  jedes Frame ausführt (`dynamicDecals.lua:3036`). Außerdem fehlte `setEnabled(true)` (`ui/liveries.lua:85`).
+- Fix: Platzierung asynchron (N Frames projizieren, dann auslesen, prüfen, `flushDynamicTextures`, backen).

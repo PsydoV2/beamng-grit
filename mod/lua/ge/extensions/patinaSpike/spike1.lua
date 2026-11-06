@@ -7,6 +7,7 @@
 --   patinaSpike_spike1.prepare()     -- Vanilla-Skin "dynamicTextures" setzen (Respawn!)
 --   patinaSpike_spike1.start()       -- eigene DecalProjection anlegen, Lackfarbe als Fill-Layer
 --   patinaSpike_spike1.decal("left") -- Test-Decal: "left" | "right" | "top" | "front" | "rear"
+--   patinaSpike_spike1.paint()       -- Diagnose: Lack-Ebene knallgrün färben
 --   patinaSpike_spike1.clear()       -- alle Test-Decals entfernen
 --   patinaSpike_spike1.stop()        -- aufräumen, alten Skin zurück (Respawn)
 
@@ -63,7 +64,8 @@ local function rebake()
   local res = state.proj:bakeLayers(state.layers, veh.jbeam)
   local ms = t:stopAndReset()
   L("I", "bakeLayers: %d Layer, %.2f ms, status=%s", #state.layers, ms, res and tostring(res.status) or "nil")
-  if res and res.status ~= 0 then L("W", "bake result: %s", dumps(res)) end
+  local code = res and res.status and res.status.code
+  if code ~= 0 then L("W", "bake result: %s", dumps(res)) end
 end
 
 -------------------------------------------------------------------------------
@@ -111,7 +113,9 @@ M.start = function()
   proj:clearMaterialIdx()
   proj:addMaterialIdx(matIdx)
 
-  state = { vehId = veh:getID(), proj = proj, textureSet = proj:getTextureSet(), layers = {}, matIdx = matIdx }
+  proj:setEnabled(true)   -- wie ui/liveries.lua:85 (api.setEnabled(true))
+  state = { vehId = veh:getID(), proj = proj, textureSet = proj:getTextureSet(), layers = {}, matIdx = matIdx,
+            pending = nil, dumped = false }
 
   -- Das Preset ersetzt den Lack → Lackfarbe als unterste Fill-Ebene (wie ui/liveries/fill.lua)
   table.insert(state.layers, {
@@ -155,30 +159,68 @@ M.decal = function(side, size)
   p.decalRotation = 0
   p.useSurfaceNormal = false
 
-  refresh(veh)
-  local ok, data = pcall(function() return p:getDecalData(camM, getCameraProjMatrix()) end)
-  if not ok or not data then L("E", "getDecalData fehlgeschlagen: %s", tostring(data)); return end
+  -- Der Treffer entsteht erst im GPU-Durchlauf projectDynamicDecals (dynamicDecals.lua:3036), den der
+  -- Editor jedes Frame mit derselben Kamera ausführt. Deshalb: einige Frames projizieren, dann auslesen.
+  state.pending = { side = side, dir = dir, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0 }
+  L("I", "decal(%s): eingereiht, Auswertung in den nächsten Frames …", side)
+end
+
+local FRAMES_BEFORE_READ = 3
+local FRAMES_MAX = 30
+
+local function hitInfo(data, req)
+  local hit = data and data.decalPos and vec3(data.decalPos)
+  if not hit or hit.x ~= hit.x or math.abs(hit.x) > 1e4 or math.abs(hit.y) > 1e4 or math.abs(hit.z) > 1e4 then
+    return nil
+  end
+  local toHit = hit - req.camPos
+  local along = toHit:dot(req.dir)
+  local off = (toHit - req.dir * along):length()
+  return hit, off, along
+end
+
+local function processPending(veh)
+  local req = state.pending
+  local p = state.proj
+  p:projectDynamicDecals(req.camM, req.projM)
+  req.frames = req.frames + 1
+  if req.frames < FRAMES_BEFORE_READ then return end
+
+  local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end)
+  if not ok then L("E", "getDecalData fehlgeschlagen: %s", tostring(data)); state.pending = nil; return end
+
+  local hit, off, along = hitInfo(data, req)
+  if not hit then
+    if req.frames < FRAMES_MAX then return end
+    L("W", "decal(%s): nach %d Frames kein gültiger Treffer. decalPos=%s", req.side, req.frames, tostring(data and data.decalPos))
+    if not state.dumped then L("I", "decalData:\n%s", dumps(data)); state.dumped = true end
+    p:flushDynamicTextures()
+    state.pending = nil
+    return
+  end
+
+  L("I", "decal(%s): Treffer nach %d Frames: hit=%s, Abstand zum Strahl=%.3f m, Tiefe=%.2f m %s",
+    req.side, req.frames, tostring(hit), off, along, off < 0.05 and "OK" or "ABWEICHUNG")
+  if not state.dumped then L("I", "decalData:\n%s", dumps(data)); state.dumped = true end
 
   data.uid = uid("decal")
-  data.name = "Patina Test " .. side
+  data.name = "Patina Test " .. req.side
   data.enabled = true
   data.locked = false
   data.children = {}
-
-  -- Prüfen, ob der Treffer auf dem Kamerastrahl liegt (sonst ist die Kamera-Konvention falsch)
-  local hit = data.decalPos and vec3(data.decalPos)
-  if hit then
-    local toHit = hit - camPos
-    local along = toHit:dot(dir)
-    local off = (toHit - dir * along):length()
-    L("I", "decal(%s): camPos=%s hit=%s, Abstand zum Strahl=%.3f m, Tiefe=%.2f m %s",
-      side, tostring(camPos), tostring(hit), off, along, off < 0.05 and "OK" or "ABWEICHUNG")
-  else
-    L("W", "decal(%s): kein decalPos in decalData. Felder: %s", side, dumps(tableKeys(data)))
-  end
-
   table.insert(state.layers, data)
+
+  p:flushDynamicTextures()   -- Live-Vorschau verwerfen, wie api.setEnabled(false)
+  state.pending = nil
   rebake()
+end
+
+-- Diagnose: färbt die Fill-Ebene um. Wird das Auto grün, kommt die Render-Kette sichtbar an.
+M.paint = function(r, g, b)
+  if not state then L("E", "Erst start()."); return end
+  state.layers[1].color = Point4F(r or 0, g or 1, b or 0, 1)
+  rebake()
+  L("I", "paint(): Fill-Farbe gesetzt.")
 end
 
 M.clear = function()
@@ -203,6 +245,8 @@ M.onUpdate = function()
   local veh = getPlayerVehicle(0)
   if not veh or veh:getID() ~= state.vehId then return end
   refresh(veh)
+  if state.pending then processPending(veh) end
+  if not state then return end
   state.proj:combineTextures(state.textureSet)   -- wie M.onUpdate_ (dynamicDecals.lua:3040)
 end
 
