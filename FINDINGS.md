@@ -494,3 +494,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - `spike2d.lua`: `start()` legt Skin-Materialien an, `setSkin`, `respawn`; `onVehicleSpawned` → Ziele neu
   finden, Texturen sofort binden, backen. Vorhandene Patina-Stage wird erkannt (kein Doppel-Stage).
   `stop()` → `setSkin(".")`, Neuspawn, danach Skin-Materialien löschen.
+
+### Spike 2d, Lauf 1 (2026-11-06) ✅ Spike 2 abgeschlossen
+- `start()`: Skin-Materialien angelegt, Neuspawn **665 ms** (gemessen, `hptimer` von `respawn` bis
+  `onVehicleSpawned`), danach 3/3 Lackmaterialien auf Skin `patina77525`, Patina-Stage korrekt erkannt.
+- Kein gelbes Platzhalter-Overlay ✅ (Binden in `onVehicleSpawned` reicht).
+- `coat2(0.6)` → oliv-grau verdreckt ✅; zweiter ETKI sauber ✅; Bake 1–8 ms für 1–5 Layer.
+- `stop()` → Neuspawn 346 ms, Fahrzeug normal ✅, Skin-Materialien gelöscht.
+- Kleinigkeit: ein Auto, das schon Skin `patina<ID>` trägt (Rest aus 2c), bleibt bei `start()` in Phase
+  „prepare“ hängen (Log 19:54–19:55) → im Mod: vorhandenen Patina-Skin erkennen, `start()` absichern (pcall).
+- `onVehicleDestroyed` feuert beim eigenen Neuspawn nicht (kein Log-Eintrag) – Schutz trotzdem drin lassen.
