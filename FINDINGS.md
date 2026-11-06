@@ -863,3 +863,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   6 synthetisch) – liegen bei der D-Serie aber tief (z 0.09–0.34, Schweller/Stoßstangenecken).
 - Sebastian mit schwarzem Mod-Auto: Kratzer und Staub deutlich sichtbar ✅. Auf weißem Lack ist hell auf hell
   schwer zu sehen (wie Chrom, vertagt).
+
+### M2.3 Kontakt-Dreck (2026-11-06)
+- Sensor: Karosserie-Knoten (keine Räder) mit Kontakt auf SMEAR-Untergrund (14 DIRT_DUSTY, 15 DIRT, 16 SAND,
+  17 SANDY_ROAD, 18 MUD, 20 GRASS, 22 SNOW) → Ereignis `contacts` statt Schramme, unabhängig vom Schlupf,
+  0.3 s Pause je Knoten; Unterboden und nach innen zeigende Normalen wie bei Schrammen verworfen.
+  Schotter (19) und harte Untergründe kratzen weiter.
+- GE: Dreckfleck 0.35–0.6 m an der Kontaktstelle, Farbe nach Untergrund, Deckkraft je Knoten 0.45 → 0.9 monoton,
+  max. 6 je Knoten, 150 gesamt. Zähler „Kontakt-Dreck“ in `status()`.

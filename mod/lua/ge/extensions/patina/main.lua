@@ -366,6 +366,42 @@ local function handleDusts(car, vid, list)
   end
 end
 
+
+-- M2.3 Kontakt-Dreck (Konzept: Karosserie-Knoten berührt weichen Boden → Dreck genau dort). Weicher Boden schmiert
+-- statt zu kratzen (Sensor: SMEAR-Untergründe). Deckkraft je Knoten monoton wie beim Spritzer (M2.1 Lauf 2).
+local CONTACT = { minSize = 0.35, maxSize = 0.6, depth = 0.25, tol = 0.2, start = 0.45, step = 0.06, max = 0.9,
+                  maxPerNode = 6, maxEvents = 150 }
+
+local function handleContacts(car, list)
+  if not list or #list == 0 then return end
+  car.contactCount = car.contactCount or {}
+  car.dirtLevel = car.dirtLevel or {}
+  for _, s in ipairs(list) do
+    local col = DIRT.colors[s.m]
+    local cnt = car.contactCount[s.c] or 0
+    if col and cnt < CONTACT.maxPerNode and (car.contacts or 0) < CONTACT.maxEvents then
+      local n = vec3(s.nx, s.ny, s.nz)
+      local a = math.random() * 2 * math.pi
+      local t1 = n:cross(math.abs(n.z) < 0.9 and vec3(0, 0, 1) or vec3(0, 1, 0)):normalized()
+      local up = t1 * math.cos(a) + n:cross(t1) * math.sin(a)
+      local key = "kontakt" .. s.c
+      local strength = math.min(CONTACT.max, math.max(car.dirtLevel[key] or 0, CONTACT.start))
+      car.dirtLevel[key] = math.min(CONTACT.max, strength + CONTACT.step)
+      local size = CONTACT.minSize + (CONTACT.maxSize - CONTACT.minSize) * math.random()
+      local ok = car.r:request({ pos = vec3(s.px, s.py, s.pz), normal = n, up = up, tolAlong = CONTACT.tol,
+        region = "kontakt", width = size, length = size * (0.7 + 0.3 * math.random()), depth = CONTACT.depth,
+        texture = DIRT.texture, color = tint(col), strength = strength, name = "Patina Kontakt" })
+      if ok then
+        car.contactCount[s.c] = cnt + 1
+        car.contacts = (car.contacts or 0) + 1
+        if car.contacts <= 10 then
+          L("I", "Kontakt-Dreck n%d %s %.1f m/s pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f)", s.c, DIRT.names[s.m] or "?",
+            s.v, s.px, s.py, s.pz, n.x, n.y, n.z)
+        end
+      end
+    end
+  end
+end
 -- Ereignisse vom Sensor ----------------------------------------------------------------
 
 M.onSensorEvents = function(vid, ev)
@@ -373,6 +409,7 @@ M.onSensorEvents = function(vid, ev)
   if not car or car.phase ~= "active" or type(ev) ~= "table" then return end
   handleSprays(car, vid, ev.sprays)
   handleDusts(car, vid, ev.dusts)
+  handleContacts(car, ev.contacts)
   for _, s in ipairs(ev.scrapes or {}) do
     if (car.scrapes or 0) < 15 then
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
@@ -474,7 +511,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts = {}, {}, {}, 0 end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts = {}, {}, {}, 0, {}, 0 end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -496,7 +533,7 @@ M.status = function()
     if car.r then
       local cells = 0
       for _ in pairs(car.r.cells or {}) do cells = cells + 1 end
-      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen", car.r.synthN or 0, car.r.skipped or 0, cells)
+      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen; Kontakt-Dreck %d", car.r.synthN or 0, car.r.skipped or 0, cells, car.contacts or 0)
     end
     if car.r and (car.r.bakeN or 0) > 0 then
       L("I", "  Bake: %d Decals, Ø %.2f ms, max %.2f ms", car.r.bakeN, car.r.bakeSum / car.r.bakeN, car.r.bakeMax)
@@ -539,7 +576,7 @@ M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synt
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts = {}, {}, {}, 0 end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts = {}, {}, {}, 0, {}, 0 end
 end
 
 return M

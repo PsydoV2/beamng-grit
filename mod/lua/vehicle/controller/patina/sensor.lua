@@ -117,10 +117,31 @@ end
 local diag, diagT = {}, 0
 local function count(reason, mat) local k = reason .. ":" .. tostring(mat); diag[k] = (diag[k] or 0) + 1 end
 
+-- M2.3 Kontakt-Dreck (Konzept: Karosserie-Knoten berührt weichen Boden → Dreck genau an der Kontaktstelle).
+-- Weicher Boden schmiert statt zu kratzen; Schotter (19) und Fels kratzen weiter.
+local SMEAR = { [14] = true, [15] = true, [16] = true, [17] = true, [18] = true, [20] = true, [22] = true }
+local DIRT_COOLDOWN = 0.3
+local lastDirt, contacts = {}, {}
+
+local function contactDirt(p, cid)
+  local now = obj:getSimTime()
+  if lastDirt[cid] and now - lastDirt[cid] < DIRT_COOLDOWN then return end
+  lastDirt[cid] = now
+  local node = v.data.nodes[cid]
+  if not node or not refPos then return end
+  local n = -toLocal(vec3(p.normal))
+  if n.z < -0.6 then return end                       -- Unterboden: unsichtbar
+  local off = vec3(node.pos) - refPos - center
+  if off:length() > 0.1 and n:dot(off:normalized()) < -0.3 then return end
+  table.insert(contacts, { c = cid, px = r3(node.pos.x - refPos.x), py = r3(node.pos.y - refPos.y),
+    pz = r3(node.pos.z - refPos.z), nx = r3(n.x), ny = r3(n.y), nz = r3(n.z), v = r3(p.slipVel), m = p.materialID1 })
+end
+
 local function nodeCollision(p)
   if p.materialID2 == RUBBER or not axF then return end
   local cid = p.id1
   if wheelNodes[cid] then return end
+  if SMEAR[p.materialID1] then contactDirt(p, cid); return end
   if p.slipVel < SCRAPE_SLIP then if p.slipVel > 0.3 then count("langsam", p.materialID1) end; return end
   if SOFT[p.materialID1] then count("weich", p.materialID1); return end   -- Büsche/Stoff/Wasser kratzen nicht (M2.2 Lauf 4: Busch → schwarze Flächen)
   local now = obj:getSimTime()
@@ -162,18 +183,19 @@ local function updateGFX(dt)
   sendT = sendT + dt
   if sendT < SEND_INTERVAL then return end
   sendT = 0
-  if #pending == 0 and #sprays == 0 and #dusts == 0 then return end
+  if #pending == 0 and #sprays == 0 and #dusts == 0 and #contacts == 0 then return end
   if #pending > MAX_PER_SEND then
     table.sort(pending, function(a, b) return a.v > b.v end)
     for i = #pending, MAX_PER_SEND + 1, -1 do pending[i] = nil end
   end
   obj:queueGameEngineLua(string.format("patina_main.onSensorEvents(%d, %s)", obj:getId(),
-    serialize({ scrapes = pending, sprays = sprays, dusts = dusts })))
-  pending, sprays, dusts = {}, {}, {}
+    serialize({ scrapes = pending, sprays = sprays, dusts = dusts, contacts = contacts })))
+  pending, sprays, dusts, contacts = {}, {}, {}, {}
 end
 
 local function reset()
   pending, lastEmit, sendT, sprayDose, sprays, dustDose, dusts = {}, {}, 0, {}, {}, 0, {}
+  lastDirt, contacts = {}, {}
 end
 
 local function init()
