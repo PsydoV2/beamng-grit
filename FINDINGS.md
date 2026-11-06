@@ -745,3 +745,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Textur `dirt_splash.png` (Generator, Seed 4004).
 - Budget 100 → 300 Ebenen: Voll-Bake (überlinear) passiert nur bei clear/Neuanlage mit leerer Liste; inkrementell
   konstant 0.8 ms/Decal (Spike 3). Für spätere Persistenz (Neuspawn mit Zustand) muss zusammengefasst werden.
+
+### M2.1, Lauf 1 (2026-11-06)
+- Sebastian: Dreck sieht gut aus, Farbe passt zum Untergrund (GRASS), Positionen grob ✅; soll großflächiger sein.
+  Auf der Chrom-Zierleiste der D-Serie läuft der Dreck weit über den runden Fleck hinaus nach hinten (Screenshot
+  `21-28-32`).
+- Log: seitliche Spritzer bei z = Achse − 0.1 m → 10 von 10 Strahlen verfehlten die Karosserie (Welt-Treffer);
+  nur Heck-Spritzer kamen an. Fix: Höhe Achse +0.1…+1.0 r, Breite entlang des Autos 0.7–1.3 m, Höhe 0.45–0.7 m,
+  Mitte 1.3–2.5 r hinter dem Rad; Heck 0.45–0.8 m rund.
+- Zierleiste: Verdacht UV1-Layout der Leiste (gestreckt/überlappend → ein Fleck in der Textur erscheint entlang
+  der ganzen Leiste). Kein Patina-Fehler der Platzierung; Prüfung offen (Vanilla-Decal-Editor auf der Leiste).

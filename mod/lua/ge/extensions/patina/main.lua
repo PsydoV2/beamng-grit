@@ -242,7 +242,7 @@ local DIRT = {
   },
   names = { [14] = "DIRT_DUSTY", [15] = "DIRT", [16] = "SAND", [17] = "SANDY_ROAD", [18] = "MUD", [19] = "GRAVEL",
             [20] = "GRASS", [22] = "SNOW" },
-  minSize = 0.3, maxSize = 0.55, depth = 0.35,
+  minSize = 0.45, maxSize = 0.8, depth = 0.35,
   maxPerWheel = 30,      -- danach ist dieser Bereich „voll“ (Ebenen-Budget)
   rearChance = 0.3,      -- Hinterrad: Anteil der Spritzer aufs Heck
 }
@@ -265,22 +265,27 @@ local function handleSprays(car, vid, list)
     if col and cnt < DIRT.maxPerWheel then
       local back = s.v >= 0 and 1 or -1        -- vorwärts (−y) → Spritzer nach hinten (+y)
       local side = (s.ox >= mid.x) and 1 or -1
-      local pos, n, tol
+      local pos, n, tol, up, w, h
       if s.cy * back > mid.y * back and math.random() < DIRT.rearChance then
-        -- Hinterrad → Heck (bzw. Front bei Rückwärtsfahrt)
-        pos = vec3(s.cx, back > 0 and mx.y or mn.y, s.cz + s.r * (0.2 + 0.6 * math.random()))
+        -- Hinterrad → Heck (bzw. Front bei Rückwärtsfahrt): großer, eher runder Fleck, zufällig gedreht
+        pos = vec3(s.cx - side * s.r * 0.5 * math.random(), back > 0 and mx.y or mn.y, s.cz + s.r * (0.2 + 0.8 * math.random()))
         n, tol = vec3(0, back, 0), 0.5
+        local a = math.random() * 2 * math.pi
+        up = vec3(math.cos(a), 0, math.sin(a))
+        w = DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random(); h = w
       else
-        -- Seite hinter dem Rad: Kotflügel/Schweller/Tür unten
-        pos = vec3(s.ox, s.cy + back * s.r * (1.0 + 0.8 * math.random()), s.cz + s.r * (math.random() - 0.6) * 0.8)
+        -- Seite hinter dem Rad: breit nach hinten gezogen (M2.1 Lauf 1: „großflächiger“). Höhe ab Achse aufwärts –
+        -- unter der Achse verfehlten die Strahlen bei der D-Serie die Karosserie (10 von 10 verworfen).
+        pos = vec3(s.ox, s.cy + back * s.r * (1.3 + 1.2 * math.random()), s.cz + s.r * (0.1 + 0.9 * math.random()))
         n, tol = vec3(side, 0, 0), 0.35
+        local t = (math.random() - 0.5) * 0.6       -- ±17° Neigung
+        up = vec3(0, math.sin(t), math.cos(t))      -- Länge = Höhe, Breite = entlang des Autos
+        w = (DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random()) * 1.6
+        h = DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random() * 0.7
       end
-      local a = math.random() * 2 * math.pi
-      local up = vec3(math.cos(a), math.sin(a), math.cos(a) + math.sin(a))   -- zufällige Drehung
-      local size = DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random()
       local strength = math.min(0.75, 0.3 + math.abs(s.v) * 0.012 + math.abs(s.s) * 0.02)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol,
-        width = size, length = size, depth = DIRT.depth, texture = DIRT.texture,
+        width = w, length = h, depth = DIRT.depth, texture = DIRT.texture,
         color = tint(col), strength = strength, addMask = true, name = "Patina Dreck" })
       if ok then
         car.sprayCount[s.w] = cnt + 1
