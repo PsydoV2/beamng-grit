@@ -442,3 +442,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - → Ein zur Laufzeit (nach dem Spawn) erzeugtes Material wird vom Fahrzeug nicht korrekt genutzt.
   Glowmap-Zielmaterialien existieren immer schon beim Spawn. Lauf 4: Kopien anlegen, Fahrzeug neu laden
   (Strg+R), dann umschalten (`prepClones`, `keepClones`). Zusätzlich `setFilename` vom Original.
+
+### Spike 2c, Lauf 4 (2026-11-06)
+- Kopien vor Strg+R angelegt und wiederverwendet → trotzdem chrom/schwarz ❌; zweiter ETKI sauber ✅.
+  These „Material muss vor dem Spawn existieren“ verworfen.
+- Neue These: Schwarz + Chrom = Lack ohne Fahrzeugfarbe (Basisfarbe 0, Klarlack/Metallic aktiv). Die
+  Fahrzeugfarbe hängt offenbar an den ursprünglichen Material-Instanzen. Lauf 5: nach dem Umschalten
+  Lack neu setzen über `core_vehicle_manager.liveUpdateVehicleColors` (`core/vehicle/manager.lua:256-277`).

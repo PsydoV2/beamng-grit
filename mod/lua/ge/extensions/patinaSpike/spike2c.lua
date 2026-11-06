@@ -209,6 +209,7 @@ M.noStage, M.switchToOrig = false, false
 -- Vermutung: das Fahrzeug kennt nur Materialien, die beim Spawn existierten (wie Glowmap-Materialien).
 -- Test: M.keepClones = true; M.prepClones(); Strg+R (Fahrzeug neu laden); M.start()
 M.keepClones = false
+M.autoRepaint = true
 M.prepClones = function()
   local veh = getVeh(); if not veh then return end
   M.keepClones = true
@@ -224,6 +225,19 @@ M.prepClones = function()
   end
   L("I", "prepClones: %d Kopien angelegt. Jetzt Strg+R, dann start().", #targets)
 end
+
+-- Lauf 4: schwarz+chrom = Lack ohne Farbe. Fahrzeugfarbe nach dem Umschalten neu setzen, wie der Lack-Dialog:
+-- core_vehicle_manager.liveUpdateVehicleColors (core/vehicle/manager.lua:256-277, setMetallicPaintData).
+local function repaint(veh)
+  local vd = core_vehicle_manager.getVehicleData(veh:getID())
+  local paints = vd and vd.config and vd.config.paints
+  if not paints then L("W", "repaint: keine Lackdaten"); return end
+  for i = 1, 3 do
+    if paints[i] then core_vehicle_manager.liveUpdateVehicleColors(veh:getID(), veh, i, paints[i]) end
+  end
+  L("I", "repaint: %d Lacke neu gesetzt", #paints)
+end
+M.repaint = function() local v = getVeh(); if v then repaint(v) end end
 
 local function applyStages()
   local veh = be:getObjectByID(state.vehId)
@@ -326,6 +340,7 @@ M.start = function()
   }
   applyStages()
   remapProjections(veh)
+  if M.autoRepaint then repaint(veh) end
   rebake()
   L("I", "start(): bereit. coat2(0.6) oder decal(\"left\").")
 end
