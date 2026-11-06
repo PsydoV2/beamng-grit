@@ -468,3 +468,16 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   ihre Original-Materialien (`character_primary[2], etki_mechanicals[6], etki[7]`) → `setSkin` wirkt
   offenbar nur beim Spawn (wird ja auch nur in `licenseplatesSkins.process` während des Spawns aufgerufen).
 - Lauf 7: `M.keepSkin`: Skin + Materialien über Strg+R behalten, dann `start()` erneut → greift der Skin beim Neuladen?
+
+### Spike 2c, Lauf 7 (2026-11-06) ✅ Trennung pro Fahrzeug gelöst
+- Skin `patina<ID>` + Materialien `<mapTo>.skin.patina<ID>` angelegt, `setSkin`, dann Strg+R:
+  Fahrzeug behält ID (48480) und nutzt nach dem Neuladen die Skin-Materialien
+  (`getMaterialNames` → `etki.skin.patina48480` usw., Form-Indizes unverändert [2],[6],[7]).
+- Zwischen Neuladen und `start()`: gelbe Platzhalter-Textur mit „NO TEXTURE“ (Textur-Set `@Patina*` noch
+  nicht gebunden) → beim Spawn sofort binden (`veh:setTextureSet`, leeres Set) nötig.
+- Nach `start()` + `coat2(0.6)`: oliv-grau verdreckt ✅, Lack korrekt ✅; zweiter ETKI sauber ✅
+  (Screenshots `screenshots/2026-11/screenshot_2026-11-06_19-35-*.png`).
+- Kosten: `setSkin` wirkt nur beim Spawn → einmaliges Neuladen des Fahrzeugs beim Aktivieren.
+- Bug im Spike: zweites `start()` legt eine weitere Stage obendrauf (Stage 2→3), weil die Skin-Kopie
+  schon eine Patina-Stage hat → vorhandene Patina-Stage erkennen und wiederverwenden.
+- Offen: Verhältnis zu Lackierungs-Skins (Slot `paint_design` wird durch unseren Skin ersetzt).
