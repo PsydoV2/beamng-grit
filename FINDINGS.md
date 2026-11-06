@@ -629,3 +629,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (`core/vehicles.lua:1780-1794`, `onVehicleReplaced`) und löste keine Aktivierung aus.
 - Fix: `onUpdate` prüft das Spielerfahrzeug und aktiviert es (Wiederholung alle 30 Frames). Trägt es einen
   Patina-Skin aus unbekanntem Zustand → Skin aus, Neuspawn, dann frisch kopieren.
+
+### M1.1, Lauf 3 (2026-11-06)
+- Aktivierung nach Strg+L und beim Ersetzen klappt ✅, Muster stimmt ✅, `testScratch("left")` sichtbar ✅
+  (angefragt x=1.28, Treffer x=1.148 = Oberfläche).
+- Schrammen rechts: Striche nur vorne, etwas auf Motorhaube und links ❌. Log: Knoten rechts bei x≈−0.83,
+  Oberfläche rechts aber bei x≈−0.51 (Spike 2: decal(right) x=−0.5077, links +1.148) → Decal-Raum ist
+  relativ zum **Referenzknoten** (Versatz ≈ 0.32 m in x), nicht jbeam-Ursprung. Viele Strahlen verfehlten das
+  Auto und lieferten Welt-Koordinaten (z. B. (12711, 1490, −30)) → Striche an falschen Stellen.
+- Fix: Sensor zieht Ausgangsposition des Referenzknotens ab (`v.data.refNodes[0].ref`, wie `bdebugImpl.lua:648`);
+  Render verwirft Treffer > 0.6 m von der Anfrage sofort.

@@ -19,6 +19,9 @@ local RUBBER = 4
 local pending, lastEmit = {}, {}
 local sendT = 0
 local axF, axU, axL            -- Fahrzeugachsen in Welt (vorne, oben, links), pro Frame
+-- Decal-Raum = Ausgangspositionen relativ zum Referenzknoten (M1.1 Lauf 3: ohne Abzug ~0.32 m seitlich versetzt;
+-- Ausgangsposition des Referenzknotens wie vehicle/bdebugImpl.lua:648)
+local refPos
 
 -- Weltvektor → Fahrzeugraum (jbeam: +x links, −y vorne, +z oben; Spike 1)
 local function toLocal(w)
@@ -34,12 +37,12 @@ local function nodeCollision(p)
   if lastEmit[cid] and now - lastEmit[cid] < NODE_COOLDOWN then return end
   lastEmit[cid] = now
   local node = v.data.nodes[cid]
-  if not node then return end
+  if not node or not refPos then return end
   -- p.normal = Normale der getroffenen Fläche (zeigt zum Auto hin) → nach außen am Auto = −normal (M1.1: Striche unsichtbar)
   local n = -toLocal(vec3(p.normal))
   local s = toLocal(vec3(p.slipVec))
   table.insert(pending, {
-    c = cid, px = r3(node.pos.x), py = r3(node.pos.y), pz = r3(node.pos.z),
+    c = cid, px = r3(node.pos.x - refPos.x), py = r3(node.pos.y - refPos.y), pz = r3(node.pos.z - refPos.z),
     nx = r3(n.x), ny = r3(n.y), nz = r3(n.z), sx = r3(s.x), sy = r3(s.y), sz = r3(s.z),
     v = r3(p.slipVel), f = r3(p.normalForce or 0), m1 = p.materialID1, m2 = p.materialID2,
   })
@@ -66,6 +69,10 @@ local function reset()
 end
 
 local function init()
+  local rn = v.data.refNodes and v.data.refNodes[0]
+  local n = rn and v.data.nodes[rn.ref]
+  refPos = n and vec3(n.pos) or nil
+  if not refPos then log("W", "patinaSensor", "Kein Referenzknoten – Schrammen aus") end
   reset()
 end
 

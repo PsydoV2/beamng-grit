@@ -116,7 +116,9 @@ function R:update(veh)
     if req.frames >= FRAMES_BEFORE_READ then
       local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end)
       local hit = ok and data and data.decalPos and vec3(data.decalPos)
-      if hit and hit.x == hit.x and hit:length() < 1e6 then
+      -- Treffer weit weg = Strahl hat das Auto verfehlt (M1.1 Lauf 3: Welt-Koordinaten wie (12711, 1490, …))
+      local near = hit and hit.x == hit.x and (hit - d.pos):length() <= math.max(0.6, d.depth * 2)
+      if near then
         data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
         data.patinaColor, data.patinaStrength = d.color, d.strength
         table.insert(self.layers, data)
@@ -127,8 +129,11 @@ function R:update(veh)
         self.color:bakeLayers({ cl }, veh.jbeam)
         self.mask:bakeLayers({ ml }, veh.jbeam)
         p:flushDynamicTextures(); table.remove(self.queue, 1)
-      elseif req.frames >= FRAMES_MAX then
+      elseif (hit and hit.x == hit.x) or req.frames >= FRAMES_MAX then   -- weit weg: sofort verwerfen
         self.misses = (self.misses or 0) + 1
+        if self.log and self.misses <= 10 then
+          self.log("I", "Decal verworfen: Treffer %s, angefragt %s", tostring(hit), tostring(d.pos))
+        end
         p:flushDynamicTextures(); table.remove(self.queue, 1)
       end
     end
