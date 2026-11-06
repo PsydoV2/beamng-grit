@@ -1,4 +1,7 @@
-# Patina – BeamNG.drive-Mod für dynamischen Dreck und Kratzer
+# Grit (Code-Name Patina) – BeamNG.drive-Mod für dynamischen Dreck und Kratzer
+
+Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Intern (Dateien, `patina_main`)
+heißt es noch Patina. `README.md` ist die öffentliche Beschreibung (Englisch), bei neuen Features mitpflegen.
 
 Übergabe für neue Sessions. Stand: 2026-11-06, letzter Commit siehe `git log -1`.
 Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Änderungen den passenden Abschnitt lesen).
