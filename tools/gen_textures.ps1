@@ -51,8 +51,8 @@ function Save($bmp, $g, $name) {
 # leicht: viele Haarlinien (Klarlack)
 $rnd = New-Object System.Random(1001)
 $c = New-Canvas
-for ($i = 0; $i -lt 26; $i++) {
-  Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (1.5 + 2.5 * $rnd.NextDouble()) (70 + $rnd.Next(90)) 6 40
+for ($i = 0; $i -lt 14; $i++) {
+  Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (6 + 6 * $rnd.NextDouble()) (170 + $rnd.Next(85)) 6 40
 }
 Save $c[0] $c[1] "scratch_light.png"
 
@@ -60,10 +60,10 @@ Save $c[0] $c[1] "scratch_light.png"
 $rnd = New-Object System.Random(2002)
 $c = New-Canvas
 for ($i = 0; $i -lt 10; $i++) {
-  Draw-Streak $c[1] $rnd ($size * (0.12 + 0.76 * $rnd.NextDouble())) (5 + 7 * $rnd.NextDouble()) (150 + $rnd.Next(80)) 10 40
+  Draw-Streak $c[1] $rnd ($size * (0.12 + 0.76 * $rnd.NextDouble())) (14 + 12 * $rnd.NextDouble()) (210 + $rnd.Next(45)) 10 40
 }
 for ($i = 0; $i -lt 14; $i++) {
-  Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (1.5 + 2 * $rnd.NextDouble()) (80 + $rnd.Next(60)) 6 40
+  Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (5 + 4 * $rnd.NextDouble()) (150 + $rnd.Next(80)) 6 40
 }
 Save $c[0] $c[1] "scratch_medium.png"
 

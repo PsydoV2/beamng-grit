@@ -14,19 +14,21 @@ local render = require("ge/extensions/patina/render")
 local SLOT = "patina"
 local SENSOR_FILE, SENSOR_NAME = "patina/sensor", "patinaSensor"
 -- Kratzer in drei Tiefen (Konzept: leicht = Klarlack, mittel = Grundierung, tief = blankes Metall).
--- Masken aus tools/gen_textures.ps1. Wiederholtes Schrammen desselben Knotens vertieft: 1. Treffer leicht,
--- 2. mittel, ab 3. tief; danach keine weiteren Ebenen für diesen Knoten (Budget). Harte Schramme springt tiefer.
+-- Masken aus tools/gen_textures.ps1. Dauerschrammen desselben Knotens: Treffer 1–2 leicht, 3–4 mittel, ab 5 tief;
+-- jeder Treffer etwas versetzt entlang der Schleifrichtung → lange Spuren statt eines Flecks (M1.2 Lauf 1:
+-- „schwer Kratzer zu bekommen“, alle Ebenen lagen genau übereinander). Harte Schramme mindestens mittel.
 local SCRATCH = {
-  depth = 0.25, minLen = 0.12, lenPerMs = 0.03, maxLen = 0.4,
+  depth = 0.25, minLen = 0.3, lenPerMs = 0.06, maxLen = 1.0,
   levels = {
-    { texture = "/art/patina/scratch_light.png",  color = { 0.88, 0.88, 0.86 }, strength = 0.55, width = 0.07 },
-    { texture = "/art/patina/scratch_medium.png", color = { 0.52, 0.52, 0.50 }, strength = 0.85, width = 0.08 },
-    { texture = "/art/patina/scratch_deep.png",   color = { 0.70, 0.71, 0.73 }, strength = 1.00, width = 0.08 },
+    { texture = "/art/patina/scratch_light.png",  color = { 0.95, 0.95, 0.93 }, strength = 0.85, width = 0.12 },
+    { texture = "/art/patina/scratch_medium.png", color = { 0.45, 0.45, 0.43 }, strength = 1.00, width = 0.12 },
+    { texture = "/art/patina/scratch_deep.png",   color = { 0.75, 0.76, 0.78 }, strength = 1.00, width = 0.10 },
   },
-  hardSlip = 8,       -- m/s: ab hier mindestens mittel
-  maxPerNode = 3,
+  levelAt = { 1, 3, 5 }, -- ab diesem Treffer pro Knoten gilt Stufe 1/2/3
+  hardSlip = 8,          -- m/s: ab hier mindestens mittel
+  maxPerNode = 8,
+  jitter = 0.5,          -- Versatz entlang Schleifrichtung, Anteil der Länge
 }
-
 M.debugLog = true           -- Entwicklung: zusätzlich sofort in <User>/patina.log (beamng.log puffert Minuten)
 local DEV_LOG = "/patina.log"
 local function L(level, fmt, ...)
@@ -237,16 +239,22 @@ M.onSensorEvents = function(vid, ev)
     car.nodeHits = car.nodeHits or {}
     local hits = car.nodeHits[s.c] or 0
     if hits < SCRATCH.maxPerNode then
-      local level = math.min(#SCRATCH.levels, hits + 1)
+      local level = 1
+      for i, at in ipairs(SCRATCH.levelAt) do if hits + 1 >= at then level = i end end
       if s.v >= SCRATCH.hardSlip and level < 2 then level = 2 end
       local lv = SCRATCH.levels[level]
       local len = math.min(SCRATCH.maxLen, SCRATCH.minLen + s.v * SCRATCH.lenPerMs)
+      local dir = vec3(s.sx, s.sy, s.sz)
+      local pos = vec3(s.px, s.py, s.pz)
+      if hits > 0 and dir:length() > 1e-3 then   -- erster Treffer genau am Knoten, weitere versetzt
+        pos = pos + dir:normalized() * ((math.random() - 0.5) * len * SCRATCH.jitter)
+      end
       local ok = car.r:request({
-        pos = vec3(s.px, s.py, s.pz), normal = vec3(s.nx, s.ny, s.nz), up = vec3(s.sx, s.sy, s.sz),
+        pos = pos, normal = vec3(s.nx, s.ny, s.nz), up = dir,
         width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.texture,
         color = lv.color, strength = lv.strength, name = "Patina Kratzer " .. level,
       })
-      if ok then car.scrapes = (car.scrapes or 0) + 1; car.nodeHits[s.c] = level end
+      if ok then car.scrapes = (car.scrapes or 0) + 1; car.nodeHits[s.c] = hits + 1 end
     end
   end
 end

@@ -663,3 +663,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Tiefe pro Knoten: 1. Treffer leicht (hell, 0.55), 2. mittel (Grundierung grau, 0.85), ab 3. tief (silbern, 1.0);
   ≥ 8 m/s mindestens mittel; max. 3 Ebenen pro Knoten. Reset leert auch die Zählung.
 - `patina_main.testScratch(side, level)` zum Ansehen der Texturen.
+
+### M1.2, Lauf 1 (2026-11-06)
+- Sebastian: leicht unsichtbar, mittel nur aus der Nähe, tief deutlich; Spuren sollen in Fahrtrichtung laufen;
+  bei 80 km/h hunderte Meter an der Wand kaum Kratzer.
+- Log: nur 5 Knoten berühren die Wand (n274/276/278/382/384) → mit max. 3 Ebenen pro Knoten genau übereinander
+  höchstens 15 kleine Flecken (0.08 × ≤ 0.4 m), tief nach 0.45 s erreicht und deckt leicht/mittel zu.
+  Linien in der Textur 1.5–4 px auf 1024 px bei 7–8 cm Breite ≈ 0.1–0.3 mm → unsichtbar.
+- Änderung: Linien 3–4× dicker und deckender, Decals 10–12 cm breit, 0.3–1.0 m lang (mit Gleitgeschwindigkeit),
+  Stufe nach Treffer 1/3/5, bis 8 Ebenen pro Knoten, ab dem 2. Treffer ±25 % der Länge entlang der
+  Schleifrichtung versetzt → durchgehende Spur.
