@@ -1,0 +1,246 @@
+# Patina – FINDINGS (Phase 0)
+
+Spielversion: **BeamNG.drive 0.40.5.0, Build 302427** (`Bin64/BeamNG.drive.x64.exe`).
+Alle Funde gelten nur für diese Version. Spielordner: `F:\SteamLibrary\steamapps\common\BeamNG.drive` (= `$G`).
+User-Ordner: `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current` (Mods unter `mods/unpacked/`).
+
+Legende: ✅ belegt im Code · ⚠️ belegt, aber Konsequenz fürs Konzept · ❓ nur im Spiel prüfbar (Spike)
+
+---
+
+## 1. Dynamic Decals / Livery-Editor
+
+### 1.1 Wo der Code liegt ✅
+- Kern-API: `$G/lua/ge/extensions/editor/api/dynamicDecals.lua` (3081 Zeilen, Extension `editor_api_dynamicDecals`).
+- Karriere-Livery-Editor (ohne World-Editor): `$G/lua/ge/extensions/ui/liveries.lua` + `ui/liveries/*.lua`.
+- Der Karriere-Editor nutzt die Editor-API direkt; der World-Editor muss **nicht** offen sein.
+  `ui/liveries.lua:6` → `M.dependencies = {"editor_api_dynamicDecals", ...}`
+
+### 1.2 C++-Objekt `DecalProjection` ✅
+`dynamicDecals.lua:1480`
+```lua
+decalProjection = DecalProjection("", Point2I(4096, 2048), 1, reconstructData.materialIdx or 0)
+```
+Danach pro Frame (`app.onUpdate`, `dynamicDecals.lua:1492-1503`):
+```lua
+veh:setTextureSet("@DynamicTexture", set)                 -- Textur-Set an DIESES Fahrzeug binden
+decalProjection:setShape(veh:getDecalProjectionShape())
+decalProjection:setWorldTransform(veh:getRefNodeMatrix())
+decalProjection:setTransform(veh:getRefNodeMatrix():copy():setPosition(vec3(0,0,0)):inverse())
+```
+und `M.onUpdate_` (`dynamicDecals.lua:3028-3044`): `projectDynamicDecals(camM, projM)` (nur Live-Cursor-Vorschau) + `combineTextures(textureSet)`.
+
+⚠️ Das Objekt ist **nicht** an den Spieler gebunden. Shape, Transform und Textur-Set werden von Lua gesetzt.
+Damit sollte **eine `DecalProjection`-Instanz pro Fahrzeug** möglich sein (❓ Spike 1/3).
+Die Editor-API selbst nutzt aber nur eine globale Instanz und `getPlayerVehicle(0)`.
+→ Patina sollte die API **nicht** wiederverwenden, sondern eigene `DecalProjection`-Objekte halten.
+Das vermeidet auch Konflikte mit dem Livery-Editor.
+
+Bekannte Methoden (aus Aufrufen im Spielcode, `grep "decalProjection:"`):
+`getDecalData(camM, projM)`, `bakeLayers(layers, jbeamName)`, `clearBakedTextures()`, `combineTextures(set)`,
+`getTextureSet()`, `setShape`, `setWorldTransform`, `setTransform`, `setMirrorOffset`, `setTextureResolution`,
+`setUvLayer/getUvLayer`, `setMaterialIdx/addMaterialIdx/removeMaterialIdx/clearMaterialIdx/getMaterialIdx`,
+`getShapeMaterialNames()`, `getShapeMeshes()`, `setMeshEnable`, `enableAllMeshes`, `exportTextures(dir,name,ext)`,
+`flushDynamicTextures`, `setDecalTexturePath(type, path)`, `getDecalWorldTransform/setDecalWorldTransform`,
+`getDecalLocalPos/setDecalLocalPos`, `mirrorLayerData`, `getSettings/toggleSetting`.
+
+### 1.3 Decal per Code platzieren ✅ (Mechanik) / ❓ (virtuelle Kamera)
+`addDecal` (`dynamicDecals.lua:1098-1140`):
+```lua
+local decalData = decalProjection:getDecalData(app:getCameraM(), app:getProjM())
+```
+Die Platzierung ist ein **Strahl von einer Kamera** durch die Bildmitte (`cursorPosScreenUv` = 0.5/0.5, siehe
+`dynamicDecals.lua:1790-1810`). Die Kamera-Matrix liegt im **Fahrzeug-Koordinatensystem**:
+`veh:getRefNodeMatrix():fullInverse():mul(getCameraTransform())` (`dynamicDecals.lua:1484`).
+
+→ Patina kann eine **virtuelle Kamera** bauen: Position = Kontaktpunkt + Normale·d, Blickrichtung = −Normale
+(z. B. `quatFromDir(dir, up):getMatrix()` + `setPosition`). Damit liefert `getDecalData` einen fertigen Layer.
+Danach setzt Patina Felder wie Größe, Rotation, Farbe und Textur und schiebt den Layer in den eigenen Stack. ❓ Spike 1
+
+Layer-Felder eines Decals (`serializeLayer`, `dynamicDecals.lua:230-300`): `decalPos, decalNorm, camPosition,
+camDirection, decalScale, decalRotation, decalSkew, color, decalColorTexturePath, decalAlphaTexturePath,
+decalNormalTexturePath, decalRoughnessTexturePath, decalMetallicTexturePath, blendMode, alphaMaskIntensity,
+metallicIntensity, roughnessIntensity, normalIntensity, viewToScreen, worldToViewToScreen, meshes, useSurfaceNormal, …`
+
+Blend-Modi (`dynamicDecals.lua:752-758`): Clear 0, Normal 1, Add 2, Subtract 3, Multiply 4, Eraser 5.
+Layer-Typen: decal 0, fill 1, textureFill 2, group 3, brushStroke 4, path 5, linkedSet 6.
+Auflösungen: 512/1024/2048/4096.
+
+### 1.4 Ändern, löschen, backen ✅
+- Der Layer-Stack ist eine **reine Lua-Tabelle**. Ändern bzw. Löschen geschieht in der Tabelle, danach kommt `reprojectLayers()`.
+- `reprojectLayers` (`dynamicDecals.lua:1647`) = `clearBakedTextures()` + `bakeLayers(ganzer Stack)`, also ein **voller Neu-Render**.
+  ⚠️ Ein inkrementelles Backen (nur neue Layer, ohne `clear`) ist nicht belegt → ❓ Spike 3.
+  Gelingt es, kostet ein neues Event nur einen Layer. Sonst wächst die Render-Zeit mit der Stack-Größe.
+- `bakeLayers` gibt Status pro Layer zurück (`layerBakingStatusCode`, `dynamicDecals.lua:795`).
+- Export als Skin: `exportSkin` (`dynamicDecals.lua:2078`) schreibt PNGs + Material + jbeam nach `mods/unpacked/…`.
+  Für Patina nicht nötig.
+
+### 1.5 Welche Materialien betroffen sind ⚠️ WICHTIG
+`findPartMaterials` / `setVehicleMaterialJob` (`dynamicDecals.lua:1367-1445`):
+1. `dynDecalMaterials` des gewählten Teils im Slot `paint_design`, sonst
+2. das Material mit dem Namen des Fahrzeugs (`vehicleObj.jbeam`), sonst
+3. ein Material, das auf `main` oder `body` endet.
+
+Das sichtbare Ergebnis kommt aber nur über ein **handgebautes Preset-Material** aufs Auto:
+`<material>.skin.dynamicTextures`. Beispiel `covet.zip: vehicles/covet/dynamicDecals/main.materials.json`:
+- Stage 0: normale Basis-Texturen
+- Stage 1: `baseColorMap: "@DynamicTextureBaseColor"`, `colorPaletteMap: "@DynamicTextureColorPalette"`,
+  `metallicMap: "@DynamicTextureMetallic"`, `roughnessMap: "@DynamicTextureRoughness"`, alle mit `…UseUV: 1`
+  und `opacityMap: covet_main_c.data.png`
+- `activeLayers: 2`
+
+Plus jbeam-Teil `covet_skin_dynamicTextures` (`slotType: paint_design`, `globalSkin: dynamicTextures`, `isAuxiliary: true`).
+
+⚠️ Konsequenzen:
+- Nur **41 Vanilla-Fahrzeuge** bringen so ein Preset mit: atv autobello barstow bastion bluebuck bolide burnside bx
+  citybus covet dryvan dumptruck etk800 etkc etki fullsize hopper lansdale legran md_series midsize midtruck
+  miramar moonhawk nine pessima pickup pigeon racetruck roamer rockbouncer sbr scintilla sunburst2 us_semi utv
+  van vivace wendover wigeon. **Mod-Fahrzeuge** haben es in der Regel nicht.
+- Das Preset **ersetzt den Lack** (Stage 1 = Dynamic Texture statt Lackfarbe). Der Livery-Editor malt den Lack
+  deshalb als Fill-Layer in der Fahrzeugfarbe nach (`ui/liveries.lua:31-40`).
+- Es belegt den Slot `paint_design`. Mit einer Lackierung zusammen geht es also nicht.
+- Typisch ist ein **einziges** lackiertes Hauptmaterial (Covet: Material `covet` + seine Skins). Anbauteile mit
+  eigenen Materialien liegen außerhalb.
+
+→ Weg A „Vanilla-Preset nutzen“ würde **die Muss-Anforderungen „jedes Fahrzeug“, „jede Farbe“ und „jede
+Lackierung“ verfehlen**. Siehe Abschnitt 6 (Vorschlag Weg A′).
+
+### 1.6 Skin-System ✅
+- Skins werden letztlich mit `vehicleObj:setSkin(slot .. '.' .. name)` gesetzt
+  (`$G/lua/common/jbeam/sections/licenseplatesSkins.lua:58`), für `paint_design` ist der Slot leer: `".dynamicTextures"`.
+- Materialnamen: `paint_design` → `<mat>.skin.<name>` (z. B. `pickup.skin.camo`). Andere Kanäle →
+  `<mat>.<slot>.<name>` (z. B. `adcarrier_ad.skin_taxi_ad.alder` in `common.zip`).
+- `core_vehicle_partmgmt.setSkin(skin)` (`$G/lua/ge/extensions/core/vehicle/partmgmt.lua:859`) ändert die
+  Config und ruft `core_vehicles.replaceVehicle` auf, also einen **Respawn**. Der direkte Aufruf
+  `vehicleObj:setSkin` tut das nicht (❓ ob live wirksam).
+
+### 1.7 Materialien zur Laufzeit ändern/anlegen ✅
+- Ändern: `scenetree.findObject(name)`, `mat:setField(prop, layer, value)`, `mat:reload()`
+  (`$G/lua/ge/extensions/editor/api/material.lua:55-70`, `editor/shapeEditor.lua:259-268`).
+- Anlegen: `createObject('Material')`, `mat:assignFieldsFromObject(src)`, `setField('name'/'mapTo', 0, …)`,
+  `mat:registerObject(name)` (`dynamicDecals.lua:2101-2140`).
+- Maximal **4 Ebenen** pro Material (`editor/materialEditor.lua:143`, `maxLayers = 4`).
+- Covet: alle 17 Fahrzeugmaterialien nutzen `activeLayers: 2` → Stage 3 und 4 frei. Lack = `instanceDiffuse: true`.
+
+### 1.8 Forum-Hinweise (nicht im Code verifizierbar)
+- Verzerrung an manchen Stellen: Projektion ist planar entlang der Kamera → bei Patina klein und
+  normalenausgerichtet projizieren. ❓
+- „Liste nicht nachträglich erweiterbar“: Die Materialliste ist in Lua nur eine Indexliste (`addMaterialIdx`);
+  das Problem liegt im fehlenden Preset-Material, nicht in der Liste (siehe 1.5).
+
+---
+
+## 2. Kollisionen (Vehicle-Lua)
+
+### 2.1 Callback ✅
+`$G/lua/vehicle/main.lua:491`
+```lua
+function onNodeCollision(id1, pos, normal, nodeVel, perpendicularVel, slipVec, slipVel, slipForce,
+                         normalForce, depth, materialId1, materialId2)
+```
+Daten liegen in `particlefilter.particleData` (`p.id1, p.pos, p.normal, p.nodeVel, p.perpendicularVel,
+p.slipVec, p.slipVel, p.slipForce, p.normalForce, p.depth, p.materialID1, p.materialID2`) und gehen an
+`wheels`, `fire`, **`controller`**, `particlefilter`, `bdebug`.
+
+⚠️ Es gibt **keinen** `extensions.hook("onNodeCollision")`. Eine Vehicle-*Extension* bekommt das Event nicht.
+
+### 2.2 Einstieg über Controller ✅
+- `controller.nodeCollision(p)` ruft die `nodeCollision`-Funktion aller geladenen Controller auf
+  (`$G/lua/vehicle/controller.lua:184`, Caching `:575-648`).
+- **Laden zur Laufzeit ohne jbeam:** `controller.loadControllerExternal(fileName, controllerName, data)`
+  (`controller.lua:297`). Lädt `lua/vehicle/controller/<fileName>.lua`, ruft `init(data)` usw. auf und cached die Funktionen neu.
+  Entladen: `controller.unloadControllerExternal(name)` (`:376`).
+- → Patina lädt per `veh:queueLuaCommand('controller.loadControllerExternal("patina/sensor","patina_sensor")')`
+  einen Sensor-Controller. Muster für `queueLuaCommand` + Laden: `ge/extensions/util/saveDynamicData.lua:87`.
+- ❓ Nach einem Vehicle-Reset (Lua wird neu initialisiert) muss Patina den Controller neu laden.
+
+### 2.3 Funken/Kratzer im Spiel ✅
+Funken = Partikel-Regeln in `$G/lua/common/particles.json` (z. B. `METAL`/`ASPHALT`, `slipVel X>2.5`, Typ 1),
+ausgewertet in `$G/lua/vehicle/particlefilter.lua:25-41` mit der Bedingung `perpendicularVel > depth * depthCoef`.
+Gute Vorlage für Patinas Schwellwerte (Schrammen ab `slipVel > 2.5`).
+
+### 2.4 Material-IDs ✅ / ❓ (Index)
+Feste Liste in `particles.json:2-35` („the order here defines the groundmodel ids that are hardcoded in vlua“):
+METAL 2, PLASTIC 3, RUBBER 4, GLASS 5, WOOD 6, FOLIAGE 7, CLOTH 8, WATER 9, ASPHALT 10, ASPHALT_WET 11,
+SLIPPERY 12, ROCK 13, DIRT_DUSTY 14, DIRT 15, SAND 16, SANDY_ROAD 17, MUD 18, GRAVEL 19, GRASS 20, ICE 21,
+SNOW 22, … RUMBLE_STRIP 29, COBBLESTONE 30, FOLIAGE_THIN 31, SPIKE_STRIP 32.
+Belege für die Nummerierung: `wheels.lua:384` (32 = Spike Strip), `sounds.lua:430` (4 = Gummi),
+`beamstate.lua:886` (3 = Plastik). ❓ Spike 5 loggt die Werte zur Bestätigung.
+
+### 2.5 Node-Material pro Node ✅
+`v.data.nodes[cid].nodeMaterial` (numerische ID wie oben), z. B. `$G/lua/vehicle/beamstate.lua:886`
+(`== 3` → Plastik). Risse: Dort reagiert das Spiel bereits auf Plastik-Nodes an brechenden Beams.
+
+---
+
+## 3. Untergrund & Wasser (Vehicle-Lua)
+
+### 3.1 Untergrund pro Rad ✅
+`$G/lua/vehicle/wheels.lua:374`
+```lua
+wd.lastSlip, wd.lastSideSlip, wd.slipEnergy, wd.downForceRaw, wd.peakForce, wd.contactDepth,
+wd.contactMaterialID1, wd.contactMaterialID2 = wd.obj:getSlipVelEnergyDownPeakForceDepthMats()
+```
+Lesen z. B. wie `sounds.lua:429` oder `extensions/gameplayStatisticModules/watchBurnout.lua:22`
+(`wheels.wheels[i]`). Kein Kontakt = −1. Einer der beiden IDs ist das Reifenmaterial (4 = RUBBER).
+
+### 3.2 Ground-Models ⚠️
+- Definition: `gameengine.zip: art/groundmodels.json`, registriert in
+  `$G/lua/ge/extensions/core/environment.lua:1608` (`submitGroundModel`).
+- **Wichtig:** Vehicle-Lua sieht nicht den Ground-Model-Namen, sondern dessen **`collisiontype`**, also eine ID
+  aus der Liste in 2.4 (`environment.lua:1635`: `particles.getOrAddMaterialIDByName(materials, v.collisiontype)`).
+- Ground-Models (Basis-Spiel): ASPHALT ASPHALT_WET ASPHALT_OLD ASPHALT_PREPPED RUMBLE_STRIP ROCK COBBLESTONE
+  METAL METAL_TREAD WOOD PLASTIC DIRT DIRT_DUSTY DIRT_DUSTY_LOOSE GRAVEL GRAVEL_WET GRASS MUD SAND ICE
+  FRICTIONLESS SPIKE_STRIP SNOW SNOWBANK SLIPPERY KICKPLATE SHOCK_ABSORBER BRANCHES_STRONG LEAVES_STRONG
+  LEAVES_THIN SOFT_COLLISION_GENERAL VOID (+ Aliase, Maps können eigene ergänzen).
+- → Patinas Untergrund-Tabelle wird auf die **collisiontype-IDs** gemappt: SAND, SANDY_ROAD, DIRT, DIRT_DUSTY, MUD,
+  GRAVEL, GRASS, SNOW, ICE, ASPHALT(_WET), ROCK, COBBLESTONE. Das ist endlich und funktioniert auch mit Mod-Maps.
+- Dump aller geladenen Ground-Models: `core_environment.dumpGroundModels()` → `groundmodels_dump.json`
+  (`environment.lua:1579`). ❓ Pro Map einmal ausführen.
+
+### 3.3 Wasser ✅
+`obj:inWater(nodeCid)` → bool (`fire.lua:87`, `playerController.lua:376`, `sounds.lua:434`).
+
+---
+
+## 4. Lebenszyklus-Hooks (GE) ✅
+`$G/lua/ge/main.lua`: `onVehicleSpawned(vid, v)` :1161 · `onVehicleSwitched(oid, nid, player)` :1175 ·
+`onVehicleResetted(vid)` :1187 · `onVehicleDestroyed(vid)` :1203.
+`core/vehicles.lua:1794` `onVehicleReplaced(vehId)` (Teile-/Konfigwechsel = Respawn).
+`core/vehicle/manager.lua:275` `onVehicleColorChanged(objID, index, paint)`.
+Vehicle-seitig: `main.lua:190` `onInit`, `:329` `onVehicleLoaded`, `:454` `onReset`, `:373` `onBeamBroke(id, energy)`.
+
+## 5. Mod laden ✅
+- `$G/lua/ge/extensions/core/modmanager.lua:739`: alle `/scripts/**/modScript.lua` werden per `dofile`
+  ausgeführt. Erwartetes Muster (sonst Warnung, `:733`):
+  ```lua
+  setExtensionUnloadMode("patina_main", "manual")
+  extensions.load("patina_main")
+  ```
+- Extension-Name aus Pfad: `lua/ge/extensions/patina/main.lua` → `patina_main` (`NOTE_FOR_MODDERS.md`).
+- Vehicle-Extension in Fahrzeug laden: `veh:queueLuaCommand("extensions.load('…')")`
+  (`ge/extensions/util/saveDynamicData.lua:87`).
+- Hinweise aus `NOTE_FOR_MODDERS.md`: eindeutige Namen (`*_username`), PNG-Benennung `*.color.png/*.data.png`,
+  Log mit `log('I', 'patina', …)`, LuaJIT/Lua 5.1.
+
+---
+
+## 6. Vorschlag: Weg A′ (statt Vanilla-Preset)
+
+Aus 1.2, 1.5 und 1.7 ergibt sich ein Weg, der die Muss-Anforderungen erfüllen kann:
+
+1. Pro Fahrzeuginstanz eine eigene `DecalProjection` (Shape = `veh:getDecalProjectionShape()`), nur als
+   **Renderer** genutzt, mit Patinas eigenem Layer-Stack.
+2. Ihr Textur-Set unter eigenem Namen binden, z. B. `veh:setTextureSet("@PatinaTexture", set)`. ❓
+3. Für jedes lackierte Material (und dessen aktive Skin-Variante) eine **zusätzliche Stage 3/4** einfügen, die
+   `@PatinaTextureBaseColor` usw. über UV1 verwendet. Der Lack bzw. die Lackierung darunter bleibt
+   unverändert. Das geht für **jedes** Fahrzeug, auch ohne Preset. ❓ Alpha-Blending der Stage
+4. Kein `paint_design`-Slot, also keine Kollision mit Lackierungen oder anderen Mods.
+
+Offene Risiken dafür (alle Spike-Fragen): Wird ein frei benannter Textur-Set-Name akzeptiert? Blendet eine
+Stage mit Dynamic-Texture-Alpha korrekt über den Lack? Haben Mod-Fahrzeuge UV1? Wie stark ändern
+Material-Änderungen die Darstellung anderer Instanzen desselben Modells (Material ist geteilt, Textur-Set
+ist pro Fahrzeug)?
+
+**Fallback:** Spike 1 zuerst mit dem Vanilla-Preset (`covet`), um die Projektion per virtueller Kamera
+isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Preset.
