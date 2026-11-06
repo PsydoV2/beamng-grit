@@ -334,3 +334,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - **Regel:** Lack bei Material v1.5 = Stage mit `colorPaletteMap` (`etki_main`/`covet_main` Stage 0:
   `/vehicles/common/nullcolormaskR.color.png`; Skins: eigene `*_palette_uv1.color.png`).
   `instanceDiffuse` nur bei Legacy v1.0. Durchsichtige Materialien (`translucent`) ausschließen.
+
+### Spike 2b, Lauf 2 (2026-11-06, ETKI) – eigenes Log `patina_spike.log` im User-Ordner
+- Erkennung über `colorPaletteMap`: `character_primary` [2], `etki_mechanicals` [6], `etki_main` → Mesh `etki` [7]. ✅
+- `full()` (Stage ohne Maske): **ganzes Auto braun** → Zusatz-Stage liegt auf allen Lackflächen. ✅
+  Rechts weißes Rautenmuster, Heckscheibe unten rechts orange Ecken → vermutlich Datenreste in Textur-
+  bereichen, die der Fill nicht überschreibt. ❓
+- `coat()` (Fill-Layer) mit Maske: nur schwache Streifen. Fill-Layer kommen in der Maske nicht wie Decals an.
+  Hypothese: Fill läuft über die Paletten-Logik (`colorPaletteMapId`). Test: grüner Fill bzw. `coat2()`
+  (5 große Decals mit `_one.png`).

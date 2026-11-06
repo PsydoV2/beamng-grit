@@ -6,6 +6,7 @@
 --   extensions.load("patinaSpike_spike2b")
 --   patinaSpike_spike2b.start()          -- alle lackierten Materialien finden und vorbereiten
 --   patinaSpike_spike2b.coat(0.7)        -- alle erfassten Lackflächen gleichmäßig verdrecken
+--   patinaSpike_spike2b.coat2(0.7)       -- wie coat(), aber mit 5 großen Decals statt Fill-Layer
 --   patinaSpike_spike2b.decal("left")    -- Test-„1“: "left" | "right" | "top" | "front" | "rear"
 --   patinaSpike_spike2b.full()           -- Diagnose: Ebene ohne Maske, überall deckend (full(false) = Maske wieder an)
 --   patinaSpike_spike2b.status()         -- Material-Felder ins Log
@@ -226,11 +227,12 @@ M.coat = function(strength, r, g, b)
   rebake()
 end
 
-M.decal = function(side, size)
+-- Decal-Anfrage in die Warteschlange. opts: texture, size, depth, color{r,g,b}, strength
+local function queueDecal(side, opts)
   if not state then L("E", "Erst start()."); return end
   local veh = getVeh(); if not veh then return end
-  side = side or "left"
   local dir = dirs[side]; if not dir then L("E", "Unbekannte Seite '%s'", tostring(side)); return end
+  opts = opts or {}
 
   local aabb = veh:getSpawnLocalAABB()
   local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
@@ -241,17 +243,34 @@ M.decal = function(side, size)
   local camM = QuatF(q.x, q.y, q.z, q.w):getMatrix()
   camM:setPosition(camPos)
 
-  local p = state.color.proj
-  p:setDecalTexturePath("color", TEST_TEXTURE)
-  p.decalColor = Point4F(1, 1, 1, 1)
-  p.decalScale = vec3(size or 0.5, 0.1, size or 0.5)
-  p.decalRotation = 0
-  p.useSurfaceNormal = false
-  state.pending = { side = side, dir = dir, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0 }
+  state.queue = state.queue or {}
+  table.insert(state.queue, {
+    side = side, dir = dir, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0,
+    texture = opts.texture or TEST_TEXTURE, size = opts.size or 0.5, depth = opts.depth or 0.1,
+    color = opts.color or { DIRT[1], DIRT[2], DIRT[3] }, strength = opts.strength or 1,
+  })
+end
+
+M.decal = function(side, size)
+  queueDecal(side or "left", { size = size })
+end
+
+-- Variante zu coat(): fünf große, flächige Decals (Textur _one.png = voll weiß) statt Fill-Layer
+M.coat2 = function(strength, r, g, b)
+  local opts = { texture = "/art/dynamicDecals/textures/_one.png", size = 6, depth = 4,
+                 color = { r or DIRT[1], g or DIRT[2], b or DIRT[3] }, strength = strength or 0.7 }
+  for _, side in ipairs({ "left", "right", "front", "rear", "top" }) do queueDecal(side, opts) end
 end
 
 local function processPending()
-  local req, p = state.pending, state.color.proj
+  local req, p = state.queue[1], state.color.proj
+  if req.frames == 0 then
+    p:setDecalTexturePath("color", req.texture)
+    p.decalColor = Point4F(1, 1, 1, 1)
+    p.decalScale = vec3(req.size, req.depth, req.size)
+    p.decalRotation = 0
+    p.useSurfaceNormal = false
+  end
   if bit.band(p:getSettings(), USE_MOUSE_POS) == USE_MOUSE_POS then p:toggleSetting(USE_MOUSE_POS) end
   p.cursorPosition = Point2F(0.5, 0.5)
   p:projectDynamicDecals(req.camM, req.projM)
@@ -263,15 +282,15 @@ local function processPending()
   if not (hit and hit.x == hit.x and hit:length() < 1e6) then
     if req.frames < FRAMES_MAX then return end
     L("W", "decal(%s): kein Treffer nach %d Frames (kein erfasstes Material im Strahl?).", req.side, req.frames)
-    p:flushDynamicTextures(); state.pending = nil
+    p:flushDynamicTextures(); table.remove(state.queue, 1)
     return
   end
   data.uid, data.name, data.enabled, data.locked, data.children = uid("decal"), "Patina " .. req.side, true, false, {}
-  data.patinaColor, data.patinaStrength = { DIRT[1], DIRT[2], DIRT[3] }, 1
+  data.patinaColor, data.patinaStrength = req.color, req.strength
   table.insert(state.layers, data)
   p:flushDynamicTextures()
-  state.pending = nil
-  L("I", "decal(%s): Treffer bei %s", req.side, tostring(hit))
+  table.remove(state.queue, 1)
+  L("I", "decal(%s): Treffer bei %s (Größe %.1f, Tiefe %.1f, Stärke %.2f)", req.side, tostring(hit), req.size, req.depth, req.strength)
   rebake()
 end
 
@@ -318,7 +337,7 @@ M.onUpdate = function()
   local veh = getPlayerVehicle(0)
   if not veh or veh:getID() ~= state.vehId then return end
   refresh(veh)
-  if state.pending then processPending() end
+  if state.queue and #state.queue > 0 then processPending() end
   if not state then return end
   state.color.proj:combineTextures(state.color.set)
   state.mask.proj:combineTextures(state.mask.set)
