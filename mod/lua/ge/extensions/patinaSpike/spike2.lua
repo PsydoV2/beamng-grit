@@ -8,6 +8,7 @@
 --   patinaSpike_spike2.opacity("Metallic") -- Deckkraft-Quelle: "BaseColor" | "Metallic" | "Roughness" | "none"
 --   patinaSpike_spike2.prefix("@DynamicTexture")  -- Textur-Set-Name umschalten (Standard "@PatinaTexture")
 --   patinaSpike_spike2.status()            -- aktuelle Material-Felder ausgeben
+--   patinaSpike_spike2.respawn()           -- Auto mit geändertem Material neu spawnen (falls reload() nicht reicht)
 --   patinaSpike_spike2.stop()              -- Material wiederherstellen
 
 local M = {}
@@ -96,13 +97,34 @@ M.status = function()
   L("I", "Material '%s':\n%s", state.matName, table.concat(lines, "\n"))
 end
 
-M.start = function(matName)
+-- Mesh-Materialnamen sind mapTo-Namen. Das Material-OBJEKT heißt oft anders (etki → etki_main).
+-- scenetree.findObject("etki") fand in Lauf 1 ein Legacy-Material mit mapTo "etki_old".
+local function resolveMaterial(veh, meshName)
+  local used = veh:getMaterialNames() or {}   -- wie editor/materialEditor.lua:1004
+  L("I", "veh:getMaterialNames() (%d): %s", #used, table.concat(used, ", "))
+  local candidates = {}
+  for _, n in ipairs(used) do
+    local m = scenetree.findObject(n)
+    if m and m:getField("mapTo", 0) == meshName then table.insert(candidates, n) end
+  end
+  if #candidates == 0 then
+    for _, n in ipairs(scenetree.findClassObjects("Material") or {}) do
+      local m = scenetree.findObject(n)
+      if m and m:getField("mapTo", 0) == meshName then table.insert(candidates, n) end
+    end
+  end
+  L("I", "Materialobjekte mit mapTo='%s': %s", meshName, table.concat(candidates, ", "))
+  return candidates[1] and scenetree.findObject(candidates[1]), candidates[1]
+end
+
+M.start = function(meshName)
   local veh = getVeh(); if not veh then return end
   if state then L("W", "Läuft schon, erst stop()."); return end
 
-  matName = matName or veh.jbeam
-  local mat = scenetree.findObject(matName)
-  if not mat then L("E", "Material '%s' nicht gefunden.", matName); return end
+  meshName = meshName or veh.jbeam
+  local mat, matObjName = resolveMaterial(veh, meshName)
+  if not mat then L("E", "Kein Materialobjekt mit mapTo '%s'.", meshName); return end
+  local matName = meshName
   local layers = tonumber(mat:getField("activeLayers", 0)) or 1
   if layers >= 4 then L("E", "Material '%s' hat schon 4 Ebenen.", matName); return end
   local stage = layers   -- erste freie Stage (0-basiert)
@@ -121,7 +143,7 @@ M.start = function(matName)
 
   state = {
     vehId = veh:getID(), proj = proj, textureSet = proj:getTextureSet(), layers = {},
-    mat = mat, matName = matName, stage = stage, backup = backup,
+    mat = mat, matName = matName .. " (Objekt " .. matObjName .. ")", meshName = meshName, stage = stage, backup = backup,
     prefix = "@PatinaTexture", opacitySrc = "BaseColor", pending = nil,
   }
   applyStage()
@@ -224,11 +246,34 @@ M.onUpdate = function()
 end
 
 M.onVehicleDestroyed = function(vid)
-  if state and state.vehId == vid then M.stop() end
+  if state and state.vehId == vid and not state.respawning then M.stop() end
+end
+
+-- Test: Greift die Material-Änderung erst, wenn das Fahrzeug mit dem geänderten Material neu gespawnt wird?
+-- Respawn mit gleicher Config wie core_vehicle_partmgmt.setSkin (partmgmt.lua:876-880). Status bleibt erhalten.
+M.respawn = function()
+  if not state then L("E", "Erst start()."); return end
+  local veh = getVeh(); if not veh then return end
+  local data = core_vehicle_manager.getPlayerVehicleData()
+  if not data or not data.config then L("E", "Keine Fahrzeugdaten."); return end
+  state.respawning = true
+  L("I", "respawn(): Fahrzeug wird mit geänderter Material-Stage neu gespawnt …")
+  core_vehicles.replaceVehicle(veh.JBeam, { config = data.config }, veh)
 end
 
 M.onVehicleReplaced = function(vid)
-  if state and state.vehId == vid then M.stop() end
+  if not state then return end
+  if state.respawning then
+    state.respawning = false
+    local veh = getPlayerVehicle(0)
+    if not veh then return end
+    state.vehId = veh:getID()
+    state.proj:setShape(veh:getDecalProjectionShape())
+    rebake()
+    L("I", "respawn(): fertig (id %d), Layer neu gebacken.", state.vehId)
+    return
+  end
+  if state.vehId == vid then M.stop() end
 end
 
 M.onExtensionUnloaded = function() M.stop() end

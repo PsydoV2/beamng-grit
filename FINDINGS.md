@@ -279,3 +279,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   `activeLayers: 3`.
 - Frage für Spike 2: Lässt sich `opacityMap` auf einen Kanal des Dynamic-Texture-Sets legen
   (`@<prefix>BaseColor | Metallic | Roughness`), und wird ein eigener Prefix akzeptiert?
+
+### Spike 2, Lauf 1 (2026-11-06, ETKI) – nichts sichtbar ⚠️
+- Platzierung und Bake funktionieren (Treffer nach 3 Frames, 1 mm, Code 0), aber keine Wirkung, auch nicht bei
+  `opacity("none")`.
+- Ursache: `scenetree.findObject("etki")` liefert ein **Legacy-Material** `etki` mit `mapTo: "etki_old"`
+  (`etki.zip: vehicles/etki/main.materials.json`). Das echte Lack-Material ist **`etki_main`** mit
+  `mapTo: "etki"` und `activeLayers: 2` (Covet: `covet_main`).
+- **Regel:** Namen aus `getShapeMaterialNames()` sind `mapTo`-Namen. Das Materialobjekt wird über
+  `mapTo` aufgelöst (`veh:getMaterialNames()` → `scenetree.findObject(n):getField("mapTo", 0)`).
+- Zusätzlich `respawn()`, falls `mat:reload()` laufende Fahrzeuge nicht aktualisiert.
