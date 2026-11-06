@@ -848,3 +848,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Abstand Anfrage→Oberfläche entlang n merken; weitere Decals der Zelle synthetisch, bis 4 je Frame, ohne
   `projectDynamicDecals`. Zelle mit 2 Fehlschüssen und ohne Treffer wird übersprungen.
   Matrix-Produkt `MatrixF * MatrixF` wie `core/vehicle/partmgmt.lua:437`. Umschalter `patina_main.synthetic(false)`.
+
+### Spike 6, Lauf 1 (2026-11-06) ✅
+- X aus projiziertem + synthetischem Kratzer sichtbar ✅ → synthetische Layer-Daten werden korrekt gebacken.
+- Fahrt: 151 Ebenen, davon 114 synthetisch, 10 Zellen übersprungen, 59 Zellen. Frametime „arbeitet“ Ø 11.4 ms vs.
+  Leerlauf 11.1 ms (vorher +1.2 bis +3.7 ms) – Sebastian: ruckelt nicht mehr merkbar ✅. Bake jetzt Ø 1.29 ms
+  (größere Decals). Schmutz an sinnvollen Stellen ✅.
+- Offen: an der Leitplanke kein Kratzer; Log nur 3 Schrammen (Untergrund 13 ROCK). → Diagnose eingebaut:
+  Sensor zählt Karosserie-Kontakte je Grund (langsam/weich/pause/unten/innen/ok) und Untergrund-ID, alle 2 s
+  `patina_main.onSensorDiag` → Log „Kontakte …“.

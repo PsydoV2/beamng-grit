@@ -523,6 +523,17 @@ M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorn
   L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
 end
 
+-- Diagnose vom Sensor: Karosserie-Kontakte je Grund:Untergrund-ID (2 s), die ersten 40 Meldungen ins Log
+local diagMsgs = 0
+M.onSensorDiag = function(vid, d)
+  if type(d) ~= "table" or diagMsgs >= 40 then return end
+  diagMsgs = diagMsgs + 1
+  local keys = {}
+  for k, n in pairs(d) do keys[#keys + 1] = string.format("%s=%d", k, n) end
+  table.sort(keys)
+  L("I", "Kontakte %d: %s", vid, table.concat(keys, " "))
+end
+
 -- Spike 6: synthetische Decals an/aus (Vergleich)
 M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synthetische Decals: %s", tostring(render.SYNTHETIC)) end
 

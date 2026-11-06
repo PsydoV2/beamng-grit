@@ -113,13 +113,18 @@ local function initWheels()
   end
 end
 
+-- Diagnose (M2.2 Lauf 6: Leitplanke ohne Kratzer): Karosserie-Kontakte nach Grund und Untergrund zählen
+local diag, diagT = {}, 0
+local function count(reason, mat) local k = reason .. ":" .. tostring(mat); diag[k] = (diag[k] or 0) + 1 end
+
 local function nodeCollision(p)
-  if p.materialID2 == RUBBER or p.slipVel < SCRAPE_SLIP or not axF then return end
-  if SOFT[p.materialID1] then return end   -- Büsche/Stoff/Wasser kratzen nicht (M2.2 Lauf 4: Busch → schwarze Flächen)
+  if p.materialID2 == RUBBER or not axF then return end
   local cid = p.id1
   if wheelNodes[cid] then return end
+  if p.slipVel < SCRAPE_SLIP then if p.slipVel > 0.3 then count("langsam", p.materialID1) end; return end
+  if SOFT[p.materialID1] then count("weich", p.materialID1); return end   -- Büsche/Stoff/Wasser kratzen nicht (M2.2 Lauf 4: Busch → schwarze Flächen)
   local now = obj:getSimTime()
-  if lastEmit[cid] and now - lastEmit[cid] < NODE_COOLDOWN then return end
+  if lastEmit[cid] and now - lastEmit[cid] < NODE_COOLDOWN then count("pause", p.materialID1); return end
   lastEmit[cid] = now
   local node = v.data.nodes[cid]
   if not node or not refPos then return end
@@ -127,10 +132,11 @@ local function nodeCollision(p)
   local n = -toLocal(vec3(p.normal))
   -- Unterboden (Fläche zeigt nach unten): unsichtbar, und die Projektion von unten färbte senkrechte Flächen in
   -- Streifen (M2.2 Lauf 2: Aufsetzen auf Schotter → 121 Schrammen, senkrechte Streifen an der Bordwand)
-  if n.z < -0.6 then return end
+  if n.z < -0.6 then count("unten", p.materialID1); return end
   -- Normale zeigt ins Auto (Büsche: n quer zur Karosserie, M2.2 Lauf 4) → Projektion streift schräg über Haube
   local off = vec3(node.pos) - refPos - center
-  if off:length() > 0.1 and n:dot(off:normalized()) < -0.3 then return end
+  if off:length() > 0.1 and n:dot(off:normalized()) < -0.3 then count("innen", p.materialID1); return end
+  count("ok", p.materialID1)
   local s = toLocal(vec3(p.slipVec))
   table.insert(pending, {
     c = cid, px = r3(node.pos.x - refPos.x), py = r3(node.pos.y - refPos.y), pz = r3(node.pos.z - refPos.z),
@@ -145,6 +151,14 @@ local function updateGFX(dt)
   axL = axU:cross(axF)
   updateSpray(dt)
   updateDust(dt)
+  diagT = diagT + dt
+  if diagT >= 2 then
+    diagT = 0
+    if next(diag) then
+      obj:queueGameEngineLua(string.format("patina_main.onSensorDiag(%d, %s)", obj:getId(), serialize(diag)))
+      diag = {}
+    end
+  end
   sendT = sendT + dt
   if sendT < SEND_INTERVAL then return end
   sendT = 0
