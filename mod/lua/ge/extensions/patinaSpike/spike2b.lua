@@ -399,6 +399,8 @@ local function bindEmpty()
       -- Lauf 10: Textur stimmt (Export leer), wird vom neu gespawnten Auto aber nicht gelesen →
       -- Material neu laden, damit die @Patina-Tags für dieses Fahrzeug neu aufgelöst werden.
       if o.age == 2 or o.age == 61 then
+        -- Lauf 11: Reload nahm dem Patina-Auto den Dreck → vorher auch dessen Sets binden.
+        if me then refresh(me) end
         for _, t in ipairs(state.targets) do t.obj:reload() end
         L("I", "Materialien neu geladen für ID %d (Frame %d)", id, o.age)
       end

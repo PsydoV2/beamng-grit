@@ -403,3 +403,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Mit `mat:reload()` nach dem Binden: **neu gespawnter ETKI in Originalfarbe** ✅ (Screenshot `…15-47-09.png`).
   Bestätigt: Fahrzeuge lösen `@Patina*` beim Spawn bzw. beim Material-Reload auf, nicht pro Frame.
   Offen: bleibt das Patina-Auto nach dem Reload verdreckt? (am Bildrand wirkt es grün) ❓
+
+### Spike 2b, Lauf 11 (2026-11-06)
+- Nach dem Reload für den neuen ETKI waren **alle** Autos auf Originallack, auch das Patina-Auto. ❌
+- Zwei Möglichkeiten: (a) Bindung pro Fahrzeug, Reload löst mit dem Stand im Moment auf;
+  (b) Bindung praktisch pro Material, das zuletzt gebundene Set gewinnt.
+  Test: direkt vor dem Reload zuerst andere leer, dann Patina-Auto mit echten Sets binden.
+  (a) → Patina-Auto dreckig, andere sauber. (b) → alle dreckig.
