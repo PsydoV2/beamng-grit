@@ -7,6 +7,8 @@
 --   patinaSpike_spike2b.start()          -- alle lackierten Materialien finden und vorbereiten
 --   patinaSpike_spike2b.coat(0.7)        -- alle erfassten Lackflächen gleichmäßig verdrecken
 --   patinaSpike_spike2b.decal("left")    -- Test-„1“: "left" | "right" | "top" | "front" | "rear"
+--   patinaSpike_spike2b.full()           -- Diagnose: Ebene ohne Maske, überall deckend (full(false) = Maske wieder an)
+--   patinaSpike_spike2b.status()         -- Material-Felder ins Log
 --   patinaSpike_spike2b.clear()          -- Dreck entfernen
 --   patinaSpike_spike2b.stop()           -- alle Materialien wiederherstellen
 
@@ -32,7 +34,15 @@ local STAGE_FIELDS = { "baseColorMap", "diffuseMapUseUV", "opacityMap", "opacity
 
 local state = nil
 
-local function L(level, fmt, ...) log(level, logTag, string.format(fmt, ...)) end
+-- beamng.log wird mit Minuten Verzögerung geschrieben → zusätzlich sofort in eine eigene Datei
+-- (Muster: ge/extensions/career/modules/log.lua:22, io.open(..., "a")). Landet im User-Ordner.
+local SPIKE_LOG = "/patina_spike.log"
+local function L(level, fmt, ...)
+  local msg = string.format(fmt, ...)
+  log(level, logTag, msg)
+  local f = io.open(SPIKE_LOG, "a")
+  if f then f:write(string.format("%s|%s|%s\n", os.date("%H:%M:%S"), level, msg)); f:close() end
+end
 local function uid(p) return string.format("%s-%04X", p, math.random(0, 0xFFFF)) end
 local function getVeh()
   local veh = getPlayerVehicle(0)
@@ -263,6 +273,31 @@ local function processPending()
   state.pending = nil
   L("I", "decal(%s): Treffer bei %s", req.side, tostring(hit))
   rebake()
+end
+
+-- Diagnose: Patina-Ebene ohne Maske (überall voll deckend). Zeigt, auf welchen Flächen die Stage wirkt.
+M.full = function(on)
+  if not state then L("E", "Erst start()."); return end
+  for _, t in ipairs(state.targets) do
+    t.obj:setField("opacityMap", t.stage, on == false and (MASK_PREFIX .. "BaseColor") or "")
+    t.obj:reload()
+  end
+  L("I", "full(%s): Maske %s", tostring(on ~= false), on == false and "an" or "aus")
+end
+
+M.status = function()
+  if not state then L("E", "Erst start()."); return end
+  for _, t in ipairs(state.targets) do
+    local m, parts = t.obj, {}
+    table.insert(parts, "activeLayers=" .. tostring(m:getField("activeLayers", 0)))
+    for s = 0, 3 do
+      for _, f in ipairs({ "baseColorMap", "colorPaletteMap", "opacityMap", "diffuseMapUseUV", "opacityMapUseUV" }) do
+        local v = m:getField(f, s)
+        if v and v ~= "" then table.insert(parts, string.format("[%d]%s=%s", s, f, v)) end
+      end
+    end
+    L("I", "%s: %s", t.objName, table.concat(parts, " "))
+  end
 end
 
 M.clear = function()
