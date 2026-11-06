@@ -728,3 +728,20 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Offen/vertagt: Chrom-Teile (Kratzer hell auf hell); „Kontakte zu Strichen verbinden“ vorerst durch versetzte
   Ebenen ersetzt – Budget 100 Ebenen ist bei langem Schrammen schnell voll (später: Zusammenfassen/Atlas);
   Spike-5-Reste (g-Formel, Fahrzeug-gegen-Fahrzeug über nodeCollision?); Front/Heck-Ausrichtung ungetestet.
+
+## M2 Dreck
+
+### M2.1 Radspritzer (2026-11-06)
+- Konzept: Radspritzer pro Rad, Stärke aus Tempo/Schlupf, Ziele Radkasten/Schweller/hinter dem Rad/Heck; Farbe
+  nach Untergrund (Konzept-Frage Tabelle vs. Terrain-Textur → MVP feste Tabelle pro collisiontype-ID).
+- Sensor: pro Rad Strecke + Schlupf auf losem Untergrund (IDs 14–20, 22) sammeln, je 12 m ein Ereignis.
+  Felder geprüft: `wd.wheelSpeed` vorzeichenbehaftet (`vehicle/wheels.lua:653-658`), `wd.contactMaterialID1/2`,
+  `wd.downForceRaw`, `wd.lastSlip` (`wheels.lua:374`), `wd.node1/.node2/.radius/.isBroken` (`wheels.lua:247,251,292`).
+  Radmitte = Mitte der Achs-Knoten (Ausgangsposition − Referenzknoten), äußere Seite = Achs-Knoten weiter von der
+  Fahrzeugmitte.
+- GE: Spritzer seitlich hinter dem Rad (1.0–1.8 r), Hinterrad 30 % aufs Heck; 0.3–0.55 m, zufällige Drehung,
+  Deckkraft 0.3–0.75, max. 30 pro Rad. Maske additiv (`blendMode 2`, `editor/api/dynamicDecals.lua:755`), damit
+  Dreck sich aufbaut; Farbe normal darüber.
+- Textur `dirt_splash.png` (Generator, Seed 4004).
+- Budget 100 → 300 Ebenen: Voll-Bake (überlinear) passiert nur bei clear/Neuanlage mit leerer Liste; inkrementell
+  konstant 0.8 ms/Decal (Spike 3). Für spätere Persistenz (Neuspawn mit Zustand) muss zusammengefasst werden.

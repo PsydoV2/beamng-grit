@@ -195,7 +195,7 @@ local function attach(veh)
     return
   end
   car.retried = nil
-  car.r, car.nodeHits = render.new(veh, onSkin, L), {}
+  car.r, car.nodeHits, car.sprayCount = render.new(veh, onSkin, L), {}, {}
   car.phase = "active"
   loadSensor(veh)
   L("I", "Fahrzeug %d aktiv: %d/%d Materialien auf Patina%s, Neuspawn %.0f ms", vid, #onSkin, #targets,
@@ -226,11 +226,80 @@ local function activate(vid)
   return cars[vid] ~= nil and cars[vid].phase ~= nil
 end
 
+-- M2 Dreck: feste Farbe pro Untergrund (collisiontype-IDs, particles.json:2-35; FINDINGS Spike 5).
+-- Konzept-Frage „Tabelle oder Terrain-Textur“ → MVP Tabelle. Werte sRGB, Kodierung in render.variants.
+local DIRT = {
+  texture = "/art/patina/dirt_splash.png",
+  colors = {
+    [14] = { 0.55, 0.47, 0.36 }, -- DIRT_DUSTY
+    [15] = { 0.36, 0.27, 0.18 }, -- DIRT
+    [16] = { 0.72, 0.63, 0.46 }, -- SAND
+    [17] = { 0.62, 0.55, 0.42 }, -- SANDY_ROAD
+    [18] = { 0.22, 0.17, 0.11 }, -- MUD
+    [19] = { 0.50, 0.47, 0.42 }, -- GRAVEL
+    [20] = { 0.32, 0.29, 0.18 }, -- GRASS (Erde + Grün)
+    [22] = { 0.93, 0.94, 0.96 }, -- SNOW
+  },
+  names = { [14] = "DIRT_DUSTY", [15] = "DIRT", [16] = "SAND", [17] = "SANDY_ROAD", [18] = "MUD", [19] = "GRAVEL",
+            [20] = "GRASS", [22] = "SNOW" },
+  minSize = 0.3, maxSize = 0.55, depth = 0.35,
+  maxPerWheel = 30,      -- danach ist dieser Bereich „voll“ (Ebenen-Budget)
+  rearChance = 0.3,      -- Hinterrad: Anteil der Spritzer aufs Heck
+}
+
+local function tint(c, s)   -- leichte Farbstreuung pro Spritzer
+  local f = 1 + (math.random() - 0.5) * 0.15
+  return { math.min(1, c[1] * f), math.min(1, c[2] * f), math.min(1, c[3] * f) }
+end
+
+local function handleSprays(car, vid, list)
+  if not list or #list == 0 then return end
+  local veh = be:getObjectByID(vid); if not veh then return end
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local mid = (mn + mx) * 0.5
+  car.sprayCount = car.sprayCount or {}
+  for _, s in ipairs(list) do
+    local col = DIRT.colors[s.m]
+    local cnt = car.sprayCount[s.w] or 0
+    if col and cnt < DIRT.maxPerWheel then
+      local back = s.v >= 0 and 1 or -1        -- vorwärts (−y) → Spritzer nach hinten (+y)
+      local side = (s.ox >= mid.x) and 1 or -1
+      local pos, n, tol
+      if s.cy * back > mid.y * back and math.random() < DIRT.rearChance then
+        -- Hinterrad → Heck (bzw. Front bei Rückwärtsfahrt)
+        pos = vec3(s.cx, back > 0 and mx.y or mn.y, s.cz + s.r * (0.2 + 0.6 * math.random()))
+        n, tol = vec3(0, back, 0), 0.5
+      else
+        -- Seite hinter dem Rad: Kotflügel/Schweller/Tür unten
+        pos = vec3(s.ox, s.cy + back * s.r * (1.0 + 0.8 * math.random()), s.cz + s.r * (math.random() - 0.6) * 0.8)
+        n, tol = vec3(side, 0, 0), 0.35
+      end
+      local a = math.random() * 2 * math.pi
+      local up = vec3(math.cos(a), math.sin(a), math.cos(a) + math.sin(a))   -- zufällige Drehung
+      local size = DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random()
+      local strength = math.min(0.75, 0.3 + math.abs(s.v) * 0.012 + math.abs(s.s) * 0.02)
+      local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol,
+        width = size, length = size, depth = DIRT.depth, texture = DIRT.texture,
+        color = tint(col), strength = strength, addMask = true, name = "Patina Dreck" })
+      if ok then
+        car.sprayCount[s.w] = cnt + 1
+        car.sprays = (car.sprays or 0) + 1
+        if car.sprays <= 10 then
+          L("I", "Spritzer Rad %d %s %.1f m/s → pos(%.2f,%.2f,%.2f) n(%d,%d,%d)", s.w, DIRT.names[s.m] or "?", s.v,
+            pos.x, pos.y, pos.z, n.x, n.y, n.z)
+        end
+      end
+    end
+  end
+end
+
 -- Ereignisse vom Sensor ----------------------------------------------------------------
 
 M.onSensorEvents = function(vid, ev)
   local car = cars[vid]
   if not car or car.phase ~= "active" or type(ev) ~= "table" then return end
+  handleSprays(car, vid, ev.sprays)
   for _, s in ipairs(ev.scrapes or {}) do
     if (car.scrapes or 0) < 15 then
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
@@ -320,7 +389,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits = {} end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount = {}, {} end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -336,8 +405,8 @@ end
 -- Konsole: patina_main.status()
 M.status = function()
   for vid, car in pairs(cars) do
-    L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d verworfen (Budget), %d ohne Treffer",
-      vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0,
+    L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d verworfen (Budget), %d ohne Treffer",
+      vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0,
       car.r and car.r.dropped or 0, car.r and car.r.misses or 0)
   end
 end
@@ -360,7 +429,7 @@ end
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits = {} end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount = {}, {} end
 end
 
 return M

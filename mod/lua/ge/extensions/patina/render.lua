@@ -12,7 +12,8 @@ local UV_LAYER = 1
 R.COLOR_PREFIX, R.MASK_PREFIX = "@PatinaTexture", "@PatinaMask"
 local USE_MOUSE_POS = bit.lshift(1, 2)
 local FRAMES_BEFORE_READ, FRAMES_MAX = 3, 30
-R.MAX_LAYERS = 100   -- Budget, Spike 3: Voll-Bake wächst überlinear
+R.MAX_LAYERS = 300   -- Budget. Spike 3: Voll-Bake wächst überlinear – gebraucht nur bei clear (leer) und Neuanlage (leer);
+                     -- inkrementell 0.8 ms/Decal unabhängig von der Anzahl. M2: 100 reicht für Kratzer + Dreck nicht.
 
 -- Layer-Farben werden beim Bake sRGB → linear gewandelt (Spike 2b Lauf 5) → vorher kodieren
 local function enc(v) return math.pow(v, 1 / 2.2) end
@@ -40,6 +41,9 @@ local function variants(l)
   local c, s = l.patinaColor, l.patinaStrength
   local cl = shallowcopy(l); cl.color = Point4F(enc(c[1]), enc(c[2]), enc(c[3]), 1); cl.uid = l.uid .. "-c"
   local e = enc(s); local ml = shallowcopy(l); ml.color = Point4F(e, e, e, 1); ml.uid = l.uid .. "-m"
+  -- Dreck baut sich auf: Maske addieren (blendModes 2 = „Screen / Add“, editor/api/dynamicDecals.lua:755),
+  -- sonst zöge ein schwacher Spritzer die Deckkraft darunter herunter
+  if l.patinaAddMask then ml.blendMode = 2 end
   return cl, ml
 end
 
@@ -143,7 +147,7 @@ function R:update(veh)
       end
       if near then
         data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
-        data.patinaColor, data.patinaStrength = d.color, d.strength
+        data.patinaColor, data.patinaStrength, data.patinaAddMask = d.color, d.strength, d.addMask
         data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4: Striche auf der Gegenseite
         table.insert(self.layers, data)
         if self.log and #self.layers <= 15 then

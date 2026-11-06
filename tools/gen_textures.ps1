@@ -78,3 +78,25 @@ for ($i = 0; $i -lt 3; $i++) {
   }
 }
 Save $c[0] $c[1] "scratch_deep.png"
+
+# Dreck-Spritzer: weiche Kleckse (radialer Verlauf) + kleine Tropfen, Mitte dichter (M2)
+function Draw-Blob($g, [double]$cx, [double]$cy, [double]$r, [int]$alpha) {
+  $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $path.AddEllipse([single]($cx - $r), [single]($cy - $r), [single](2 * $r), [single](2 * $r))
+  $br = New-Object System.Drawing.Drawing2D.PathGradientBrush($path)
+  $br.CenterColor = [System.Drawing.Color]::FromArgb($alpha, 255, 255, 255)
+  $br.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 255, 255, 255))
+  $g.FillPath($br, $path)
+  $br.Dispose(); $path.Dispose()
+}
+$rnd = New-Object System.Random(4004)
+$c = New-Canvas
+for ($i = 0; $i -lt 40; $i++) {           # große weiche Kleckse, zur Mitte gehäuft
+  $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Pow($rnd.NextDouble(), 1.6) * $size * 0.33
+  Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (40 + 70 * $rnd.NextDouble()) (90 + $rnd.Next(120))
+}
+for ($i = 0; $i -lt 260; $i++) {          # Tropfen, nach außen dünner
+  $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Sqrt($rnd.NextDouble()) * $size * 0.46
+  Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (4 + 14 * $rnd.NextDouble()) (150 + $rnd.Next(105))
+}
+Save $c[0] $c[1] "dirt_splash.png"
