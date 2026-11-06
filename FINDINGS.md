@@ -352,3 +352,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   oder Fill schreibt nur in leere Bereiche. ❓
 - `colorPaletteMapId = 0` = Layer rendert seine eigene Farbe (`ui/liveries/paint.lua:8-10`). Paletten-These verworfen.
 - Nächster Schritt: Texturen per `exportTextures` als PNG ausgeben und direkt ansehen.
+
+### Spike 2b, Lauf 4 (2026-11-06, ETKI, Lack 0.24/0.48/0.48) – Texturen per `exportTextures` geprüft
+- Export `a` (nur Basis-Fill): RGBA 0,0,0,0 überall. `b` (ein „1“-Decal): nur die 1 in der Maske. ✅
+- Export `c` (coat2 0.7): **Maske deckt alle UV-Inseln des Lacks gleichmäßig** (116/255), Farbe (18,7,2). ✅ Abdeckung.
+- **Bake wandelt Layer-Farben sRGB → linear:** 0.7 → 116 (= 0.7^2.2), Dreckfarbe 0.3/0.2/0.1 → 18/7/2.
+  Folge: Maske deckt nur ~45 % statt 70 %, Dreck fast schwarz → auf dem Auto kaum sichtbar.
+  Abhilfe: Werte vor dem Bake mit ^(1/2.2) kodieren (`M.gammaFix`).

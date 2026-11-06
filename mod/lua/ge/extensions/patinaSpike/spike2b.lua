@@ -134,13 +134,18 @@ local function baseLayer()   -- schwarz = unsichtbar in der Maske, gegen Datenre
            enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
 end
 
+-- Der Bake wandelt Layer-Farben sRGB → linear (Export Lauf 4: 0.7 → 116/255 = 0.7^2.2, 0.3 → 18/255).
+-- Die Maske ist aber Daten (Deckkraft) → vorher mit 1/2.2 kodieren, damit 0.7 auch 0.7 deckt.
+M.gammaFix = true
+local function enc(v) return M.gammaFix and math.pow(v, 1 / 2.2) or v end
+
 -- Jeder Patina-Layer trägt patinaColor und patinaStrength. Daraus entstehen beide Stacks.
 local function buildStacks()
   local colorStack, maskStack = { baseLayer() }, { baseLayer() }
   for _, l in ipairs(state.layers) do
     local c, s = l.patinaColor, l.patinaStrength
-    local cl = shallowcopy(l); cl.color = Point4F(c[1], c[2], c[3], 1); cl.uid = l.uid .. "-c"
-    local ml = shallowcopy(l); ml.color = Point4F(s, s, s, 1);          ml.uid = l.uid .. "-m"
+    local cl = shallowcopy(l); cl.color = Point4F(enc(c[1]), enc(c[2]), enc(c[3]), 1); cl.uid = l.uid .. "-c"
+    local e = enc(s); local ml = shallowcopy(l); ml.color = Point4F(e, e, e, 1); ml.uid = l.uid .. "-m"
     table.insert(colorStack, cl)
     table.insert(maskStack, ml)
   end
