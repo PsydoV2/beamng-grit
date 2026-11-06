@@ -513,3 +513,16 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - `inc`: `bakeLayers({neu})` ohne `clearBakedTextures` – so fügt der Editor Decals hinzu
   (`editor/api/dynamicDecals.lua:1091-1095` addDecal_Redo). `full`: clear + alle Layer
   (`reprojectLayers`, `dynamicDecals.lua:1647-1651`).
+
+### Spike 3, Lauf 1 (2026-11-06)
+- **inc** (200 Decals / 20 s, ETKI, ~90 fps): alle 200 getroffen, Laufzeit 20.0 s.
+  Frametime Grundlinie Ø 11.04 / p99 11.16 ms → unter Last Ø 11.06 / p99 11.32 / max 11.49 ms ✅ (kein Ruckeln).
+  Bake pro Decal Ø 0.82 / p99 1.08 / max 2.05 ms. Projektion + Auslesen konstant 3 Frames pro Decal.
+  Patina-onUpdate CPU Ø 1.32 / p95 3.26 ms, einmal 31.7 ms (Ausreißer, in der Frametime nicht sichtbar).
+  `combineTextures` Ø 0.05 ms.
+- **full** neu backen mit 200 Layern: **2811 ms** bzw. 1252 ms für einen Bake (≈ 6–14 ms pro Layer).
+  Lastlauf `full` → 1–3 fps, unbrauchbar ❌. → Laufzeit nur inkrementell; Voll-Bake nur einmalig
+  (Laden/Spawn) und Layerzahl begrenzen bzw. zusammenfassen (Konsolidierung).
+- Strg+R nach `veh:respawn`-Skin: Skin verloren (`attach: 0/3 … kein Skin!`). In 2c Lauf 7 blieb er über
+  Strg+R erhalten → im Mod Skin bei jedem Spawn selbst setzen (Hook vor `jbeamMeshs.process`) – offen.
+- Screenshot A (nach inc): `screenshots/2026-11/screenshot_2026-11-06_20-01-43.png`. Vergleich inc ↔ full steht aus.
