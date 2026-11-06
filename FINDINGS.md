@@ -673,3 +673,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Änderung: Linien 3–4× dicker und deckender, Decals 10–12 cm breit, 0.3–1.0 m lang (mit Gleitgeschwindigkeit),
   Stufe nach Treffer 1/3/5, bis 8 Ebenen pro Knoten, ab dem 2. Treffer ±25 % der Länge entlang der
   Schleifrichtung versetzt → durchgehende Spur.
+
+### M1.2, Lauf 2 (2026-11-06)
+- Sebastian: Kratzer sehen sehr gut aus ✅, deutlich mehr beim Wandfahren ✅, aber senkrecht statt längs ❌.
+- Screenshot `20-58-37`: testScratch Seite (n=+x, up=−y, 0.2 × 0.6 m) liegt senkrecht → Länge entlang n × up
+  (= −z); passt auch zu Lauf 1 (Dach quer). `quatFromDir(-n, up)` + `QuatF:getMatrix()` dreht für die
+  Decal-Projektion offenbar um 90° um die Blickachse. Fix: `up = up × n` vor dem Bau der Kameramatrix.

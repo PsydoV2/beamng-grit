@@ -88,6 +88,9 @@ function R:request(d)
   local n = d.normal:normalized()
   local up = d.up - n * d.up:dot(n)
   if up:length() < 1e-3 then up = math.abs(n.z) < 0.9 and vec3(0, 0, 1) or vec3(0, 1, 0) end
+  -- Gemessen (M1.2 Lauf 2): Decal-Länge liegt entlang n × up statt entlang up (Seite: up=−y → senkrecht,
+  -- Dach: quer) → um −90° um n vordrehen, damit die Länge entlang der Schleifrichtung liegt.
+  up = up:cross(n)
   local camPos = d.pos + n * (d.depth * 0.5 + 0.2)
   local q = quatFromDir(-n, up:normalized())
   local camM = QuatF(q.x, q.y, q.z, q.w):getMatrix()
