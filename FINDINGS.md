@@ -549,3 +549,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Fahrzeuge gleicher Config treffen.
 - `spike4.lua`: eigener Slot `patina` → `veh:setSkin("patina.v<ID>")`, Materialien `<mapTo>.patina.v<ID>`
   als Kopie des aktuell genutzten Materials (also auch des Lackierungsmusters). Offen: Vorrang bei zwei Slots.
+
+### Spike 4, Lauf 1 (2026-11-06)
+- Fahrzeug trug tatsächlich Muster **dreid** (`etki.skin.dreid`, `etki_modparts.skin.dreid`), 6 Lackmaterialien
+  inkl. `generic_rallyparts`, `rollcage_01a`.
+- Eigener Slot `patina` hat **Vorrang** vor paint_design: nach Neuspawn 6/6 auf `<mapTo>.patina.v<ID>` ✅.
+  Verdreckt mit erkennbarem Muster ✅; zweiter Rally Gravel sauber ✅; `stop()` → normal mit Muster ✅.
+- Strg+R → wieder sauber, `attach: 0/6` ❌: Strg+R setzt alle Skins zurück, auch den eigenen Slot
+  (anders als `veh:respawn`). Lauf 2: in `onSpawnCCallback` (feuert vor Teilen/Meshes,
+  `core/vehicle/manager.lua:111-140`) den Skin erneut setzen.

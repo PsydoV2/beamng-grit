@@ -503,6 +503,17 @@ end
 
 -- Hooks ----------------------------------------------------------------------------
 
+-- Lauf 1: Strg+R (be:reloadVehicle, core/vehicle/manager.lua:319-324) verliert alle Skins, auch Slot "patina".
+-- onSpawnCCallback feuert am Anfang jedes Spawns, vor Laden der Teile und Meshes
+-- (core/vehicle/manager.lua:111-140) → Skin dort erneut setzen.
+M.onSpawnCCallback = function(objID)
+  if not state or state.vehId ~= objID or state.phase ~= "active" then return end
+  local v = be:getObjectByID(objID) or scenetree.findObject(objID)
+  if not v then L("W", "onSpawnCCallback(%d): Fahrzeug nicht gefunden", objID); return end
+  v:setSkin(M.slot .. "." .. skinOf(objID))
+  L("I", "onSpawnCCallback(%d): setSkin('%s.%s') erneut", objID, M.slot, skinOf(objID))
+end
+
 M.onVehicleSpawned = function(vid)
   if not state or state.vehId ~= vid then return end
   local veh = be:getObjectByID(vid); if not veh then return end
