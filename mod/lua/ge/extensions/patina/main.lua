@@ -138,7 +138,11 @@ local function prepare(veh)
   local vid = veh:getID()
   local targets, skipped = findTargets(veh)
   if #skipped > 0 then L("W", "Fahrzeug %d: übersprungen (4 Ebenen belegt): %s", vid, table.concat(skipped, ", ")) end
-  if #targets == 0 then L("W", "Fahrzeug %d (%s): keine lackierten Materialien", vid, tostring(veh.jbeam)); return end
+  if #targets == 0 then   -- merken, sonst versucht onUpdate es alle 30 Frames erneut
+    L("W", "Fahrzeug %d (%s): keine lackierten Materialien", vid, tostring(veh.jbeam))
+    cars[vid] = { phase = "none", skinMats = (cars[vid] and cars[vid].skinMats) or {} }
+    return
+  end
   local car = cars[vid] or { skinMats = {} }
   cars[vid] = car
   local keep = {}
