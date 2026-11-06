@@ -875,3 +875,7 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 ### M2.3, Lauf 1 (2026-11-06) ✅
 - Schlamm (18 MUD) an der linken Seite: Kontakt-Dreck sitzt an der Berührstelle ✅. Sebastian: „könnte größere
   Flecken haben“ → Größe 0.6–1.0 m (vorher 0.35–0.6).
+
+### M2.3, Lauf 2 (2026-11-06) ✅ M2 Dreck abgeschlossen
+- Kontakt-Flecken 0.6–1.0 m: Größe passt (Sebastian). M2.1 Spritzer, M2.2 Staub, M2.3 Kontakt-Dreck bestätigt.
+  Tag `m2-dreck`. Übergabe für neue Sessions in `CLAUDE.md`.
