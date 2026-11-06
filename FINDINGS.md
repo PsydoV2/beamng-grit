@@ -536,3 +536,16 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Laden der Decal-Textur; im Mod beobachten.
 - Fazit für den Mod: zur Laufzeit nur inkrementell backen; Layerzahl begrenzen; Voll-Bake nur beim
   Spawn/Laden, bei vielen Layern auf mehrere Frames verteilen oder vorher zusammenfassen.
+
+### Spike 4 (2026-11-06): Lackierungsmuster – Aufbau
+- Testfahrzeug (Sebastian): ETK I-Series Rally Gravel = `etki/rally_am_gravel.pc`, `paint_design: etki_skin_rotopad`
+  → Material `etki.skin.rotopad` (`etki/skin.materials.json`, 2 Stages, Muster in Stage 1 mit eigener Palette).
+  Patina-Stage käme also auf Stage 2 ✅ (Platz bis 4).
+- setSkin gilt pro Slot (`licenseplatesSkins.lua:56-58`; Material `<mat>.<slot>.<name>`, bei paint_design
+  `<mat>.skin.<name>`, z. B. `etki_intcarpet.skin_interior.cream`). Spike 3: Strg+R verlor unseren Skin, weil
+  der Spawn den paint_design-Slot neu setzt.
+- Verworfen: `onJbeamLoadingPhase2` + `part.skinName` patchen – das Ergebnis wird pro Config gecacht
+  (`loader.lua:470-485`, `cache[spawnHash]`) → Hook läuft nicht bei jedem Spawn, Änderung würde andere
+  Fahrzeuge gleicher Config treffen.
+- `spike4.lua`: eigener Slot `patina` → `veh:setSkin("patina.v<ID>")`, Materialien `<mapTo>.patina.v<ID>`
+  als Kopie des aktuell genutzten Materials (also auch des Lackierungsmusters). Offen: Vorrang bei zwei Slots.
