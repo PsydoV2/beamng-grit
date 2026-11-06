@@ -384,3 +384,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   **deckend lavendelblau** statt Seafoam Green (Screenshot `…15-32-16.png`). Lavendel ≈ (0.5,0.5,1) =
   typischer Platzhalter → das Set wirkt am anderen Fahrzeug nicht. Texture-Sets hängen offenbar an der
   Form-Instanz der Projektion. Neuer Versuch: eigene leere Projektion pro Fahrzeug mit dessen Form.
+
+### Spike 2b, Lauf 8 (2026-11-06) – K″
+- Eigene leere Projektion pro Fahrzeug: **bereits vorhandener zweiter ETKI behält Originalfarbe** ✅,
+  Patina-Auto verdreckt ✅. **Danach neu gespawnter ETKI wieder lavendelblau** ❌, obwohl seine Projektion
+  erzeugt wurde (Log 15:37:01, code=0). Vermutung: im Spawn-Frame ist die Form noch nicht fertig.
+  Neuer Versuch: Projektion erst nach 30 Frames anlegen.

@@ -356,6 +356,7 @@ M.stop = function()
   state = nil
 end
 
+local SPAWN_DELAY = 30
 local function bindEmpty()
   local me = be:getObjectByID(state.vehId)
   local model = me and me.jbeam
@@ -365,6 +366,10 @@ local function bindEmpty()
     if id ~= state.vehId and v.jbeam == model then  -- nur gleiches Modell teilt das Material (Spike)
       alive[id] = true
       local o = state.others[id]
+      -- Lauf K″: direkt im Spawn-Frame gebacken → blau. Erst nach SPAWN_DELAY Frames erzeugen.
+      state.seen = state.seen or {}
+      state.seen[id] = (state.seen[id] or 0) + 1
+      if not o and state.seen[id] < SPAWN_DELAY then goto continue end
       if not o then
         local p = newProj(v, state.targets)
         o = { proj = p, set = p:getTextureSet() }
@@ -380,6 +385,7 @@ local function bindEmpty()
       v:setTextureSet(COLOR_PREFIX, o.set)
       o.proj:combineTextures(o.set)
     end
+    ::continue::
   end
   for id in pairs(state.others) do if not alive[id] then state.others[id] = nil end end
 end
