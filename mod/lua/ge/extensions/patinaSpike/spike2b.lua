@@ -1,0 +1,285 @@
+-- Patina – Spike 2b: Weg A′ auf ALLEN lackierten Materialien eines beliebigen Fahrzeugs.
+-- Baut auf Spike 2 auf (Farbe @PatinaTexture + Maske @PatinaMask, Zusatz-Stage über dem Lack).
+-- Wegwerf-Prototyp.
+--
+-- Konsole (GE - Lua):
+--   extensions.load("patinaSpike_spike2b")
+--   patinaSpike_spike2b.start()          -- alle lackierten Materialien finden und vorbereiten
+--   patinaSpike_spike2b.coat(0.7)        -- alle erfassten Lackflächen gleichmäßig verdrecken
+--   patinaSpike_spike2b.decal("left")    -- Test-„1“: "left" | "right" | "top" | "front" | "rear"
+--   patinaSpike_spike2b.clear()          -- Dreck entfernen
+--   patinaSpike_spike2b.stop()           -- alle Materialien wiederherstellen
+
+local M = {}
+local logTag = "patinaSpike2b"
+
+local TEST_TEXTURE = "/art/dynamicDecals/textures/digit_basic_1.png"
+local RESOLUTION = Point2I(2048, 1024)
+local UV_LAYER = 1
+local COLOR_PREFIX, MASK_PREFIX = "@PatinaTexture", "@PatinaMask"
+local USE_MOUSE_POS = bit.lshift(1, 2)
+local FRAMES_BEFORE_READ, FRAMES_MAX = 3, 30
+local DIRT = { 0.30, 0.20, 0.10 }
+
+local dirs = {   -- Fahrzeug-Koordinatensystem: −x = rechts, −y = vorne (Spike 1)
+  left  = vec3(-1, 0, 0), right = vec3( 1, 0, 0),
+  front = vec3( 0, 1, 0), rear  = vec3( 0,-1, 0),
+  top   = vec3( 0, 0,-1),
+}
+
+local STAGE_FIELDS = { "baseColorMap", "diffuseMapUseUV", "opacityMap", "opacityMapUseUV",
+  "metallicFactor", "roughnessFactor", "instanceDiffuse" }
+
+local state = nil
+
+local function L(level, fmt, ...) log(level, logTag, string.format(fmt, ...)) end
+local function uid(p) return string.format("%s-%04X", p, math.random(0, 0xFFFF)) end
+local function getVeh()
+  local veh = getPlayerVehicle(0)
+  if not veh then L("E", "Kein Spielerfahrzeug.") end
+  return veh
+end
+
+-- Material-Erkennung -------------------------------------------------------------
+
+local function isTrue(v) return v == "1" or v == "true" end
+
+-- lackiert = irgendeine Stage hat instanceDiffuse (Fahrzeugfarbe), z. B. etki_main Stage 1, covet Stage 2
+local function isPaintable(m)
+  for s = 0, 3 do if isTrue(m:getField("instanceDiffuse", s)) then return true end end
+  return false
+end
+
+-- Mesh-Name aus mapTo: "etki" → "etki", Skin "etki.skin.camo" → "etki"
+local function meshStem(mapTo)
+  return mapTo and mapTo:match("^([^%.]+)") or nil
+end
+
+local function findTargets(veh, proj)
+  local idxByMesh = {}
+  for k, n in pairs(proj:getShapeMaterialNames()) do idxByMesh[n] = k end
+
+  local targets, skipped, seen = {}, {}, {}
+  for _, objName in ipairs(veh:getMaterialNames() or {}) do
+    local m = not seen[objName] and scenetree.findObject(objName)
+    seen[objName] = true
+    if m then
+      local mapTo = m:getField("mapTo", 0)
+      local mesh = idxByMesh[mapTo] and mapTo or meshStem(mapTo)
+      local idx = mesh and idxByMesh[mesh]
+      if idx and isPaintable(m) then
+        local layers = tonumber(m:getField("activeLayers", 0)) or 1
+        if layers >= 4 then
+          table.insert(skipped, objName .. " (4 Ebenen belegt)")
+        else
+          table.insert(targets, { obj = m, objName = objName, mesh = mesh, idx = idx, stage = layers })
+        end
+      end
+    end
+  end
+  return targets, skipped
+end
+
+-- Projektionen -------------------------------------------------------------------
+
+local function newProj(veh, targets)
+  local p = DecalProjection("", RESOLUTION, UV_LAYER, 0)
+  p:setShape(veh:getDecalProjectionShape())
+  p:clearMaterialIdx()
+  local seen = {}
+  for _, t in ipairs(targets) do
+    if not seen[t.idx] then p:addMaterialIdx(t.idx); seen[t.idx] = true end
+  end
+  p:setEnabled(true)
+  return p
+end
+
+local function refreshProj(veh, p, prefix, set)
+  veh:setTextureSet(prefix, set)
+  p:setShape(veh:getDecalProjectionShape())
+  p:setWorldTransform(veh:getRefNodeMatrix())
+  p:setTransform(veh:getRefNodeMatrix():copy():setPosition(vec3(0, 0, 0)):inverse())
+end
+
+local function refresh(veh)
+  refreshProj(veh, state.color.proj, COLOR_PREFIX, state.color.set)
+  refreshProj(veh, state.mask.proj, MASK_PREFIX, state.mask.set)
+end
+
+local function baseLayer()   -- schwarz = unsichtbar in der Maske, gegen Datenreste (Spike 2, Lauf 3)
+  return { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
+           enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
+end
+
+-- Jeder Patina-Layer trägt patinaColor und patinaStrength. Daraus entstehen beide Stacks.
+local function buildStacks()
+  local colorStack, maskStack = { baseLayer() }, { baseLayer() }
+  for _, l in ipairs(state.layers) do
+    local c, s = l.patinaColor, l.patinaStrength
+    local cl = shallowcopy(l); cl.color = Point4F(c[1], c[2], c[3], 1); cl.uid = l.uid .. "-c"
+    local ml = shallowcopy(l); ml.color = Point4F(s, s, s, 1);          ml.uid = l.uid .. "-m"
+    table.insert(colorStack, cl)
+    table.insert(maskStack, ml)
+  end
+  return colorStack, maskStack
+end
+
+local function rebake()
+  local veh = getVeh(); if not veh or not state then return end
+  refresh(veh)
+  local cs, ms = buildStacks()
+  local t = hptimer()
+  state.color.proj:clearBakedTextures()
+  local r1 = state.color.proj:bakeLayers(cs, veh.jbeam)
+  state.mask.proj:clearBakedTextures()
+  local r2 = state.mask.proj:bakeLayers(ms, veh.jbeam)
+  local dt = t:stopAndReset()
+  L("I", "bake: %d Layer, %.2f ms, code=%s/%s", #state.layers, dt,
+    tostring(r1 and r1.status and r1.status.code), tostring(r2 and r2.status and r2.status.code))
+end
+
+local function applyStages()
+  for _, t in ipairs(state.targets) do
+    local m, s = t.obj, t.stage
+    t.backup = { activeLayers = m:getField("activeLayers", 0) }
+    for _, f in ipairs(STAGE_FIELDS) do t.backup[f] = m:getField(f, s) end
+    m:setField("baseColorMap", s, COLOR_PREFIX .. "BaseColor")
+    m:setField("diffuseMapUseUV", s, tostring(UV_LAYER))
+    m:setField("opacityMap", s, MASK_PREFIX .. "BaseColor")
+    m:setField("opacityMapUseUV", s, tostring(UV_LAYER))
+    m:setField("metallicFactor", s, "0")
+    m:setField("roughnessFactor", s, "1")
+    m:setField("instanceDiffuse", s, "0")
+    m:setField("activeLayers", 0, tostring(s + 1))
+    m:reload()
+  end
+end
+
+local function restoreStages()
+  for _, t in ipairs(state.targets) do
+    if t.backup then
+      for _, f in ipairs(STAGE_FIELDS) do t.obj:setField(f, t.stage, t.backup[f] or "") end
+      t.obj:setField("activeLayers", 0, t.backup.activeLayers or "1")
+      t.obj:reload()
+    end
+  end
+end
+
+-- Befehle --------------------------------------------------------------------------
+
+M.start = function()
+  local veh = getVeh(); if not veh then return end
+  if state then L("W", "Läuft schon, erst stop()."); return end
+
+  local probe = DecalProjection("", RESOLUTION, UV_LAYER, 0)
+  probe:setShape(veh:getDecalProjectionShape())
+  local targets, skipped = findTargets(veh, probe)
+
+  local lines = {}
+  for _, t in ipairs(targets) do
+    table.insert(lines, string.format("  %-28s → Mesh '%s' [%d], Stage %d", t.objName, t.mesh, t.idx, t.stage))
+  end
+  L("I", "Fahrzeug %s: %d lackierte Materialien\n%s", veh.jbeam, #targets, table.concat(lines, "\n"))
+  if #skipped > 0 then L("W", "Übersprungen: %s", table.concat(skipped, ", ")) end
+  if #targets == 0 then L("E", "Keine lackierten Materialien gefunden."); return end
+
+  local cp, mp = newProj(veh, targets), newProj(veh, targets)
+  state = {
+    vehId = veh:getID(), targets = targets, layers = {},
+    color = { proj = cp, set = cp:getTextureSet() },
+    mask  = { proj = mp, set = mp:getTextureSet() },
+  }
+  applyStages()
+  rebake()
+  L("I", "start(): bereit. coat(0.7) oder decal(\"left\").")
+end
+
+-- gleichmäßiger Dreck auf allen erfassten Flächen (Fill-Layer)
+M.coat = function(strength, r, g, b)
+  if not state then L("E", "Erst start()."); return end
+  table.insert(state.layers, {
+    type = 1, blendMode = 1, colorPaletteMapId = 0, enabled = true, locked = false,
+    uid = uid("coat"), name = "Patina Coat", children = {},
+    patinaColor = { r or DIRT[1], g or DIRT[2], b or DIRT[3] }, patinaStrength = strength or 0.7,
+  })
+  rebake()
+end
+
+M.decal = function(side, size)
+  if not state then L("E", "Erst start()."); return end
+  local veh = getVeh(); if not veh then return end
+  side = side or "left"
+  local dir = dirs[side]; if not dir then L("E", "Unbekannte Seite '%s'", tostring(side)); return end
+
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local center, ext = (mn + mx) * 0.5, (mx - mn) * 0.5
+  local reach = math.abs(dir.x) * ext.x + math.abs(dir.y) * ext.y + math.abs(dir.z) * ext.z + 1.0
+  local camPos = center - dir * reach
+  local q = quatFromDir(dir, math.abs(dir.z) > 0.9 and vec3(0, 1, 0) or vec3(0, 0, 1))
+  local camM = QuatF(q.x, q.y, q.z, q.w):getMatrix()
+  camM:setPosition(camPos)
+
+  local p = state.color.proj
+  p:setDecalTexturePath("color", TEST_TEXTURE)
+  p.decalColor = Point4F(1, 1, 1, 1)
+  p.decalScale = vec3(size or 0.5, 0.1, size or 0.5)
+  p.decalRotation = 0
+  p.useSurfaceNormal = false
+  state.pending = { side = side, dir = dir, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0 }
+end
+
+local function processPending()
+  local req, p = state.pending, state.color.proj
+  if bit.band(p:getSettings(), USE_MOUSE_POS) == USE_MOUSE_POS then p:toggleSetting(USE_MOUSE_POS) end
+  p.cursorPosition = Point2F(0.5, 0.5)
+  p:projectDynamicDecals(req.camM, req.projM)
+  req.frames = req.frames + 1
+  if req.frames < FRAMES_BEFORE_READ then return end
+
+  local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end)
+  local hit = ok and data and data.decalPos and vec3(data.decalPos)
+  if not (hit and hit.x == hit.x and hit:length() < 1e6) then
+    if req.frames < FRAMES_MAX then return end
+    L("W", "decal(%s): kein Treffer nach %d Frames (kein erfasstes Material im Strahl?).", req.side, req.frames)
+    p:flushDynamicTextures(); state.pending = nil
+    return
+  end
+  data.uid, data.name, data.enabled, data.locked, data.children = uid("decal"), "Patina " .. req.side, true, false, {}
+  data.patinaColor, data.patinaStrength = { DIRT[1], DIRT[2], DIRT[3] }, 1
+  table.insert(state.layers, data)
+  p:flushDynamicTextures()
+  state.pending = nil
+  L("I", "decal(%s): Treffer bei %s", req.side, tostring(hit))
+  rebake()
+end
+
+M.clear = function()
+  if not state then return end
+  state.layers = {}
+  rebake()
+end
+
+M.stop = function()
+  if not state then return end
+  restoreStages()
+  L("I", "stop(): %d Materialien wiederhergestellt.", #state.targets)
+  state = nil
+end
+
+M.onUpdate = function()
+  if not state then return end
+  local veh = getPlayerVehicle(0)
+  if not veh or veh:getID() ~= state.vehId then return end
+  refresh(veh)
+  if state.pending then processPending() end
+  if not state then return end
+  state.color.proj:combineTextures(state.color.set)
+  state.mask.proj:combineTextures(state.mask.set)
+end
+
+M.onVehicleDestroyed = function(vid) if state and state.vehId == vid then M.stop() end end
+M.onVehicleReplaced  = function(vid) if state and state.vehId == vid then M.stop() end end
+M.onExtensionUnloaded = function() M.stop() end
+
+return M
