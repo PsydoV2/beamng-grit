@@ -762,3 +762,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (`blendMode = 2` am Layer) greift nicht, es wird normal überblendet. (Vermutung, nicht einzeln gemessen.)
 - Fix unabhängig vom Blend-Modus: Deckkraft je Bereich (Seite je Rad, Heck gemeinsam) monoton, max(vorher, Tempo),
   +0.02 pro Spritzer, höchstens 0.9. Additiv-Code entfernt.
+
+### M2.1, Lauf 3 (2026-11-06)
+- Sebastian: Dreck deutlich besser ✅, aber es flackert weiß beim Fahren im Dreck ❌.
+- Deutung: Während der 3 Projektions-Frames zeigt die Farb-Projektion eine Vorschau mit `decalColor` (1,1,1,1)
+  in der Live-Textur (`combineTextures` jeden Frame) → weißer Blitz, wo die Maske schon Dreck hat. Bei Kratzern
+  (hell) fiel das nicht auf. Fix: Vorschau-Alpha 0; die Layer-Farbe kommt ohnehin aus `variants()`.

@@ -118,7 +118,9 @@ function R:update(veh)
     local p, d = self.color, req.d
     if req.frames == 0 then
       p:setDecalTexturePath("color", d.texture)
-      p.decalColor = Point4F(1, 1, 1, 1)
+      -- Vorschau während der 3 Projektions-Frames unsichtbar: sie landet in der Live-Textur und blitzte weiß auf
+      -- (M2.1 Lauf 3). Layer-Farbe setzt variants() danach ohnehin neu.
+      p.decalColor = Point4F(1, 1, 1, 0)
       p.decalScale = vec3(d.width, d.depth, d.length)
       p.decalRotation = d.rot or 0
       p.useSurfaceNormal = false
