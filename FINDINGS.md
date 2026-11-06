@@ -648,3 +648,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Ferne Treffer (Welt-Koordinaten, Gegenseite x=+0.57) werden verworfen ✅.
 - ~1 % Striche auf der Gegenseite: Decal-Spiegeln (`mirrored`, `editor/api/dynamicDecals.lua:520,929,2484`,
   Spiegelebene x = Mitte + Offset) → Layer `mirrored = false`, Projektion `mirrored = false`.
+
+### M1.1, Lauf 5 (2026-11-06) ✅ Pipeline steht
+- Strg+L im Auto → sofort Schrammen ✅; Ersetzen → normal ✅, Schrammen ✅. Neuspawn 420–460 ms.
+- Treffer meist ≤ 0.1 m neben der Anfrage. Rest auf der „Gegenseite“: Anfragen bei x=−0.495, y=−1.1…−1.25,
+  z=0.13–0.3 = Felge vorne rechts (Metall, am Reifenfilter vorbei) → Treffer ~0.4 m innen. Fix: alle Rad-Knoten
+  (`wheels.wheels[i].nodes/.treadNodes`, `vehicle/wheels.lua:183,200,1091`) ausnehmen.

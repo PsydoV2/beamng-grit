@@ -22,6 +22,9 @@ local axF, axU, axL            -- Fahrzeugachsen in Welt (vorne, oben, links), p
 -- Decal-Raum = Ausgangspositionen relativ zum Referenzknoten (M1.1 Lauf 3: ohne Abzug ~0.32 m seitlich versetzt;
 -- Ausgangsposition des Referenzknotens wie vehicle/bdebugImpl.lua:648)
 local refPos
+-- Rad-Knoten (Felge/Nabe aus Metall rutschen am Reifenfilter vorbei, M1.1 Lauf 5): wheels.wheels[i].nodes/.treadNodes
+-- (vehicle/wheels.lua:183,200,1091-1092)
+local wheelNodes = {}
 
 -- Weltvektor → Fahrzeugraum (jbeam: +x links, −y vorne, +z oben; Spike 1)
 local function toLocal(w)
@@ -33,6 +36,7 @@ local function r3(x) return math.floor(x * 1000 + 0.5) / 1000 end
 local function nodeCollision(p)
   if p.materialID2 == RUBBER or p.slipVel < SCRAPE_SLIP or not axF then return end
   local cid = p.id1
+  if wheelNodes[cid] then return end
   local now = obj:getSimTime()
   if lastEmit[cid] and now - lastEmit[cid] < NODE_COOLDOWN then return end
   lastEmit[cid] = now
@@ -73,6 +77,14 @@ local function init()
   local n = rn and v.data.nodes[rn.ref]
   refPos = n and vec3(n.pos) or nil
   if not refPos then log("W", "patinaSensor", "Kein Referenzknoten – Schrammen aus") end
+  wheelNodes = {}
+  for i = 0, (wheels.wheelCount or 0) - 1 do
+    local wd = wheels.wheels[i]
+    if wd then
+      for _, n in pairs(wd.nodes or {}) do wheelNodes[n] = true end
+      for _, n in pairs(wd.treadNodes or {}) do wheelNodes[n] = true end
+    end
+  end
   reset()
 end
 
