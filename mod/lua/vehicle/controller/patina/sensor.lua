@@ -122,6 +122,9 @@ local function nodeCollision(p)
   if not node or not refPos then return end
   -- p.normal = Normale der getroffenen Fläche (zeigt zum Auto hin) → nach außen am Auto = −normal (M1.1: Striche unsichtbar)
   local n = -toLocal(vec3(p.normal))
+  -- Unterboden (Fläche zeigt nach unten): unsichtbar, und die Projektion von unten färbte senkrechte Flächen in
+  -- Streifen (M2.2 Lauf 2: Aufsetzen auf Schotter → 121 Schrammen, senkrechte Streifen an der Bordwand)
+  if n.z < -0.6 then return end
   local s = toLocal(vec3(p.slipVec))
   table.insert(pending, {
     c = cid, px = r3(node.pos.x - refPos.x), py = r3(node.pos.y - refPos.y), pz = r3(node.pos.z - refPos.z),

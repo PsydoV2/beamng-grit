@@ -75,6 +75,7 @@ function R:rebake(veh)
   local t = hptimer()
   self.color:clearBakedTextures(); self.color:bakeLayers(cs, veh.jbeam)
   self.mask:clearBakedTextures();  self.mask:bakeLayers(ms, veh.jbeam)
+  self.idleFrames = 0   -- danach wieder zusammenführen
   return t:stopAndReset()
 end
 
@@ -117,7 +118,8 @@ function R:update(veh)
   if req then
     local p, d = self.color, req.d
     if req.frames == 0 then
-      p:setDecalTexturePath("color", d.texture)
+      -- Textur nur bei Wechsel setzen (Verdacht Ladespitze: render:update CPU max 30 ms, M2.2 Lauf 2)
+      if self.curTexture ~= d.texture then p:setDecalTexturePath("color", d.texture); self.curTexture = d.texture end
       -- Vorschau während der 3 Projektions-Frames unsichtbar: sie landet in der Live-Textur und blitzte weiß auf
       -- (M2.1 Lauf 3). Layer-Farbe setzt variants() danach ohnehin neu.
       p.decalColor = Point4F(1, 1, 1, 0)
@@ -170,8 +172,12 @@ function R:update(veh)
       end
     end
   end
-  self.color:combineTextures(self.colorSet)
-  self.mask:combineTextures(self.maskSet)
+  -- Zusammenführen nur, solange gearbeitet wird, und sonst alle 60 Frames (Leerlauf kostete 0.6 ms CPU je Frame)
+  self.idleFrames = req and 0 or (self.idleFrames or 0) + 1
+  if req or self.idleFrames <= 3 or self.idleFrames % 60 == 0 then
+    self.color:combineTextures(self.colorSet)
+    self.mask:combineTextures(self.maskSet)
+  end
 end
 
 return R

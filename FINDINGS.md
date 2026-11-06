@@ -788,3 +788,17 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Fix: Staub-Tiefe 0.15 m, Flecken kleiner (Heck 0.6–1.0 m, oben 0.7–1.1 m).
 - Frames: noch nicht gemessen → Messung eingebaut: `status()` loggt Frametime „Patina arbeitet“ vs. Leerlauf,
   CPU von `render:update` und Bake-Zeit pro Decal (Ø/max).
+
+### M2.2, Lauf 2 (2026-11-06) – Messung
+- Formen noch da (Screenshots `22-05-09/14/19`): senkrechte graue Streifen an der Bordwand der D-Serie.
+  Log 22:03:13: Aufsetzen auf Schotter mit 24 m/s → 121 Schrammen von Unterboden-Knoten (n ≈ −z) → Projektion
+  von unten färbt die senkrechte Bordwand in der Box. Außerdem lagen große Staub-Flecken über den Bildrand
+  (Abstand 0.36·size + Radius bis 200 px > 512) → harte gerade Kanten.
+- Messwerte `status()` (D-Serie, Utah):
+  - Leerlauf Ø 11.5 ms / max 21.6 ms; „Patina arbeitet“ (Warteschlange nicht leer) Ø 15.2 ms / max 21.9 ms
+    → ≈ +3.7 ms je Frame, solange Decals abgearbeitet werden. Später (wenig Arbeit) Ø 12.9 vs. 11.2 ms.
+  - `render:update` CPU Ø 1.7 ms, **max 30.2 ms**; im Leerlauf Ø 0.6 ms (refresh + combineTextures jeden Frame).
+  - Bake 188 Decals Ø 0.75 ms, max 1.77 ms (wie Spike 3).
+  - Einbruch am Anfang = 240 Decals auf einmal (121 Schrammen + 120 Spritzer) → lange Arbeitsphase.
+- Fixes: Unterboden-Schrammen (n.z < −0.6) ignorieren; Staub-Flecken ganz im Bild; Textur nur bei Wechsel setzen
+  (Verdacht für die 30-ms-Spitze); combineTextures im Leerlauf nur alle 60 Frames.

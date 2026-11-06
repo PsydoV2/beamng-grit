@@ -105,8 +105,10 @@ Save $c[0] $c[1] "dirt_splash.png"
 $rnd = New-Object System.Random(5005)
 $c = New-Canvas
 for ($i = 0; $i -lt 90; $i++) {
-  $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Sqrt($rnd.NextDouble()) * $size * 0.36
-  Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (90 + 110 * $rnd.NextDouble()) (25 + $rnd.Next(45))
+  # Fleck muss ganz im Bild bleiben (Abstand + Radius ≤ 0.47·size), sonst harte Kanten am Bildrand (M2.2 Lauf 2)
+  $r = 70 + 90 * $rnd.NextDouble()
+  $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Sqrt($rnd.NextDouble()) * ($size * 0.47 - $r)
+  Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) $r (25 + $rnd.Next(45))
 }
 for ($i = 0; $i -lt 1400; $i++) {
   $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Sqrt($rnd.NextDouble()) * $size * 0.45
