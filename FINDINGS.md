@@ -857,3 +857,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Offen: an der Leitplanke kein Kratzer; Log nur 3 Schrammen (Untergrund 13 ROCK). → Diagnose eingebaut:
   Sensor zählt Karosserie-Kontakte je Grund (langsam/weich/pause/unten/innen/ok) und Untergrund-ID, alle 2 s
   `patina_main.onSensorDiag` → Log „Kontakte …“.
+
+### M2.2, Lauf 6 (2026-11-06) ✅ Staub, Leitplanke geklärt
+- Diagnose: Leitplanke meldet Untergrund 2 METAL, ok-Kontakte 6–27 je 2 s, Kratzer kommen an (15 Decals,
+  6 synthetisch) – liegen bei der D-Serie aber tief (z 0.09–0.34, Schweller/Stoßstangenecken).
+- Sebastian mit schwarzem Mod-Auto: Kratzer und Staub deutlich sichtbar ✅. Auf weißem Lack ist hell auf hell
+  schwer zu sehen (wie Chrom, vertagt).
