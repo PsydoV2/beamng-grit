@@ -184,27 +184,57 @@ local function copyMaterial(src, dst)
   end
 end
 
-local function cloneName(t) return (string.format("patina_%d_%s", state.vehId, t.objName):gsub("[^%w_]", "_")) end
+local function cloneName(t)
+  if M.keepClones then return (("patina_" .. t.objName):gsub("[^%w_]", "_")) end
+  return (string.format("patina_%d_%s", state.vehId, t.objName):gsub("[^%w_]", "_"))
+end
+
+local function createClone(orig, name)
+  local c = createObject("Material")
+  if orig.getFilename and orig:getFilename() then c:setFilename(orig:getFilename()) end
+  copyMaterial(orig, c)
+  c:setField("name", 0, name)
+  c:setField("mapTo", 0, name)
+  c.canSave = false
+  c:registerObject(name)
+  return c
+end
 
 -- Diagnose (Lauf 2: Kopie feldgleich, trotzdem chrom):
 --   M.noStage = true      → Kopie ohne Patina-Stage. Chrom? → Problem ist Kopie/Umschalten, nicht die Stage.
 --   M.switchToOrig = true → auf den Original-Namen zurückschalten. Normal? → switchMaterial selbst ist ok.
 M.noStage, M.switchToOrig = false, false
 
+-- Lauf 3: zur Laufzeit erzeugte Kopie = chrom/schwarz, Umschalten aufs Original = normal.
+-- Vermutung: das Fahrzeug kennt nur Materialien, die beim Spawn existierten (wie Glowmap-Materialien).
+-- Test: M.keepClones = true; M.prepClones(); Strg+R (Fahrzeug neu laden); M.start()
+M.keepClones = false
+M.prepClones = function()
+  local veh = getVeh(); if not veh then return end
+  M.keepClones = true
+  local probe = DecalProjection("", RESOLUTION, UV_LAYER, 0)
+  probe:setShape(veh:getDecalProjectionShape())
+  local targets = findTargets(veh, probe)
+  for _, t in ipairs(targets) do
+    local name = (("patina_" .. t.objName):gsub("[^%w_]", "_"))
+    local old = scenetree.findObject(name)
+    if old then old:delete() end
+    createClone(t.obj, name)
+    L("I", "prepClones: %s → %s", t.objName, name)
+  end
+  L("I", "prepClones: %d Kopien angelegt. Jetzt Strg+R, dann start().", #targets)
+end
+
 local function applyStages()
   local veh = be:getObjectByID(state.vehId)
   for _, t in ipairs(state.targets) do
     local name = cloneName(t)
-    local old = scenetree.findObject(name)
-    if old then old:delete() end
     -- Lauf 1 (2c): assignFieldsFromObject + c.mapTo → Kopie wirkt wie Chrom. Jetzt wie der Material-Editor
     -- (editor/api/material.lua:265-279 copyMaterialFields, :338-344): jedes Feld pro Stage + dynamische Felder.
-    local c = createObject("Material")
-    copyMaterial(t.orig, c)
-    c:setField("name", 0, name)
-    c:setField("mapTo", 0, name)
-    c.canSave = false
-    c:registerObject(name)
+    local c = scenetree.findObject(name)
+    if c and not M.keepClones then c:delete(); c = nil end
+    if c then L("I", "  Kopie %s wiederverwendet (existierte schon vor dem Spawn)", name)
+    else c = createClone(t.orig, name) end
     -- Diagnose: Felder der Kopie mit dem Original vergleichen (vor eigener Stage)
     local diffs = {}
     for f, _ in pairs(t.orig:getFields()) do
@@ -248,7 +278,7 @@ local function restoreStages()
   local veh = be:getObjectByID(state.vehId)
   for _, t in ipairs(state.targets) do
     if veh then for _, msc in ipairs(t.switches or {}) do veh:resetMaterials(msc) end end
-    if t.obj and t.obj ~= t.orig then t.obj:delete() end
+    if t.obj and t.obj ~= t.orig and not M.keepClones then t.obj:delete() end
     t.obj = t.orig
   end
 end

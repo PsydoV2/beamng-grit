@@ -434,3 +434,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Kopie wie Material-Editor: **keine einzige Feldabweichung** zum Original, trotzdem chrom sofort nach `start()`. ❌
   → Ursache liegt im Umschalten auf ein zur Laufzeit erzeugtes Material, nicht in den Feldern.
 - Lauf 3: Diagnose-Schalter `noStage` (Kopie ohne Stage) und `switchToOrig` (auf Originalnamen schalten).
+
+### Spike 2c, Lauf 3 (2026-11-06)
+- P1 `noStage` (Kopie ohne Stage): chrom, außerhalb der Konsole schwarz mit Chrom-Flackern. ❌
+- P2 `switchToOrig` (Umschalten auf Originalnamen): normal. ✅ → `switchMaterial` selbst ok.
+- P3 `stop()` → `resetMaterials`: Auto wieder normal. ✅
+- → Ein zur Laufzeit (nach dem Spawn) erzeugtes Material wird vom Fahrzeug nicht korrekt genutzt.
+  Glowmap-Zielmaterialien existieren immer schon beim Spawn. Lauf 4: Kopien anlegen, Fahrzeug neu laden
+  (Strg+R), dann umschalten (`prepClones`, `keepClones`). Zusätzlich `setFilename` vom Original.
