@@ -595,3 +595,19 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
     beim normalen Fahren (perp 2–8 m/s auf Schotter).
   - g-Formel falsch (Ruhe = 2.0 statt 1.0): `sensors.gz` enthält die Schwerkraft schon mit anderem Vorzeichen → Betrag ohne Abzug.
   - Fahrzeug-Fahrzeug-Stöße kommen vermutlich nicht über `nodeCollision` → über Schadenszuwachs (`beamstate.damage`) + Knoten mit Verformung (`beamDeformed`-Hook) lösen; prüfen in M1+.
+
+## M1 Kratzer-MVP
+
+### M1.1 (2026-11-06): Mod-Gerüst + Schrammen-Pipeline (Platzhalter-Strich)
+- Start: `scripts/patina/modScript.lua` → `setExtensionUnloadMode("patina_main","manual")` + `extensions.load`
+  (Muster `core/modmanager.lua:719-746`).
+- `lua/ge/extensions/patina/main.lua` (Extension `patina_main`): Spielerfahrzeug beim Spawn/Wechsel aktivieren
+  (Skin-Weg aus Spike 4), Sensor laden, Ereignisse → `render.lua` (Modul pro Fahrzeug, kein globaler Zustand).
+  Hooks: `onVehicleSpawned`, `onSpawnCCallback`, `onVehicleSwitched(old,new)`, `onVehicleResetted` (`ge/main.lua:1187`),
+  `onVehicleDestroyed`. Reset/Strg+R → Patina leer (Konzept).
+- `lua/vehicle/controller/patina/sensor.lua`: Schramme = Knoten mit `materialID2 ~= 4` und `slipVel > 1.5 m/s`,
+  pro Knoten alle 60 ms, gesendet alle 0.1 s (max. 12). Ort = Ausgangsposition des Knotens `v.data.nodes[cid].pos`
+  (Fahrzeugraum, `bdebugImpl.lua:648`); Normale/Schleifrichtung von Welt in Fahrzeugraum über
+  `obj:getDirectionVector/Up` (`ai.lua:41`), Achsen +x links, −y vorne, +z oben (Spike 1).
+- Decal: virtuelle Kamera auf `pos + n·d`, Blick `−n`, „oben“ = Schleifrichtung → gestreckter Strich
+  (`decalScale = (Breite, Tiefe, Länge)`), Platzhalter-Textur `_one.png`, Farbe hellgrau. Budget 100 Ebenen.
