@@ -141,13 +141,18 @@ local function prepare(veh)
   if #targets == 0 then L("W", "Fahrzeug %d (%s): keine lackierten Materialien", vid, tostring(veh.jbeam)); return end
   local car = cars[vid] or { skinMats = {} }
   cars[vid] = car
-  local seenName = {}
-  for _, n in ipairs(car.skinMats) do seenName[n] = true end
+  local keep = {}
   for _, t in ipairs(targets) do
     local name = skinMatName(t.mesh, vid)
     ensureSkinMaterial(t.obj, name)
-    if not seenName[name] then table.insert(car.skinMats, name); seenName[name] = true end
+    keep[name] = true
   end
+  -- Reste eines vorigen Fahrzeugs/Musters mit derselben ID löschen (nicht mehr in Benutzung: Skin war aus)
+  for _, n in ipairs(car.skinMats) do
+    if not keep[n] then local m = scenetree.findObject(n); if m then m:delete() end end
+  end
+  car.skinMats = {}
+  for n, _ in pairs(keep) do table.insert(car.skinMats, n) end
   veh:setSkin(SLOT .. "." .. skinOf(vid))
   car.phase = "respawn"
   car.timer = hptimer()
@@ -194,6 +199,10 @@ M.onSensorEvents = function(vid, ev)
   local car = cars[vid]
   if not car or car.phase ~= "active" or type(ev) ~= "table" then return end
   for _, s in ipairs(ev.scrapes or {}) do
+    if (car.scrapes or 0) < 15 then
+      L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
+        s.c, s.px, s.py, s.pz, s.nx, s.ny, s.nz, s.sx, s.sy, s.sz, s.v, s.m1, s.m2)
+    end
     local len = math.min(SCRATCH.maxLen, SCRATCH.minLen + s.v * SCRATCH.lenPerMs)
     local ok = car.r:request({
       pos = vec3(s.px, s.py, s.pz), normal = vec3(s.nx, s.ny, s.nz), up = vec3(s.sx, s.sy, s.sz),
@@ -215,18 +224,29 @@ M.onUpdate = function()
   end
 end
 
+-- Nur beim eigenen Neuspawn den Skin behalten. Jeder andere Spawn (Strg+R, neues Fahrzeug mit gleicher ID,
+-- Teile-/Musterwechsel) → Skin aus, danach frische Kopien der aktuellen Materialien (M1.1: ein neu gespawnter
+-- ETKI erbte über dieselbe ID das Muster des vorigen).
 M.onSpawnCCallback = function(vid)
   local car = cars[vid]
   if not car or not car.phase then return end
   local veh = be:getObjectByID(vid) or scenetree.findObject(vid)
-  if veh then veh:setSkin(SLOT .. "." .. skinOf(vid)) end
+  if not veh then return end
+  if car.phase == "respawn" then
+    veh:setSkin(SLOT .. "." .. skinOf(vid))
+  else
+    veh:setSkin(SLOT .. ".")
+    car.phase, car.r = "renew", nil
+  end
 end
 
 M.onVehicleSpawned = function(vid)
   local veh = be:getObjectByID(vid); if not veh then return end
   local car = cars[vid]
-  if car and car.phase then
-    attach(veh)   -- eigener Neuspawn, Strg+R oder Teilewechsel: Zustand neu (Konzept: Mesh geändert/repariert)
+  if car and car.phase == "respawn" then
+    attach(veh)
+  elseif car and car.phase == "renew" then
+    prepare(veh)  -- Strg+R / neues Fahrzeug / Teilewechsel: frisch kopieren, Zustand neu (Konzept: Mesh geändert/repariert)
   elseif vid == be:getPlayerVehicleID(0) then
     activate(vid)
   end
@@ -263,6 +283,20 @@ M.status = function()
       car.r and car.r.dropped or 0, car.r and car.r.misses or 0)
   end
 end
+-- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
+M.testScratch = function(side)
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
+  if not (car and car.r and veh) then L("E", "testScratch: Fahrzeug nicht aktiv"); return end
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local c = (mn + mx) * 0.5
+  local n = ({ left = vec3(1, 0, 0), right = vec3(-1, 0, 0), top = vec3(0, 0, 1) })[side or "left"]
+  local pos = vec3(n.x > 0 and mx.x or (n.x < 0 and mn.x or c.x), c.y, n.z > 0 and mx.z or c.z)
+  car.r:request({ pos = pos, normal = n, up = vec3(0, -1, 0), width = 0.05, length = 0.6, depth = 0.4,
+    texture = SCRATCH.texture, color = SCRATCH.color, strength = 1, name = "Patina Test" })
+  L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
+end
+
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
   if car and car.r then car.r:clear(be:getObjectByID(vid)) end

@@ -611,3 +611,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   `obj:getDirectionVector/Up` (`ai.lua:41`), Achsen +x links, −y vorne, +z oben (Spike 1).
 - Decal: virtuelle Kamera auf `pos + n·d`, Blick `−n`, „oben“ = Schleifrichtung → gestreckter Strich
   (`decalScale = (Breite, Tiefe, Länge)`), Platzhalter-Textur `_one.png`, Farbe hellgrau. Budget 100 Ebenen.
+
+### M1.1, Lauf 1 (2026-11-06)
+- Aktivierung klappt (6/6 Materialien, Neuspawn 1418 ms beim ersten Mal). 300 Schrammen erkannt, 100 Decals
+  gesetzt (Budget voll, 280 verworfen) – aber **nichts sichtbar** ❌. Vermutung: `p.normal` ist die Normale der
+  getroffenen Fläche und zeigt ins Auto → Kamera saß innen. Fix: Normale am Auto = −p.normal. Knoten-Cooldown 0.15 s.
+- **Muster-Übertrag** ❌: Neues Fahrzeug über den Fahrzeug-Wähler behält die Objekt-ID (47478) → alte Kopien
+  samt Muster + Skin wurden übernommen. Fix: in `onSpawnCCallback` nur beim eigenen Neuspawn den Skin setzen,
+  sonst Skin-Slot leeren und nach dem Spawn frisch vorbereiten (kostet bei Strg+R einen zweiten Spawn).
+  Alte Kopien derselben ID werden gelöscht.
+- Diagnose: erste 15 Schrammen + Decal-Treffer ins Log, `patina_main.testScratch("left")`.

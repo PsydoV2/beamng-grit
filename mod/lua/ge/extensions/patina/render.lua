@@ -120,6 +120,9 @@ function R:update(veh)
         data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
         data.patinaColor, data.patinaStrength = d.color, d.strength
         table.insert(self.layers, data)
+        if self.log and #self.layers <= 15 then
+          self.log("I", "Decal %d: Treffer %s (angefragt %s)", #self.layers, tostring(hit), tostring(d.pos))
+        end
         local cl, ml = variants(data)
         self.color:bakeLayers({ cl }, veh.jbeam)
         self.mask:bakeLayers({ ml }, veh.jbeam)

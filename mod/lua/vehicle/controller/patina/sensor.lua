@@ -11,7 +11,7 @@ local M = {}
 M.type = "auxiliary"
 
 local SCRAPE_SLIP = 1.5        -- m/s Gleitgeschwindigkeit
-local NODE_COOLDOWN = 0.06     -- s pro Knoten
+local NODE_COOLDOWN = 0.15     -- s pro Knoten (M1.1: Budget nach 300 Schrammen voll)
 local SEND_INTERVAL = 0.1      -- s
 local MAX_PER_SEND = 12
 local RUBBER = 4
@@ -35,7 +35,8 @@ local function nodeCollision(p)
   lastEmit[cid] = now
   local node = v.data.nodes[cid]
   if not node then return end
-  local n = toLocal(vec3(p.normal))
+  -- p.normal = Normale der getroffenen Fläche (zeigt zum Auto hin) → nach außen am Auto = −normal (M1.1: Striche unsichtbar)
+  local n = -toLocal(vec3(p.normal))
   local s = toLocal(vec3(p.slipVec))
   table.insert(pending, {
     c = cid, px = r3(node.pos.x), py = r3(node.pos.y), pz = r3(node.pos.z),
