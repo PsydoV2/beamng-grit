@@ -263,3 +263,19 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   `cursorPosScreenUv = (0.086, 0.981)`: Der Strahl geht durch die **Mausposition**.
 - Fix: Flag `UseMousePos` (`1<<2`) per `toggleSetting` aus, `proj.cursorPosition = Point2F(0.5, 0.5)`
   (Vorbild `ui/liveries/decal.lua:604-613`).
+
+### Spike 1, Lauf 3 (2026-11-06, ETKI) – BESTANDEN ✅
+- Mit zentriertem Cursor: Treffer nach 3 Frames, Abstand zum Kamerastrahl 0,001 m. Rote „1“ sichtbar auf
+  Dach, Front und Tür.
+- **Achsen** im Fahrzeug-Koordinatensystem: −x = rechte Seite, −y = vorne, +z = oben.
+- **Projektionstiefe** = `decalScale.y` (1 m im Test) → „front“ färbte Stoßstange UND Haube. Für Patina
+  kleine Tiefe (≈ 0,05–0,1 m), sonst schmieren Kratzer über Kanten.
+- Kosten: Fill-Bake ≈ 1,4 ms, erster Decal-Bake ≈ 30 ms (Textur-Laden?), danach 2–4 ms bei 2–4 Layern.
+
+### Vorbereitung Spike 2 (Weg A′)
+- Vanilla-Presets steuern die Deckkraft der Dynamic-Texture-Stage über eine **feste** `opacityMap`.
+- Vanilla-Vorbild für eine Dreck-Ebene: `common.zip: vehicles/common/eu_truck/eu_tanker/main.materials.json`,
+  `eu_tanker_stainless` Stage 2 mit `opacityMap: …_skin_stainless_dirt.data.png`, `opacityMapUseUV: 1`,
+  `activeLayers: 3`.
+- Frage für Spike 2: Lässt sich `opacityMap` auf einen Kanal des Dynamic-Texture-Sets legen
+  (`@<prefix>BaseColor | Metallic | Roughness`), und wird ein eigener Prefix akzeptiert?
