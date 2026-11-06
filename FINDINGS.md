@@ -565,3 +565,20 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Ergebnis Skin-Weg komplett: eigener Slot `patina` (Vorrang vor paint_design), Kopie des aktuell genutzten
   Materials (Lackierungsmuster bleibt sichtbar), Skin bei jedem Spawn in `onSpawnCCallback` setzen,
   einmaliger `veh:respawn` beim Aktivieren, Texturen in `onVehicleSpawned` binden.
+
+### Spike 5 (2026-11-06): Ereignis-Logger – Aufbau
+- Fahrzeug-Controller zur Laufzeit: `controller.loadControllerExternal(fileName, name, data)`
+  (`vehicle/controller.lua:297-374`), Datei `lua/vehicle/controller/<fileName>.lua` → bei uns
+  `mod/lua/vehicle/controller/patinaSpike/eventLogger.lua`; `unloadControllerExternal` (`:376`).
+  Controller-Hooks: `init`, `reset`, `updateGFX`, `nodeCollision` (`controllerTemplate.lua`, `controller.lua:186,584,605`).
+- `nodeCollision(p)`: jeder Knotenkontakt mit `id1, pos, normal, nodeVel, perpendicularVel, slipVec, slipVel,
+  slipForce, normalForce, depth, materialID1, materialID2` (`vehicle/main.lua:491-501`) → Quelle für Spritzer
+  (Material + Rutschen) und Stöße (Senkrechtgeschwindigkeit, Knoten).
+- Räder: `wheels.wheels[i]` mit `contactMaterialID1/2` (4 = RUBBER → anderes nehmen, `sounds.lua:429-432`),
+  `lastSlip`, `wheelSpeed`, `contactDepth`. Wasser: `obj:inWater(cid)` (`playerController.lua:376`).
+  Schaden `beamstate.damage` (`ai.lua:4379`). g: `sensors.gx/gy/gz` (`sensors.lua:7-29`).
+- Material-IDs (`lua/common/particles.json`, Reihenfolge = ID): 2 METAL … 9 WATER, 10 ASPHALT, 11 ASPHALT_WET,
+  13 ROCK, 14 DIRT_DUSTY, 15 DIRT, 16 SAND, 17 SANDY_ROAD, 18 MUD, 19 GRAVEL, 20 GRASS, 21 ICE, 22 SNOW, 30 COBBLESTONE.
+  Namen im Fahrzeug-Lua über `particles.getMaterialsParticlesTable()` (`particles` global, `vehicle/main.lua:239`).
+- An GE: `obj:queueGameEngineLua("patinaSpike_spike5.onVehicleEvents(id, serialize(msg))")` alle 0.2 s
+  (Muster `bdebugImpl.lua:2565`). CPU mit `HighPerfTimer()` (`beamstate.lua:1542`).
