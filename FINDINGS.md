@@ -582,3 +582,16 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Namen im Fahrzeug-Lua über `particles.getMaterialsParticlesTable()` (`particles` global, `vehicle/main.lua:239`).
 - An GE: `obj:queueGameEngineLua("patinaSpike_spike5.onVehicleEvents(id, serialize(msg))")` alle 0.2 s
   (Muster `bdebugImpl.lua:2565`). CPU mit `HighPerfTimer()` (`beamstate.lua:1542`).
+
+### Spike 5, Lauf 1 (2026-11-06, Testmap v2, Rally Gravel) ✅ Spike 5 abgeschlossen
+- Controller lädt per `loadControllerExternal`, Meldungen kommen 5×/s in GE an (898 Meldungen, 15344 Frames). Kein Ruckeln.
+- CPU im Fahrzeug-Lua: nodeCollision Ø 0.004 ms/Frame, updateGFX Ø 0.008 ms/Frame (inkl. Timer-Overhead) → vernachlässigbar.
+- Material-IDs stimmen (ID 10 = ASPHALT, 15 = DIRT); gesehen: ASPHALT, DIRT, SAND (16), MUD (18).
+  Kontaktpaar = `materialID1` Untergrund / `materialID2` Knotenmaterial (4 RUBBER = Reifen, 3 PLASTIC, 2 METAL = Karosserie).
+- Wasser: Anteil Prüfknoten im Wasser bis 0.75; dabei keine Bodenkontakte gemeldet ✅.
+- Crash: Schaden pro Fenster bis 14081, g bis 19.3, Karosserie-Kontakte (10/3, 10/2) ✅.
+- Korrekturen für den Mod:
+  - Stöße nur von Nicht-Reifen-Knoten werten (`materialID2 ~= 4`): 2958 von 3070 „Stößen“ waren Reifenknoten
+    beim normalen Fahren (perp 2–8 m/s auf Schotter).
+  - g-Formel falsch (Ruhe = 2.0 statt 1.0): `sensors.gz` enthält die Schwerkraft schon mit anderem Vorzeichen → Betrag ohne Abzug.
+  - Fahrzeug-Fahrzeug-Stöße kommen vermutlich nicht über `nodeCollision` → über Schadenszuwachs (`beamstate.damage`) + Knoten mit Verformung (`beamDeformed`-Hook) lösen; prüfen in M1+.
