@@ -211,21 +211,19 @@ M.start = function()
   L("I", "Fahrzeug %s: %d lackierte Materialien\n%s", veh.jbeam, #targets, table.concat(lines, "\n"))
   if #skipped > 0 then L("W", "Übersprungen: %s", table.concat(skipped, ", ")) end
   if #targets == 0 then L("E", "Keine lackierten Materialien gefunden."); return end
-
-  local cp, mp, ep = newProj(veh, targets), newProj(veh, targets), newProj(veh, targets)
+  local cp, mp = newProj(veh, targets), newProj(veh, targets)
   state = {
     vehId = veh:getID(), targets = targets, layers = {},
     color = { proj = cp, set = cp:getTextureSet() },
     mask  = { proj = mp, set = mp:getTextureSet() },
-    -- Lauf K: das Material ist pro Modell geteilt. Andere Fahrzeuge ohne gebundenes Texture-Set zeigen
-    -- Datenreste (zweiter ETKI gelb). Sie bekommen eine leere, schwarze Maske = Deckkraft 0.
-    empty = { proj = ep, set = ep:getTextureSet() },
+    -- Lauf K: das Material ist pro Modell geteilt. Andere Fahrzeuge ohne eigenes Set zeigen Datenreste.
+    -- Lauf K′: ein gemeinsames leeres Set (mit der Form des Patina-Autos) → zweiter ETKI lavendelblau.
+    -- Jetzt: jedes andere Fahrzeug bekommt eine eigene leere Projektion mit SEINER Form.
+    others = {},
   }
-  refreshProj(veh, ep, MASK_PREFIX, state.empty.set)
-  ep:clearBakedTextures()
-  ep:bakeLayers({ baseLayer() }, veh.jbeam)
   applyStages()
   rebake()
+  L("I", "start(): bereit. coat(0.7) oder decal(\"left\").")
   L("I", "start(): bereit. coat(0.7) oder decal(\"left\").")
 end
 
@@ -359,13 +357,31 @@ M.stop = function()
 end
 
 local function bindEmpty()
+  local me = be:getObjectByID(state.vehId)
+  local model = me and me.jbeam
+  local alive = {}
   for _, v in ipairs(getAllVehicles()) do
-    if v:getID() ~= state.vehId then
-      v:setTextureSet(MASK_PREFIX, state.empty.set)
-      v:setTextureSet(COLOR_PREFIX, state.empty.set)
+    local id = v:getID()
+    if id ~= state.vehId and v.jbeam == model then  -- nur gleiches Modell teilt das Material (Spike)
+      alive[id] = true
+      local o = state.others[id]
+      if not o then
+        local p = newProj(v, state.targets)
+        o = { proj = p, set = p:getTextureSet() }
+        refreshProj(v, p, MASK_PREFIX, o.set)
+        v:setTextureSet(COLOR_PREFIX, o.set)
+        p:clearBakedTextures()
+        local r = p:bakeLayers({ baseLayer() }, v.jbeam)
+        state.others[id] = o
+        L("I", "leere Projektion für %s (ID %d), code=%s", tostring(v.jbeam), id,
+          tostring(r and r.status and r.status.code))
+      end
+      refreshProj(v, o.proj, MASK_PREFIX, o.set)
+      v:setTextureSet(COLOR_PREFIX, o.set)
+      o.proj:combineTextures(o.set)
     end
   end
-  state.empty.proj:combineTextures(state.empty.set)
+  for id in pairs(state.others) do if not alive[id] then state.others[id] = nil end end
 end
 
 M.onUpdate = function()
