@@ -117,6 +117,13 @@ local function resolveMaterial(veh, meshName)
   return candidates[1] and scenetree.findObject(candidates[1]), candidates[1]
 end
 
+-- Frische Dynamic Textures enthalten Datenreste (Lauf 3: rechte Seite rot nach start()).
+-- Deshalb immer zuerst eine schwarze, transparente Fill-Ebene backen (Fill-Layer wie ui/liveries/fill.lua).
+M._baseLayer = function()
+  return { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
+           enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
+end
+
 M.start = function(meshName)
   local veh = getVeh(); if not veh then return end
   if state then L("W", "Läuft schon, erst stop()."); return end
@@ -142,7 +149,7 @@ M.start = function(meshName)
   for _, f in ipairs(STAGE_FIELDS) do backup[f] = mat:getField(f, stage) end
 
   state = {
-    vehId = veh:getID(), proj = proj, textureSet = proj:getTextureSet(), layers = {},
+    vehId = veh:getID(), proj = proj, textureSet = proj:getTextureSet(), layers = { M._baseLayer() },
     mat = mat, matName = matName .. " (Objekt " .. matObjName .. ")", meshName = meshName, stage = stage, backup = backup,
     prefix = "@PatinaTexture", opacitySrc = "BaseColor", pending = nil,
   }
@@ -238,7 +245,7 @@ end
 
 M.clear = function()
   if not state then return end
-  state.layers = {}
+  state.layers = { M._baseLayer() }
   rebake()
 end
 

@@ -296,3 +296,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   → Eigener Textur-Set-Prefix `@PatinaTexture` wird akzeptiert, Zusatz-Stage über dem Lack funktioniert,
   kein Preset und kein Skin nötig. Weg A′ trägt grundsätzlich.
 - Hypothese „schwach“: `opacityMap` liest R/Helligkeit statt Alpha (Decal-Rot = 0,35). Test mit `color()`/`intensity()`.
+
+### Spike 2, Lauf 3 (2026-11-06, ETKI)
+- `color()` und `opacity("Metallic")` liefen nicht: In der Eingabe stand ein `~` vorne
+  (`unexpected symbol near '~'`). Ergebnis A = wie Lauf 2 (schwache „1“ auf dem Dach).
+- Direkt nach `start()` (0 Layer gebacken) war „gefühlt die ganze rechte Seite rot“ → **frische Dynamic
+  Textures enthalten Datenreste**. Fix: immer zuerst eine schwarze, transparente Fill-Ebene backen.
