@@ -343,3 +343,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - `coat()` (Fill-Layer) mit Maske: nur schwache Streifen. Fill-Layer kommen in der Maske nicht wie Decals an.
   Hypothese: Fill läuft über die Paletten-Logik (`colorPaletteMapId`). Test: grüner Fill bzw. `coat2()`
   (5 große Decals mit `_one.png`).
+
+### Spike 2b, Lauf 3 (2026-11-06, ETKI)
+- `coat2(0.7)`: alle 5 großen Decals (`_one.png`, 6 m, Tiefe 4 m) treffen, Bake 1–9 ms, Code 0 – aber
+  **nichts sichtbar** (nur Flackern der Live-Vorschau).
+- `clear()` → `coat(1,0,1,0)` → `full()`: Inneres braun, Ränder grün. Das Braun stammt vermutlich noch von
+  den coat2-Decals, obwohl mit 0 Layern neu gebacken wurde → `clearBakedTextures` löscht evtl. nicht alles,
+  oder Fill schreibt nur in leere Bereiche. ❓
+- `colorPaletteMapId = 0` = Layer rendert seine eigene Farbe (`ui/liveries/paint.lua:8-10`). Paletten-These verworfen.
+- Nächster Schritt: Texturen per `exportTextures` als PNG ausgeben und direkt ansehen.

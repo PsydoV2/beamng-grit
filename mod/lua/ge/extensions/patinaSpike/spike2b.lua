@@ -10,6 +10,7 @@
 --   patinaSpike_spike2b.decal("left")    -- Test-„1“: "left" | "right" | "top" | "front" | "rear"
 --   patinaSpike_spike2b.full()           -- Diagnose: Ebene ohne Maske, überall deckend (full(false) = Maske wieder an)
 --   patinaSpike_spike2b.status()         -- Material-Felder ins Log
+--   patinaSpike_spike2b.export("a")      -- gebackene Texturen als PNG nach <User>/patina_export/a/
 --   patinaSpike_spike2b.clear()          -- Dreck entfernen
 --   patinaSpike_spike2b.stop()           -- alle Materialien wiederherstellen
 
@@ -317,6 +318,19 @@ M.status = function()
     end
     L("I", "%s: %s", t.objName, table.concat(parts, " "))
   end
+end
+
+-- Diagnose: gebackene Texturen beider Projektionen als PNG in den User-Ordner (/patina_export/<tag>/)
+-- Muster: exportSkin → decalProjection:exportTextures(dir, name, "png") (dynamicDecals.lua:2083)
+M.export = function(tag)
+  if not state then L("E", "Erst start()."); return end
+  tag = tag or os.date("%H%M%S")
+  local dir = "/patina_export/" .. tag .. "/"
+  local ok1, e1 = pcall(function() return state.color.proj:exportTextures(dir, "color", "png") end)
+  local ok2, e2 = pcall(function() return state.mask.proj:exportTextures(dir, "mask", "png") end)
+  L("I", "export(%s): color %s, mask %s → %s", tag, ok1 and "ok" or tostring(e1), ok2 and "ok" or tostring(e2), dir)
+  local veh = getVeh()
+  if veh then L("I", "Fahrzeugfarbe: %s", tostring(veh.color)) end
 end
 
 M.clear = function()
