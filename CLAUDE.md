@@ -1,13 +1,13 @@
-# Grit (Code-Name Patina) – BeamNG.drive-Mod für dynamischen Dreck und Kratzer
+# Grit – BeamNG.drive-Mod für dynamischen Dreck und Kratzer (früher Patina)
 
-Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Intern (Dateien, `patina_main`)
-heißt es noch Patina. `README.md` ist die öffentliche Beschreibung (Englisch), bei neuen Features mitpflegen.
+Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Code, Pfade und Konsolenbefehle heißen seit 2026-11-06 `grit` (vorher Patina; Repo-Ordner heißt noch „Dynamic Patina“).
+Autor im Release: **Psydo** (nicht Sebastian). Lizenz: CC BY-NC-SA 4.0 (`LICENSE`). `README.md` ist die öffentliche Beschreibung (Englisch), bei neuen Features mitpflegen.
 
 Übergabe für neue Sessions. Stand: 2026-11-06, letzter Commit siehe `git log -1`.
 Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Änderungen den passenden Abschnitt lesen).
 
 ## Personen und Zusammenarbeit
-- Sebastian, Autor. **Antworten auf Deutsch**, kurz und konkret.
+- Sebastian (öffentlich: Psydo), Autor. **Antworten auf Deutsch**, kurz und konkret.
 - Ich schreibe den Code. Sebastian testet im Spiel, gibt Konsolenbefehle ein und meldet kurz zurück.
   Logs und Screenshots lese ich selbst.
 - Testanweisungen immer als nummerierte Schritte. Konsolenbefehle **ohne `~`** davor angeben.
@@ -30,25 +30,25 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 ## Pfade
 - Spiel: `F:\SteamLibrary\steamapps\common\BeamNG.drive`, Version 0.40.5.0, Lua unter `lua/`.
 - User-Ordner: `C:\Users\sebfa\AppData\Local\BeamNG\BeamNG.drive\current`
-  - `mods/unpacked/patina` ist eine **Junction** auf `E:\BeamNGMods\Dynamic Patina\mod`.
+  - `mods/unpacked/grit` ist eine **Junction** auf `E:\BeamNGMods\Dynamic Patina\mod`.
     Änderungen wirken nach **Strg+L** im Spiel (Lua neu laden).
-  - **`patina.log`** ist unser eigenes Log, wird sofort geschrieben (`M.debugLog`). `beamng.log` puffert minutenlang.
+  - **`grit.log`** ist unser eigenes Log, wird sofort geschrieben (`M.debugLog`). `beamng.log` puffert minutenlang.
   - Screenshots (Strg+P) liegen unter `screenshots/2026-11/`.
 - Repo `E:\BeamNGMods\Dynamic Patina`:
-  - `mod/scripts/patina/modScript.lua` lädt `patina_main`.
-  - `mod/lua/ge/extensions/patina/main.lua`: GE-Extension, Fahrzeug-Lebenszyklus, Ereignis → Decal, Konsolenbefehle.
-  - `mod/lua/ge/extensions/patina/render.lua`: Decal-Renderer pro Fahrzeug (Projektion, Synthese, Backen).
-  - `mod/lua/vehicle/controller/patina/sensor.lua`: Fahrzeug-Controller, erzeugt Ereignisse aus Kollisionen und Rädern.
-  - `mod/lua/vehicle/controller/patinaSpike/eventLogger.lua`: alter Spike-5-Logger, wird nicht benutzt.
-  - `mod/art/patina/*.png`: Texturen, erzeugt von `tools/gen_textures.ps1` mit festen Seeds.
+  - `mod/scripts/grit/modScript.lua` lädt `grit_main`.
+  - `mod/lua/ge/extensions/grit/main.lua`: GE-Extension, Fahrzeug-Lebenszyklus, Ereignis → Decal, Konsolenbefehle.
+  - `mod/lua/ge/extensions/grit/render.lua`: Decal-Renderer pro Fahrzeug (Projektion, Synthese, Backen).
+  - `mod/lua/vehicle/controller/grit/sensor.lua`: Fahrzeug-Controller, erzeugt Ereignisse aus Kollisionen und Rädern.
+  - `spikes/`: alte Spike-Skripte (Spike 1–5), außerhalb des Mods, nicht im Release.
+  - `mod/art/grit/*.png`: Texturen, erzeugt von `tools/gen_textures.ps1` mit festen Seeds.
     Aufruf: `powershell.exe -ExecutionPolicy Bypass -File tools/gen_textures.ps1`
 - Shell: Git Bash. `cd` in Bash springt manchmal zurück, deshalb absolute Pfade benutzen.
 
 ## Architektur (Weg A′)
 - **Zwei DecalProjections pro Fahrzeug:**
-  - `@PatinaTexture` (Farbe) und `@PatinaMask` (Maske).
+  - `@GritTexture` (Farbe) und `@GritMask` (Maske).
   - Eine zusätzliche Material-Stage auf **Skin-Kopien** der lackierten Materialien.
-  - Eigener Skin-Slot `patina`, Materialname `<mesh>.patina.v<ID>`.
+  - Eigener Skin-Slot `grit`, Materialname `<mesh>.grit.v<ID>`.
   - Ein Neuspawn beim Aktivieren (ca. 450 ms).
   - `prepare()` läuft verzögert (`prepareLater`, 2 Frames nach dem Spawn-Hook). Direkt im Hook ging es nach
     Strg+L und beim Ersetzen nicht.
@@ -69,7 +69,7 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - Alle weiteren Decals der Zelle baut `R:synth` aus einer Vorlage, bis zu 4 pro Frame:
     `worldToViewToScreen = projM * camM⁻¹`, `decalPos = pos + n*off`.
   - Verfehlt eine Zelle zweimal, wird sie übersprungen.
-  - Umschalten mit `patina_main.synthetic(false)`.
+  - Umschalten mit `grit_main.synthetic(false)`.
   - Bestätigt: X-Test sichtbar, die Arbeitsframes sind nicht mehr langsamer als der Leerlauf.
 - **Ebenen-Budget** `R.MAX_LAYERS = 500`.
   - Backen ca. 0,7–1,3 ms pro Decal.
@@ -79,7 +79,7 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   Ohne Monotonie kam die Lackfarbe stellenweise wieder durch.
 - **Vorschau-Alpha 0** während der Projektion, sonst blitzt es weiß.
 
-## Ereignisse (sensor.lua → `patina_main.onSensorEvents`, alle 0,1 s)
+## Ereignisse (sensor.lua → `grit_main.onSensorEvents`, alle 0,1 s)
 - **scrapes:**
   - Karosserie-Knoten mit `slipVel ≥ 1.5` auf hartem Untergrund.
   - Gefiltert werden: Gummi, Radknoten, weiche Untergründe (7 FOLIAGE, 8 CLOTH, 9 WATER), Unterboden (`n.z < −0.6`),
@@ -102,18 +102,18 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   17 SANDY_ROAD, 18 MUD, 19 GRAVEL, 20 GRASS, 22 SNOW.
 
 ## Konsolenbefehle (GE-Konsole, ohne `~`)
-- `patina_main.status()`: schreibt ins Log
+- `grit_main.status()`: schreibt ins Log
   - Ebenen, Warteschlange und Zähler (Schrammen, Spritzer, Staub, verworfen, ohne Treffer)
   - Spike-6-Zähler und Kontakt-Dreck
   - Bake Ø/max
   - Frametime getrennt nach „arbeitet“ und Leerlauf, dazu die CPU-Zeit von `render:update`
 
   Danach werden die Messwerte zurückgesetzt.
-- `patina_main.testScratch("left"|"right"|"top", level 1–3, tiltGrad)`: Test-Kratzer.
-- `patina_main.clear()`: Patina am aktuellen Auto löschen. Ein Fahrzeug-Reset löscht ebenfalls.
-- `patina_main.synthetic(true|false)`
-- Log lesen: `grep … "$USER/AppData/Local/BeamNG/BeamNG.drive/current/patina.log"`, ab der letzten Zeile
-  „Patina geladen“.
+- `grit_main.testScratch("left"|"right"|"top", level 1–3, tiltGrad)`: Test-Kratzer.
+- `grit_main.clear()`: Dreck und Kratzer am aktuellen Auto löschen. Ein Fahrzeug-Reset löscht ebenfalls.
+- `grit_main.synthetic(true|false)`
+- Log lesen: `grep … "$USER/AppData/Local/BeamNG/BeamNG.drive/current/grit.log"`, ab der letzten Zeile
+  „Grit geladen“.
 
 ## Stand der Meilensteine
 - **M0 Spikes 1–6 ✅**

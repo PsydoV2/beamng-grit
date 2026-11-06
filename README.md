@@ -69,11 +69,9 @@ Console commands (open the Lua console, GE context) for testing:
 
 | Command | What it does |
 |---|---|
-| `patina_main.status()` | Writes layer count, events and performance to the log |
-| `patina_main.clear()` | Removes all dirt and scratches from the current vehicle |
-| `patina_main.testScratch("left", 3)` | Places a test scratch (`"left"`, `"right"` or `"top"`, depth 1–3) |
-
-> The internal code name is still `patina`, so the console commands start with `patina_main`.
+| `grit_main.status()` | Writes layer count, events and performance to the log |
+| `grit_main.clear()` | Removes all dirt and scratches from the current vehicle |
+| `grit_main.testScratch("left", 3)` | Places a test scratch (`"left"`, `"right"` or `"top"`, depth 1–3) |
 
 ## Known limitations
 - Light scratches and dust are hard to see on white or chrome parts, because they are light on light. They show
@@ -85,15 +83,18 @@ Console commands (open the Lua console, GE context) for testing:
 ---
 
 ## For developers
-- `mod/lua/ge/extensions/patina/`: game-engine extension (`main.lua` for lifecycle and events, `render.lua` for the
+- `mod/lua/ge/extensions/grit/`: game-engine extension (`main.lua` for lifecycle and events, `render.lua` for the
   decal renderer)
-- `mod/lua/vehicle/controller/patina/sensor.lua`: vehicle controller that turns collisions and wheel contact into
+- `mod/lua/vehicle/controller/grit/sensor.lua`: vehicle controller that turns collisions and wheel contact into
   events
-- `mod/art/patina/`: textures, generated with `tools/gen_textures.ps1` (fixed seeds, reproducible)
+- `mod/art/grit/`: textures, generated with `tools/gen_textures.ps1` (fixed seeds, reproducible)
 - `FINDINGS.md`: every game API Grit uses, with file and line in the game code, plus all test runs and
   measurements
 
 Grit uses only the game's own Lua APIs, changes no game files and contains no code or assets from other mods.
 
+## License
+Grit is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). You may share and modify it, but not use it commercially. Modified versions must credit Grit and Psydo and use the same license. See `LICENSE`.
+
 ## Credits
-Idea and testing: Sebastian. Development with Claude.
+Idea and testing: Psydo. Development with Claude.

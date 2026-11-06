@@ -1,14 +1,14 @@
-# Patina – Textur-Generator (reproduzierbar, fester Zufalls-Seed). Nicht im Release-Zip.
+# Grit – Textur-Generator (reproduzierbar, fester Zufalls-Seed). Nicht im Release-Zip.
 # Erzeugt Graustufen-Masken (weiß, Form im Alphakanal) für Kratzer in drei Tiefen.
 # Eingefärbt wird zur Laufzeit (Konzept: Assets). Quadratisch wie die Spiel-Decals (art/dynamicDecals/textures, 2048²).
 # Aufruf:  powershell -ExecutionPolicy Bypass -File tools\gen_textures.ps1
-# Ausgabe: mod/art/patina/scratch_light.png, scratch_medium.png, scratch_deep.png
+# Ausgabe: mod/art/grit/scratch_light.png, scratch_medium.png, scratch_deep.png
 # Linien laufen senkrecht = Länge des Decals (Decal-„oben“ = Schleifrichtung).
 
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = "Stop"
 $size = 1024
-$outDir = Join-Path $PSScriptRoot "..\mod\art\patina"
+$outDir = Join-Path $PSScriptRoot "..\mod\art\grit"
 New-Item -ItemType Directory -Force $outDir | Out-Null
 
 function New-Canvas {

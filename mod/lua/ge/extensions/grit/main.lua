@@ -1,6 +1,6 @@
--- Patina – GE-Hauptmodul (Extension patina_main): Fahrzeugverwaltung, Skin pro Fahrzeug, Ereignisse → Zeichnen.
+-- Grit – GE-Hauptmodul (Extension grit_main): Fahrzeugverwaltung, Skin pro Fahrzeug, Ereignisse → Zeichnen.
 -- Weg A′ (FINDINGS.md, Spikes 2–5):
---   * Kopie jedes lackierten Materials mit Zusatz-Stage als <mapTo>.patina.v<ID>, Skin-Slot "patina"
+--   * Kopie jedes lackierten Materials mit Zusatz-Stage als <mapTo>.grit.v<ID>, Skin-Slot "grit"
 --     (vehicleObj:setSkin, common/jbeam/sections/licenseplatesSkins.lua:56-58; Vorrang vor paint_design, Spike 4).
 --   * setSkin wirkt nur beim Spawn → einmal veh:respawn (core/vehicle/partmgmt.lua:935); bei jedem weiteren
 --     Spawn (Strg+R) in onSpawnCCallback erneut setzen (core/vehicle/manager.lua:111-140).
@@ -8,11 +8,11 @@
 -- M1: nur das Spielerfahrzeug, nur Schrammen.
 
 local M = {}
-local logTag = "patina"
-local render = require("ge/extensions/patina/render")
+local logTag = "grit"
+local render = require("ge/extensions/grit/render")
 
-local SLOT = "patina"
-local SENSOR_FILE, SENSOR_NAME = "patina/sensor", "patinaSensor"
+local SLOT = "grit"
+local SENSOR_FILE, SENSOR_NAME = "grit/sensor", "gritSensor"
 -- Kratzer in drei Tiefen (Konzept: leicht = Klarlack, mittel = Grundierung, tief = blankes Metall).
 -- Masken aus tools/gen_textures.ps1. Dauerschrammen desselben Knotens: Treffer 1–2 leicht, 3–4 mittel, ab 5 tief;
 -- jeder Treffer etwas versetzt entlang der Schleifrichtung → lange Spuren statt eines Flecks (M1.2 Lauf 1:
@@ -20,17 +20,17 @@ local SENSOR_FILE, SENSOR_NAME = "patina/sensor", "patinaSensor"
 local SCRATCH = {
   depth = 0.25, minLen = 0.3, lenPerMs = 0.06, maxLen = 1.0,
   levels = {
-    { texture = "/art/patina/scratch_light.png",  color = { 0.95, 0.95, 0.93 }, strength = 0.85, width = 0.12 },
-    { texture = "/art/patina/scratch_medium.png", color = { 0.45, 0.45, 0.43 }, strength = 1.00, width = 0.12 },
-    { texture = "/art/patina/scratch_deep.png",   color = { 0.75, 0.76, 0.78 }, strength = 1.00, width = 0.10 },
+    { texture = "/art/grit/scratch_light.png",  color = { 0.95, 0.95, 0.93 }, strength = 0.85, width = 0.12 },
+    { texture = "/art/grit/scratch_medium.png", color = { 0.45, 0.45, 0.43 }, strength = 1.00, width = 0.12 },
+    { texture = "/art/grit/scratch_deep.png",   color = { 0.75, 0.76, 0.78 }, strength = 1.00, width = 0.10 },
   },
   levelAt = { 1, 3, 5 }, -- ab diesem Treffer pro Knoten gilt Stufe 1/2/3
   hardSlip = 8,          -- m/s: ab hier mindestens mittel
   maxPerNode = 8,
   jitter = 0.5,          -- Versatz entlang Schleifrichtung, Anteil der Länge
 }
-M.debugLog = true           -- Entwicklung: zusätzlich sofort in <User>/patina.log (beamng.log puffert Minuten)
-local DEV_LOG = "/patina.log"
+M.debugLog = true           -- Entwicklung: zusätzlich sofort in <User>/grit.log (beamng.log puffert Minuten)
+local DEV_LOG = "/grit.log"
 local function L(level, fmt, ...)
   local msg = string.format(fmt, ...)
   log(level, logTag, msg)
@@ -101,7 +101,7 @@ local function copyMaterial(src, dst)
   end
 end
 
-local function patinaStage(m)
+local function gritStage(m)
   for s = 0, 3 do if m:getField("baseColorMap", s) == render.COLOR_PREFIX .. "BaseColor" then return s end end
 end
 
@@ -114,7 +114,7 @@ local function ensureSkinMaterial(orig, name)
   copyMaterial(orig, c)
   c:setField("name", 0, name)
   c:setField("mapTo", 0, name)
-  local s = patinaStage(c) or (tonumber(c:getField("activeLayers", 0)) or 1)
+  local s = gritStage(c) or (tonumber(c:getField("activeLayers", 0)) or 1)
   c:setField("baseColorMap", s, render.COLOR_PREFIX .. "BaseColor")
   c:setField("diffuseMapUseUV", s, "1")
   c:setField("opacityMap", s, render.MASK_PREFIX .. "BaseColor")
@@ -189,7 +189,7 @@ local function attach(veh)
   end
   if #missing > 0 and not car.retried then
     -- z. B. Teilewechsel: neue Teile ohne Skin-Material → noch einmal vorbereiten
-    L("I", "Fahrzeug %d: %d Materialien ohne Patina (%s) → neu vorbereiten", vid, #missing, table.concat(missing, ", "))
+    L("I", "Fahrzeug %d: %d Materialien ohne Grit (%s) → neu vorbereiten", vid, #missing, table.concat(missing, ", "))
     car.retried = true
     car.phase, car.wait = "prepareLater", 2   -- nicht im Spawn-Hook neu spawnen (M1.1 Lauf 4)
     return
@@ -198,11 +198,11 @@ local function attach(veh)
   car.r, car.nodeHits, car.sprayCount = render.new(veh, onSkin, L), {}, {}
   car.phase = "active"
   loadSensor(veh)
-  L("I", "Fahrzeug %d aktiv: %d/%d Materialien auf Patina%s, Neuspawn %.0f ms", vid, #onSkin, #targets,
+  L("I", "Fahrzeug %d aktiv: %d/%d Materialien auf Grit%s, Neuspawn %.0f ms", vid, #onSkin, #targets,
     #missing > 0 and (" (ohne: " .. table.concat(missing, ", ") .. ")") or "", car.timer and car.timer:stopAndReset() or -1)
 end
 
--- Aktivieren. Trägt das Fahrzeug noch einen Patina-Skin aus unbekanntem Zustand (z. B. nach Strg+L), erst Skin aus
+-- Aktivieren. Trägt das Fahrzeug noch einen Grit-Skin aus unbekanntem Zustand (z. B. nach Strg+L), erst Skin aus
 -- und neu spawnen, damit frisch von den echten Materialien kopiert wird (M1.1 Lauf 2).
 local function activate(vid)
   local veh = be:getObjectByID(vid)
@@ -218,7 +218,7 @@ local function activate(vid)
     cars[vid] = car
     veh:setSkin(SLOT .. ".")
     car.phase = "renew"
-    L("I", "Fahrzeug %d trägt alten Patina-Skin → Skin aus, Neuspawn", vid)
+    L("I", "Fahrzeug %d trägt alten Grit-Skin → Skin aus, Neuspawn", vid)
     if not respawn(veh) then car.phase = nil; return false end
     return true
   end
@@ -229,7 +229,7 @@ end
 -- M2 Dreck: feste Farbe pro Untergrund (collisiontype-IDs, particles.json:2-35; FINDINGS Spike 5).
 -- Konzept-Frage „Tabelle oder Terrain-Textur“ → MVP Tabelle. Werte sRGB, Kodierung in render.variants.
 local DIRT = {
-  texture = "/art/patina/dirt_splash.png",
+  texture = "/art/grit/dirt_splash.png",
   colors = {
     [14] = { 0.55, 0.47, 0.36 }, -- DIRT_DUSTY
     [15] = { 0.36, 0.27, 0.18 }, -- DIRT
@@ -294,7 +294,7 @@ local function handleSprays(car, vid, list)
       car.dirtLevel[key] = math.min(DIRT.maxStrength, strength + DIRT.buildUp)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol, region = key,
         width = w, length = h, depth = DIRT.depth, texture = DIRT.texture,
-        color = tint(col), strength = strength, name = "Patina Dreck" })
+        color = tint(col), strength = strength, name = "Grit Dreck" })
       if ok then
         car.sprayCount[s.w] = cnt + 1
         car.sprays = (car.sprays or 0) + 1
@@ -315,7 +315,7 @@ local DUST = {
   -- aber vor allem von Unterboden-Schrammen und abgeschnittenen Textur-Flecken (Lauf 2) → 0.3 m.
   -- M2.2 Lauf 3: „zu wenig, feiner Staub nimmt viel größere Flächen ein“ → größer, häufiger, auch an den Seiten
   -- (untere Hälfte). Abweichung vom Konzept (nur Heck + Oberseiten), von Sebastian gewünscht.
-  texture = "/art/patina/dust.png", depth = 0.3,
+  texture = "/art/grit/dust.png", depth = 0.3,
   rear = { chance = 0.35, minSize = 1.0, maxSize = 1.5, start = 0.18, step = 0.01,  max = 0.5,  tol = 0.6 },
   side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.15, step = 0.008, max = 0.4,  tol = 0.5 },
   top  = {                minSize = 1.0, maxSize = 1.5, start = 0.12, step = 0.006, max = 0.28, tol = 1.2 },  -- tol: Ladefläche 1 m unter AABB-Oberkante
@@ -354,7 +354,7 @@ local function handleDusts(car, vid, list)
       car.dirtLevel[key] = math.min(cfg.max, strength + cfg.step)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = cfg.tol, region = key,
         width = size, length = size, depth = DUST.depth, texture = DUST.texture,
-        color = tint(col), strength = strength, name = "Patina Staub" })
+        color = tint(col), strength = strength, name = "Grit Staub" })
       if ok then
         car.dusts = (car.dusts or 0) + 1
         if car.dusts <= 10 then
@@ -391,7 +391,7 @@ local function handleContacts(car, list)
       local size = CONTACT.minSize + (CONTACT.maxSize - CONTACT.minSize) * math.random()
       local ok = car.r:request({ pos = vec3(s.px, s.py, s.pz), normal = n, up = up, tolAlong = CONTACT.tol,
         region = "kontakt", width = size, length = size * (0.7 + 0.3 * math.random()), depth = CONTACT.depth,
-        texture = DIRT.texture, color = tint(col), strength = strength, name = "Patina Kontakt" })
+        texture = DIRT.texture, color = tint(col), strength = strength, name = "Grit Kontakt" })
       if ok then
         car.contactCount[s.c] = cnt + 1
         car.contacts = (car.contacts or 0) + 1
@@ -433,7 +433,7 @@ M.onSensorEvents = function(vid, ev)
         pos = pos, normal = vec3(s.nx, s.ny, s.nz), up = dir,
         tolAlong = 0.1, region = "k",   -- M1.3 Lauf 2: Spiegel-Knoten stehen ab → Strahl trifft Motorhaube/Kotflügel 0.12–0.2 m innen
         width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.texture,
-        color = lv.color, strength = lv.strength, name = "Patina Kratzer " .. level,
+        color = lv.color, strength = lv.strength, name = "Grit Kratzer " .. level,
       })
       if ok then car.scrapes = (car.scrapes or 0) + 1; car.nodeHits[s.c] = hits + 1 end
     end
@@ -443,7 +443,7 @@ end
 -- Hooks ------------------------------------------------------------------------------
 
 local retryFrames = 0
--- Messung (M2.2 Lauf 1: Frames brechen am Anfang ein): Frametime getrennt nach „Patina arbeitet“ / „leerlauf“,
+-- Messung (M2.2 Lauf 1: Frames brechen am Anfang ein): Frametime getrennt nach „Grit arbeitet“ / „leerlauf“,
 -- CPU-Zeit von render:update. Ausgabe und Zurücksetzen in M.status().
 local perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 local function addPerf(t, ms) t.n, t.sum, t.max = t.n + 1, t.sum + ms, math.max(t.max, ms) end
@@ -452,7 +452,7 @@ M.onUpdate = function(dtReal)
   local busy = false
   for _, car in pairs(cars) do if car.r and #car.r.queue > 0 then busy = true end end
   if dtReal then addPerf(busy and perf.busy or perf.idle, dtReal * 1000) end
-  -- Spielerfahrzeug ohne Patina? (neu, ersetzt mit gleicher ID, nach Strg+L, Fahrzeugwechsel) → aktivieren,
+  -- Spielerfahrzeug ohne Grit? (neu, ersetzt mit gleicher ID, nach Strg+L, Fahrzeugwechsel) → aktivieren,
   -- bei Misserfolg alle 30 Frames erneut
   local pv = be:getPlayerVehicleID(0)
   if pv and pv >= 0 and not (cars[pv] and cars[pv].phase) then
@@ -512,7 +512,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts = {}, {}, {}, 0, {}, 0 end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts = {}, {}, {}, 0, {}, 0 end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -522,10 +522,10 @@ M.onVehicleDestroyed = function(vid)
 end
 
 M.onExtensionLoaded = function()
-  L("I", "Patina geladen.")
+  L("I", "Grit geladen.")
 end
 
--- Konsole: patina_main.status()
+-- Konsole: grit_main.status()
 M.status = function()
   for vid, car in pairs(cars) do
     L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d Staub, %d verworfen (Budget), %d ohne Treffer",
@@ -541,13 +541,13 @@ M.status = function()
     end
   end
   local function fmt(t) return t.n > 0 and string.format("%d Frames Ø %.1f ms max %.1f ms", t.n, t.sum / t.n, t.max) or "–" end
-  L("I", "Frametime Patina arbeitet: %s | Leerlauf: %s | render:update CPU: %s", fmt(perf.busy), fmt(perf.idle), fmt(perf.upd))
+  L("I", "Frametime Grit arbeitet: %s | Leerlauf: %s | render:update CPU: %s", fmt(perf.busy), fmt(perf.idle), fmt(perf.upd))
   perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
 M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorne geneigt (Vorzeichen-Test)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
-  if not (car and car.r and veh) then L("W", "testScratch: Patina ist für dieses Fahrzeug (noch) nicht aktiv"); return end
+  if not (car and car.r and veh) then L("W", "testScratch: Grit ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
   local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
   local c = (mn + mx) * 0.5
@@ -557,7 +557,7 @@ M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorn
   local a = math.rad(tilt or 0)
   local up = n.z > 0.5 and vec3(-math.sin(a), -math.cos(a), 0) or vec3(0, -math.cos(a), math.sin(a))
   car.r:request({ pos = pos, normal = n, up = up, width = 0.2, length = 0.6, depth = 0.4,
-    texture = lv.texture, color = lv.color, strength = lv.strength, name = "Patina Test" })
+    texture = lv.texture, color = lv.color, strength = lv.strength, name = "Grit Test" })
   L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
 end
 

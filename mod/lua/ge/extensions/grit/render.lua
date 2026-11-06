@@ -1,5 +1,5 @@
--- Patina – Zeichnen pro Fahrzeug (Weg A′, Ergebnis Spikes 2–4, siehe FINDINGS.md).
--- Zwei DecalProjections (Farbe @PatinaTexture, Maske @PatinaMask), gebunden per veh:setTextureSet
+-- Grit – Zeichnen pro Fahrzeug (Weg A′, Ergebnis Spikes 2–4, siehe FINDINGS.md).
+-- Zwei DecalProjections (Farbe @GritTexture, Maske @GritMask), gebunden per veh:setTextureSet
 -- (editor/api/dynamicDecals.lua:1489-1500). Neue Decals über eine virtuelle Kamera projizieren
 -- (projectDynamicDecals + getDecalData, wie der Editor), einzeln dazubacken (bakeLayers ohne clear,
 -- dynamicDecals.lua:1091-1095). Kein globaler Zustand: render.new(vehId, targets) liefert ein Objekt.
@@ -9,7 +9,7 @@ R.__index = R
 
 local RESOLUTION = Point2I(2048, 1024)
 local UV_LAYER = 1
-R.COLOR_PREFIX, R.MASK_PREFIX = "@PatinaTexture", "@PatinaMask"
+R.COLOR_PREFIX, R.MASK_PREFIX = "@GritTexture", "@GritMask"
 local USE_MOUSE_POS = bit.lshift(1, 2)
 local FRAMES_BEFORE_READ, FRAMES_MAX = 3, 30
 R.PROJECT_EVERY = 3        -- Projektion einmal, dann 3 Frames warten bis getDecalData (Spike 3: 3 Frames nötig)
@@ -34,12 +34,12 @@ end
 
 local function baseLayer()   -- schwarz = unsichtbar in der Maske (Spike 2 Lauf 3)
   return { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
-           enabled = true, locked = false, uid = uid("base"), name = "Patina Base", children = {} }
+           enabled = true, locked = false, uid = uid("base"), name = "Grit Base", children = {} }
 end
 
--- aus einem Patina-Layer (patinaColor, patinaStrength) die Farb- und die Masken-Variante
+-- aus einem Grit-Layer (gritColor, gritStrength) die Farb- und die Masken-Variante
 local function variants(l)
-  local c, s = l.patinaColor, l.patinaStrength
+  local c, s = l.gritColor, l.gritStrength
   local cl = shallowcopy(l); cl.color = Point4F(enc(c[1]), enc(c[2]), enc(c[3]), 1); cl.uid = l.uid .. "-c"
   local e = enc(s); local ml = shallowcopy(l); ml.color = Point4F(e, e, e, 1); ml.uid = l.uid .. "-m"
   return cl, ml
@@ -135,8 +135,8 @@ end
 
 -- fertige Layer-Daten übernehmen und dazubacken
 function R:commit(data, d, veh, how, mark)
-  data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
-  data.patinaColor, data.patinaStrength = d.color, d.strength
+  data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Grit", true, false, {}
+  data.gritColor, data.gritStrength = d.color, d.strength
   data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4
   table.insert(self.layers, data)
   if self.log and #self.layers <= 15 then

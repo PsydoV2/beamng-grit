@@ -1,5 +1,5 @@
--- Patina – Sensor im Fahrzeug-Lua. Misst nur und schickt kompakte Ereignisse an GE (patina_main.onSensorEvents).
--- Geladen per controller.loadControllerExternal("patina/sensor", "patinaSensor", {}) (vehicle/controller.lua:297).
+-- Grit – Sensor im Fahrzeug-Lua. Misst nur und schickt kompakte Ereignisse an GE (grit_main.onSensorEvents).
+-- Geladen per controller.loadControllerExternal("grit/sensor", "gritSensor", {}) (vehicle/controller.lua:297).
 -- Quellen siehe FINDINGS.md Spike 5: nodeCollision(p) (vehicle/main.lua:491-501), obj:getSimTime,
 -- obj:getDirectionVector/-Up (vehicle/ai.lua:41), v.data.nodes[cid].pos = Ausgangsposition im Fahrzeugraum
 -- (vehicle/bdebugImpl.lua:648), obj:queueGameEngineLua (vehicle/ai.lua:5730).
@@ -176,7 +176,7 @@ local function updateGFX(dt)
   if diagT >= 2 then
     diagT = 0
     if next(diag) then
-      obj:queueGameEngineLua(string.format("patina_main.onSensorDiag(%d, %s)", obj:getId(), serialize(diag)))
+      obj:queueGameEngineLua(string.format("grit_main.onSensorDiag(%d, %s)", obj:getId(), serialize(diag)))
       diag = {}
     end
   end
@@ -188,7 +188,7 @@ local function updateGFX(dt)
     table.sort(pending, function(a, b) return a.v > b.v end)
     for i = #pending, MAX_PER_SEND + 1, -1 do pending[i] = nil end
   end
-  obj:queueGameEngineLua(string.format("patina_main.onSensorEvents(%d, %s)", obj:getId(),
+  obj:queueGameEngineLua(string.format("grit_main.onSensorEvents(%d, %s)", obj:getId(),
     serialize({ scrapes = pending, sprays = sprays, dusts = dusts, contacts = contacts })))
   pending, sprays, dusts, contacts = {}, {}, {}, {}
 end
@@ -202,7 +202,7 @@ local function init()
   local rn = v.data.refNodes and v.data.refNodes[0]
   local n = rn and v.data.nodes[rn.ref]
   refPos = n and vec3(n.pos) or nil
-  if not refPos then log("W", "patinaSensor", "Kein Referenzknoten – Schrammen aus") end
+  if not refPos then log("W", "gritSensor", "Kein Referenzknoten – Schrammen aus") end
   if refPos then
     local sum, cnt = vec3(0, 0, 0), 0
     for _, nd in pairs(v.data.nodes) do if nd.pos then sum = sum + vec3(nd.pos); cnt = cnt + 1 end end

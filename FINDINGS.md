@@ -879,3 +879,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 ### M2.3, Lauf 2 (2026-11-06) ✅ M2 Dreck abgeschlossen
 - Kontakt-Flecken 0.6–1.0 m: Größe passt (Sebastian). M2.1 Spritzer, M2.2 Staub, M2.3 Kontakt-Dreck bestätigt.
   Tag `m2-dreck`. Übergabe für neue Sessions in `CLAUDE.md`.
+
+### Umbenennung Patina → Grit (2026-11-06)
+- Öffentlicher Name **Grit** („Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“), Autor Psydo,
+  Lizenz CC BY-NC-SA 4.0. Code umbenannt: `grit_main`, `lua/ge/extensions/grit/`, `lua/vehicle/controller/grit/`
+  (`gritSensor`), `art/grit/`, `scripts/grit/`, Textur-Sets `@GritTexture`/`@GritMask`, Skin-Slot `grit`,
+  Log `<User>/grit.log`. Junction `mods/unpacked/grit` → `E:\BeamNGMods\Dynamic Patina\mod` (alte `patina` entfernt).
+  Spike-Skripte nach `spikes/` verschoben (nicht im Release). Ältere Einträge oben nennen noch die Patina-Namen.
