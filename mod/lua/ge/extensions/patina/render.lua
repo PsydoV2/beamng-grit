@@ -86,10 +86,26 @@ end
 function R:clear(veh)
   self:refresh(veh, true)   -- Reparatur kann die Form ändern
   self.layers, self.queue = {}, {}
+  self.cells = {}            -- Oberflächen-Abstände neu lernen
   self:rebake(veh)
 end
 
--- Decal anfragen. d = { pos, normal, up (vec3, Fahrzeugraum), width, length, depth, texture, color{r,g,b}, strength, name }
+-- Spike 6: Decals ohne Projektion. projectDynamicDecals kostet 12–15 ms CPU je Aufruf (M2.2 Lauf 5). Layer-Daten
+-- lassen sich aus einer Vorlage selbst bauen (Dump Spike 6, FINDINGS): camPosition = Kamera, camDirection =
+-- decalNorm = surfaceNormal = −n, viewToScreen = projM, worldToViewToScreen = projM · camM⁻¹ (nachgerechnet),
+-- decalPos = Oberflächenpunkt. Unbekannt ist nur der Oberflächenpunkt → pro Zelle (0.4-m-Raster je Bereich) einmal
+-- echt projizieren und den Abstand entlang n merken; danach synthetisch. Zellen, deren Strahl zweimal verfehlt,
+-- werden übersprungen (Lücken, Radkästen).
+R.SYNTHETIC = true
+R.CELL = 0.4
+R.SYN_PER_FRAME = 4
+local function cellKey(d)
+  local q = function(v) return math.floor(v / R.CELL + 0.5) end
+  return string.format("%s:%d,%d,%d", d.region or "-", q(d.pos.x), q(d.pos.y), q(d.pos.z))
+end
+
+-- Decal anfragen. d = { pos, normal, up (vec3, Fahrzeugraum), width, length, depth, texture, color{r,g,b}, strength,
+-- name, tolAlong?, region? }
 function R:request(d)
   if #self.layers + #self.queue >= R.MAX_LAYERS then self.dropped = (self.dropped or 0) + 1; return false end
   local n = d.normal:normalized()
@@ -108,27 +124,81 @@ function R:request(d)
   local rot = -math.atan2(ref:cross(up):dot(n), ref:dot(up))
   if rot < 0 then rot = rot + 2 * math.pi end
   d.rot = rot
+  d.cell = cellKey(d)
   local camPos = d.pos + n * (d.depth * 0.5 + 0.2)
-  local q = quatFromDir(-n, up:normalized())
+  local q = quatFromDir(-n, up)
   local camM = QuatF(q.x, q.y, q.z, q.w):getMatrix()
   camM:setPosition(camPos)
-  table.insert(self.queue, { d = d, camM = camM, projM = getCameraProjMatrix(), frames = 0 })
+  table.insert(self.queue, { d = d, n = n, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0 })
   return true
 end
 
--- pro Frame höchstens eine Anfrage bearbeiten (3 Frames Projektion bis getDecalData, Spike 3)
+-- fertige Layer-Daten übernehmen und dazubacken
+function R:commit(data, d, veh, how, mark)
+  data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
+  data.patinaColor, data.patinaStrength = d.color, d.strength
+  data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4
+  table.insert(self.layers, data)
+  if self.log and #self.layers <= 15 then
+    self.log("I", "Decal %d (%s): pos %s (angefragt %s), Drehung %.0f°", #self.layers, how, tostring(data.decalPos),
+      tostring(d.pos), math.deg(d.rot or 0))
+  end
+  local cl, ml = variants(data)
+  local tb = hptimer()
+  self.color:bakeLayers({ cl }, veh.jbeam)
+  self.mask:bakeLayers({ ml }, veh.jbeam)
+  local ms = tb:stopAndReset(); mark("bake")
+  self.bakeN, self.bakeSum = (self.bakeN or 0) + 1, (self.bakeSum or 0) + ms
+  self.bakeMax = math.max(self.bakeMax or 0, ms)
+end
+
+-- Layer-Daten ohne Projektion aus der Vorlage
+function R:synth(req, off)
+  local d, n = req.d, req.n
+  local data = shallowcopy(self.template)
+  data.decalColorTexturePath = d.texture
+  data.camPosition, data.camDirection = vec3(req.camPos), -n
+  data.decalNorm, data.surfaceNormal = -n, -n
+  data.decalPos = d.pos + n * off
+  data.viewToScreen = req.projM
+  data.worldToViewToScreen = req.projM * req.camM:copy():inverse()
+  data.decalScale = vec3(d.width, d.depth, d.length)
+  data.decalRotation = d.rot or 0
+  data.useSurfaceNormal, data.useLockedSurfaceNormal = false, false
+  data.cursorPosScreenUv = { x = 0.5, y = 0.5 }
+  return data
+end
+
 function R:update(veh)
   -- Abschnitts-Zeiten (M2.2 Lauf 3: render:update CPU max 36 ms) → bei > 8 ms aufschlüsseln
   local T, sec, total = hptimer(), {}, 0
   local function mark(name) local ms = T:stopAndReset(); total = total + ms; sec[#sec + 1] = string.format("%s %.1f", name, ms) end
   self:refresh(veh); mark("refresh")
+  self.cells = self.cells or {}
+  local worked = #self.queue > 0
+  -- synthetische zuerst, mehrere pro Frame
+  local syn = 0
+  while syn < R.SYN_PER_FRAME do
+    local req = self.queue[1]
+    if not req or req.frames > 0 then break end
+    local c = self.cells[req.d.cell]
+    if c and (c.miss or 0) >= 2 and not c.off then
+      self.skipped = (self.skipped or 0) + 1; table.remove(self.queue, 1)
+    elseif R.SYNTHETIC and self.template and c and c.off then
+      self:commit(self:synth(req, c.off), req.d, veh, "synthetisch", mark)
+      self.synthN = (self.synthN or 0) + 1
+      table.remove(self.queue, 1); syn = syn + 1
+    else
+      break
+    end
+  end
   local req = self.queue[1]
-  if req then
+  if req and syn == 0 then
     local p, d = self.color, req.d
     if req.frames == 0 then
       -- Textur nur bei Wechsel setzen (Verdacht Ladespitze: render:update CPU max 30 ms, M2.2 Lauf 2)
       if self.curTexture ~= d.texture then p:setDecalTexturePath("color", d.texture); self.curTexture = d.texture end
-      -- Vorschau während der 3 Projektions-Frames unsichtbar: sie landet in der Live-Textur und blitzte weiß auf
+      -- Vorschau während der Projektions-Frames unsichtbar: sie landet in der Live-Textur und blitzte weiß auf
       -- (M2.1 Lauf 3). Layer-Farbe setzt variants() danach ohnehin neu.
       p.decalColor = Point4F(1, 1, 1, 0)
       p.decalScale = vec3(d.width, d.depth, d.length)
@@ -145,52 +215,24 @@ function R:update(veh)
     if req.frames >= FRAMES_BEFORE_READ then
       local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end); mark("getDecalData")
       local hit = ok and data and data.decalPos and vec3(data.decalPos)
-      -- Treffer weit weg = Strahl hat das Auto verfehlt (M1.1 Lauf 3: Welt-Koordinaten wie (12711, 1490, …))
-      -- M1.3: Strahl durch eine Lücke trifft innen liegende Lackflächen (D-Serie: Unterboden → Motorhaube von
-      -- innen, Vertex: Seite → 0.43 m innen) → getrennt prüfen: entlang der Normalen ≤ 0.2 m, seitlich ≤ 0.25 m.
-      -- Gute Treffer: ≤ 0.13 m entlang n (testScratch ab AABB), ≤ 0.1 m seitlich.
-      local near = false
+      -- Treffer weit weg = Strahl hat das Auto verfehlt (M1.1 Lauf 3) oder ging durch eine Lücke (M1.3) →
+      -- entlang der Normalen ≤ tolAlong, seitlich ≤ 0.25 m.
+      local near, along = false, 0
       if hit and hit.x == hit.x then
         local off = hit - d.pos
-        local nn = d.normal:normalized()
-        local along = off:dot(nn)
-        near = math.abs(along) <= (d.tolAlong or 0.2) and (off - nn * along):length() <= 0.25
+        along = off:dot(req.n)
+        near = math.abs(along) <= (d.tolAlong or 0.2) and (off - req.n * along):length() <= 0.25
       end
+      local c = self.cells[d.cell] or {}
+      self.cells[d.cell] = c
       if near then
-        data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
-        data.patinaColor, data.patinaStrength = d.color, d.strength
-        data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4: Striche auf der Gegenseite
-        table.insert(self.layers, data)
-        -- Spike 6 (Decals ohne Projektion): Felder der ersten 3 Treffer samt eigener Kamera ins Log
-        if self.log and (self.dumps or 0) < 3 then
-          self.dumps = (self.dumps or 0) + 1
-          local keys = {}
-          for k in pairs(data) do keys[#keys + 1] = k end
-          table.sort(keys)
-          self.log("I", "DUMP %d: angefragt pos %s n %s up %s Breite %.2f Länge %.2f Tiefe %.2f", self.dumps,
-            tostring(d.pos), tostring(d.normal), tostring(d.up), d.width, d.length, d.depth)
-          self.log("I", "DUMP %d: camM %s", self.dumps, tostring(req.camM))
-          self.log("I", "DUMP %d: projM %s", self.dumps, tostring(req.projM))
-          for _, k in ipairs(keys) do
-            local v = data[k]
-            if k ~= "children" then
-              self.log("I", "DUMP %d: %s = %s", self.dumps, k, type(v) == "table" and dumps(v):gsub("%s+", " ") or tostring(v))
-            end
-          end
-        end
-        if self.log and #self.layers <= 15 then
-          self.log("I", "Decal %d: Treffer %s (angefragt %s), Drehung %.0f° → Layer %.0f°", #self.layers, tostring(hit),
-            tostring(d.pos), math.deg(d.rot or 0), math.deg(data.decalRotation or -1))
-        end
-        local cl, ml = variants(data)
-        local tb = hptimer()
-        self.color:bakeLayers({ cl }, veh.jbeam)
-        self.mask:bakeLayers({ ml }, veh.jbeam)
-        local ms = tb:stopAndReset(); mark("bake")
-        self.bakeN, self.bakeSum = (self.bakeN or 0) + 1, (self.bakeSum or 0) + ms
-        self.bakeMax = math.max(self.bakeMax or 0, ms)
+        -- Zelle lernt den Abstand zur Oberfläche (gleitender Mittelwert)
+        c.off = c.off and (c.off * 0.5 + along * 0.5) or along
+        if not self.template then self.template = shallowcopy(data) end
+        self:commit(data, d, veh, "projiziert", mark)
         p:flushDynamicTextures(); table.remove(self.queue, 1)
-      elseif (hit and hit.x == hit.x) or req.frames >= FRAMES_MAX then   -- weit weg: sofort verwerfen
+      elseif (hit and hit.x == hit.x) or req.frames >= FRAMES_MAX then   -- verfehlt: verwerfen, Zelle merkt es
+        c.miss = (c.miss or 0) + 1
         self.misses = (self.misses or 0) + 1
         if self.log and self.misses <= 10 then
           self.log("I", "Decal verworfen: Treffer %s, angefragt %s", tostring(hit), tostring(d.pos))
@@ -200,8 +242,8 @@ function R:update(veh)
     end
   end
   -- Zusammenführen nur, solange gearbeitet wird, und sonst alle 60 Frames (Leerlauf kostete 0.6 ms CPU je Frame)
-  self.idleFrames = req and 0 or (self.idleFrames or 0) + 1
-  if req or self.idleFrames <= 3 or self.idleFrames % 60 == 0 then
+  self.idleFrames = worked and 0 or (self.idleFrames or 0) + 1
+  if worked or self.idleFrames <= 3 or self.idleFrames % 60 == 0 then
     self.color:combineTextures(self.colorSet)
     self.mask:combineTextures(self.maskSet)
   end

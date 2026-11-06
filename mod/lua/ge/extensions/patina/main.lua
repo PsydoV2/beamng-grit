@@ -292,7 +292,7 @@ local function handleSprays(car, vid, list)
       local want = math.min(0.75, 0.3 + math.abs(s.v) * 0.012 + math.abs(s.s) * 0.02)
       local strength = math.min(DIRT.maxStrength, math.max(car.dirtLevel[key] or 0, want))
       car.dirtLevel[key] = math.min(DIRT.maxStrength, strength + DIRT.buildUp)
-      local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol,
+      local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol, region = key,
         width = w, length = h, depth = DIRT.depth, texture = DIRT.texture,
         color = tint(col), strength = strength, name = "Patina Dreck" })
       if ok then
@@ -352,7 +352,7 @@ local function handleDusts(car, vid, list)
       local size = cfg.minSize + (cfg.maxSize - cfg.minSize) * math.random()
       local strength = math.min(cfg.max, math.max(car.dirtLevel[key] or 0, cfg.start))
       car.dirtLevel[key] = math.min(cfg.max, strength + cfg.step)
-      local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = cfg.tol,
+      local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = cfg.tol, region = key,
         width = size, length = size, depth = DUST.depth, texture = DUST.texture,
         color = tint(col), strength = strength, name = "Patina Staub" })
       if ok then
@@ -393,7 +393,7 @@ M.onSensorEvents = function(vid, ev)
       end
       local ok = car.r:request({
         pos = pos, normal = vec3(s.nx, s.ny, s.nz), up = dir,
-        tolAlong = 0.1,   -- M1.3 Lauf 2: Spiegel-Knoten stehen ab → Strahl trifft Motorhaube/Kotflügel 0.12–0.2 m innen
+        tolAlong = 0.1, region = "k",   -- M1.3 Lauf 2: Spiegel-Knoten stehen ab → Strahl trifft Motorhaube/Kotflügel 0.12–0.2 m innen
         width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.texture,
         color = lv.color, strength = lv.strength, name = "Patina Kratzer " .. level,
       })
@@ -493,6 +493,11 @@ M.status = function()
     L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d Staub, %d verworfen (Budget), %d ohne Treffer",
       vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0, car.dusts or 0,
       car.r and car.r.dropped or 0, car.r and car.r.misses or 0)
+    if car.r then
+      local cells = 0
+      for _ in pairs(car.r.cells or {}) do cells = cells + 1 end
+      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen", car.r.synthN or 0, car.r.skipped or 0, cells)
+    end
     if car.r and (car.r.bakeN or 0) > 0 then
       L("I", "  Bake: %d Decals, Ø %.2f ms, max %.2f ms", car.r.bakeN, car.r.bakeSum / car.r.bakeN, car.r.bakeMax)
     end
@@ -517,6 +522,9 @@ M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorn
     texture = lv.texture, color = lv.color, strength = lv.strength, name = "Patina Test" })
   L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
 end
+
+-- Spike 6: synthetische Decals an/aus (Vergleich)
+M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synthetische Decals: %s", tostring(render.SYNTHETIC)) end
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]

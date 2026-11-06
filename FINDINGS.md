@@ -837,3 +837,14 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   camPosition, camDirection, decalPos, decalNorm, viewToScreen, worldToViewToScreen, useZBufferDepth,
   zBufferDepth, useLockedSurfaceNormal, surfaceNormal, cursorPosScreenUv, decalScale, decalSkew, decalRotation,
   useSurfaceNormal, mirrored. Dafür Dump der ersten 3 Treffer samt eigener camM/projM ins Log eingebaut.
+
+### Spike 6: Decals ohne Projektion (2026-11-06)
+- Dump von 3 echten `getDecalData`-Ergebnissen (testScratch links/oben/rechts 30°), Felder u. a.:
+  `camPosition` = unsere Kameraposition, `camDirection` = `decalNorm` = `surfaceNormal` = −n,
+  `decalPos` = Oberflächenpunkt (z. B. angefragt x −0.60 → −0.416), `decalScale` = (Breite, Tiefe, Länge),
+  `decalRotation` = unser Wert, `viewToScreen` = unsere projM, `worldToViewToScreen` = projM · camM⁻¹
+  (Zeile 1 und 2 von Hand nachgerechnet, stimmt), `useZBufferDepth` false, `cursorPosScreenUv` (0.5, 0.5).
+- Umsetzung: erste echte Projektion liefert die Vorlage. Pro Zelle (Bereich + 0.4-m-Raster) einmal echt projizieren,
+  Abstand Anfrage→Oberfläche entlang n merken; weitere Decals der Zelle synthetisch, bis 4 je Frame, ohne
+  `projectDynamicDecals`. Zelle mit 2 Fehlschüssen und ohne Treffer wird übersprungen.
+  Matrix-Produkt `MatrixF * MatrixF` wie `core/vehicle/partmgmt.lua:437`. Umschalter `patina_main.synthetic(false)`.
