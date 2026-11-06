@@ -1,0 +1,253 @@
+<!doctype html>
+<!-- Grit – Marken-Grafiken. Eine Seite, Motiv per ?asset=…; gerendert mit tools/render_branding.ps1 (Chrome headless).
+     Alles prozedural (SVG + fester Zufalls-Seed), keine fremden Bilder oder Logos. Schrift: Bahnschrift (Windows). -->
+<html><head><meta charset="utf-8"><title>Grit Branding</title>
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+  svg { display: block; }
+  .bahn { font-family: "Bahnschrift", "Arial Narrow", sans-serif; }
+</style></head>
+<body>
+<script>
+// ---------- Palette ----------
+const C = {
+  asphalt: "#121417", asphalt2: "#1c1f23",
+  paintHi: "#f39046", paint: "#e06a26", paintLo: "#a9461a",     // „Grit-Orange“ = Autolack
+  metal: "#e4e7ea", metalLo: "#9ea5ad",
+  mud: "#3a2b1c", dirt: "#5c452e", dusty: "#8c785c", sand: "#c9b48a",
+  text: "#eceae6", muted: "#9c968c",
+};
+
+// ---------- Zufall mit Seed (reproduzierbar) ----------
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+  let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+  return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- Bausteine (geben SVG-Text zurück) ----------
+// Lack-Effekte in einem Rechteck-Bereich: Kratzer-Bündel, Abplatzer, Dreck von unten, Staub
+function scratches(r, x0, y0, w, h, clusters, opts = {}) {
+  let s = "";
+  for (let c = 0; c < clusters; c++) {
+    const cy = y0 + h * (0.2 + 0.6 * r()), cx = x0 + w * (0.15 + 0.7 * r());
+    const ang = (-4 - 6 * r()) * Math.PI / 180, len = w * (0.25 + 0.35 * r());
+    const n = opts.n || (6 + Math.floor(r() * 8));
+    for (let i = 0; i < n; i++) {
+      const off = (r() - 0.5) * h * 0.12, l = len * (0.4 + 0.6 * r()), sx = cx - l / 2 + (r() - 0.5) * len * 0.3;
+      const x1 = sx, y1 = cy + off, x2 = sx + Math.cos(ang) * l, y2 = cy + off + Math.sin(ang) * l;
+      const sw = (opts.scale || 1) * (0.8 + 3.2 * Math.pow(r(), 2.2)), op = 0.45 + 0.55 * r();
+      s += `<line x1="${x1}" y1="${y1 + sw * 0.7}" x2="${x2}" y2="${y2 + sw * 0.7}" stroke="#1a0f08" stroke-opacity="${op * 0.45}" stroke-width="${sw}" stroke-linecap="round"/>`;
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${C.metal}" stroke-opacity="${op}" stroke-width="${sw}" stroke-linecap="round"/>`;
+    }
+  }
+  return s;
+}
+function mud(r, x0, y0, w, h, count, opts = {}) {
+  // dichter nach unten (Spritzer vom Rad), Farben wie die Spiel-Untergründe
+  const cols = opts.cols || [C.mud, C.dirt, C.dirt, C.dusty];
+  let s = "";
+  for (let i = 0; i < count; i++) {
+    const t = Math.pow(r(), 0.55);               // 0 oben … 1 unten
+    const x = x0 + w * r(), y = y0 + h * t, rad = (opts.size || 1) * (2 + 16 * Math.pow(r(), 2.4) * (0.4 + t));
+    s += `<circle cx="${x}" cy="${y}" r="${rad}" fill="${cols[Math.floor(r() * cols.length)]}" fill-opacity="${0.55 + 0.45 * r()}"/>`;
+    if (r() < 0.12 && rad > 6) {                 // Tropfnase
+      s += `<ellipse cx="${x}" cy="${y + rad * 1.4}" rx="${rad * 0.35}" ry="${rad * 1.1}" fill="${cols[0]}" fill-opacity="0.85"/>`;
+    }
+  }
+  return s;
+}
+function defs(seed) {
+  return `
+  <linearGradient id="paint" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="${C.paintHi}"/><stop offset="0.45" stop-color="${C.paint}"/><stop offset="1" stop-color="${C.paintLo}"/>
+  </linearGradient>
+  <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0.25" stop-color="#fff" stop-opacity="0"/><stop offset="0.38" stop-color="#fff" stop-opacity="0.22"/>
+    <stop offset="0.5" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="dust" x1="0" y1="1" x2="0.7" y2="0">
+    <stop offset="0" stop-color="${C.sand}" stop-opacity="0.55"/><stop offset="0.55" stop-color="${C.sand}" stop-opacity="0.12"/>
+    <stop offset="1" stop-color="${C.sand}" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f4f5f6"/><stop offset="0.5" stop-color="${C.metalLo}"/><stop offset="1" stop-color="#d9dde1"/>
+  </linearGradient>
+  <filter id="wear" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="4" seed="${seed}"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0.89  0 0 0 0 0.9  0 0 0 0 0.92  11 0 0 0 -7.2"/>
+  </filter>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="${seed + 1}"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0.79  0 0 0 0 0.71  0 0 0 0 0.54  3 0 0 0 -1.35"/>
+  </filter>
+  <filter id="splat" x="-10%" y="-10%" width="120%" height="120%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="${seed + 2}" result="t"/>
+    <feDisplacementMap in="SourceGraphic" in2="t" scale="16" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="asphalt" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="1" seed="${seed + 3}"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.16 -0.04"/>
+  </filter>
+  <filter id="mottle" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.006" numOctaves="3" seed="${seed + 4}"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.9 0.55"/>
+  </filter>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+    <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.55"/>
+  </filter>`;
+}
+// lackierte, zerkratzte, verdreckte Fläche, beschnitten durch clipId
+function weatheredFill(r, clipId, x, y, w, h, o = {}) {
+  return `<g clip-path="url(#${clipId})">
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#paint)"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#sheen)"/>
+    ${o.wear === false ? "" : `<rect x="${x}" y="${y}" width="${w}" height="${h}" filter="url(#wear)"/>`}
+    ${scratches(r, x, y, w, h, o.clusters ?? 3, { scale: o.scratchScale || 1 })}
+    ${o.dust === false ? "" : `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#dust)"/>
+    <rect x="${x}" y="${y + h * 0.45}" width="${w}" height="${h * 0.55}" filter="url(#grain)" opacity="0.5"/>`}
+    <g filter="url(#splat)">${mud(r, x, y + h * (o.mudTop ?? 0.62), w, h * (1 - (o.mudTop ?? 0.62)) + 10, o.mudCount ?? 160, { size: o.mudSize || 1 })}</g>
+  </g>`;
+}
+function crack(x, y, s) {  // Riss: Hauptlinie mit Verästelungen, Maßstab s
+  const p = (pts) => pts.map(([a, b]) => `${x + a * s},${y + b * s}`).join(" ");
+  const main = p([[0, 0], [14, 9], [22, 7], [35, 19], [47, 22], [56, 35], [70, 40]]);
+  const b1 = p([[22, 7], [26, -6], [33, -11]]), b2 = p([[47, 22], [52, 13], [63, 10]]), b3 = p([[35, 19], [33, 31], [38, 41]]);
+  const line = (pts, w) => `<polyline points="${pts}" fill="none" stroke="#fbe2cc" stroke-opacity="0.35" stroke-width="${w + 1.2}" stroke-linejoin="round" transform="translate(0.8 0.8)"/>
+    <polyline points="${pts}" fill="none" stroke="#120c08" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  return line(main, 0.055 * s) + line(b1, 0.035 * s) + line(b2, 0.035 * s) + line(b3, 0.03 * s);
+}
+
+// Wortmarke „GRIT“ in eigenem Koordinatensystem 1000×360
+function wordmark(seed) {
+  const r = rng(seed);
+  const txt = `<text x="500" y="312" text-anchor="middle" class="bahn" font-size="360" font-weight="700"
+      style="font-variation-settings:'wght' 700,'wdth' 75; font-stretch:condensed" letter-spacing="10"
+      textLength="900" lengthAdjust="spacing">GRIT</text>`;
+  let outside = "";                              // Spritzer unter den Buchstaben
+  for (let i = 0; i < 70; i++) {
+    const x = 70 + 860 * r(), y = 318 + 34 * Math.pow(r(), 1.5), rad = 0.8 + 3.5 * Math.pow(r(), 2);
+    outside += `<circle cx="${x}" cy="${y}" r="${rad}" fill="${[C.dirt, C.mud, C.dusty][Math.floor(r() * 3)]}" fill-opacity="${0.35 + 0.5 * r()}"/>`;
+  }
+  return `<svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+    <defs>${defs(seed)}<clipPath id="wm">${txt}</clipPath></defs>
+    <g filter="url(#shadow)">
+      ${weatheredFill(r, "wm", 0, 40, 1000, 280, { clusters: 4, mudTop: 0.66, mudCount: 260 })}
+    </g>
+    <g clip-path="url(#wm)">${crack(70, 70, 3.2)}</g>
+    ${outside}
+  </svg>`;
+}
+
+// Bildmarke: „G“ auf einer Platte, quadratisch 1000×1000
+function mark(seed, bg = true) {
+  const r = rng(seed);
+  const g = `<text x="500" y="790" text-anchor="middle" class="bahn" font-size="880" font-weight="700"
+      style="font-variation-settings:'wght' 700,'wdth' 75">G</text>`;
+  const plate = bg ? `
+    <rect x="40" y="40" width="920" height="920" rx="170" fill="${C.asphalt}"/>
+    <rect x="40" y="40" width="920" height="920" rx="170" filter="url(#asphalt)"/>
+    <rect x="40" y="40" width="920" height="920" rx="170" filter="url(#mottle)" opacity="0.6"/>
+    <rect x="52" y="52" width="896" height="896" rx="160" fill="none" stroke="url(#metalGrad)" stroke-opacity="0.35" stroke-width="6"/>` : "";
+  return `<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+    <defs>${defs(seed)}<clipPath id="gm">${g}</clipPath><clipPath id="plate"><rect x="40" y="40" width="920" height="920" rx="170"/></clipPath></defs>
+    ${plate}
+    <g filter="url(#shadow)">${weatheredFill(r, "gm", 150, 140, 700, 680, { clusters: 3, scratchScale: 2.2, mudTop: 0.6, mudCount: 220, mudSize: 2.2 })}</g>
+    <g clip-path="url(#gm)">${crack(560, 190, 4.2)}</g>
+  </svg>`;
+}
+
+// Hintergrund: Asphalt mit Staub-Schimmer und Radspritzer-Streifen
+function background(seed, W, H) {
+  const r = rng(seed + 50);
+  let spray = "";
+  for (let i = 0; i < 140; i++) {               // Spritzer-Streifen von unten links nach oben rechts
+    const x = W * r(), y = H * (0.55 + 0.45 * r()), l = 20 + 120 * r(), a = (-18 - 14 * r()) * Math.PI / 180;
+    spray += `<line x1="${x}" y1="${y}" x2="${x + Math.cos(a) * l}" y2="${y + Math.sin(a) * l}" stroke="${[C.dirt, C.dusty, C.sand][Math.floor(r() * 3)]}" stroke-opacity="${0.05 + 0.12 * r()}" stroke-width="${1 + 3 * r()}" stroke-linecap="round"/>`;
+  }
+  for (let i = 0; i < 260; i++) {
+    const x = W * r(), y = H * (0.6 + 0.4 * Math.pow(r(), 0.7));
+    spray += `<circle cx="${x}" cy="${y}" r="${0.6 + 2.6 * Math.pow(r(), 2)}" fill="${[C.dirt, C.mud, C.dusty][Math.floor(r() * 3)]}" fill-opacity="${0.15 + 0.35 * r()}"/>`;
+  }
+  return `
+    <rect width="${W}" height="${H}" fill="${C.asphalt}"/>
+    <rect width="${W}" height="${H}" filter="url(#mottle)" opacity="0.7"/>
+    <rect width="${W}" height="${H}" filter="url(#asphalt)"/>
+    <radialGradient id="glow" cx="0.78" cy="1.05" r="0.75"><stop offset="0" stop-color="${C.sand}" stop-opacity="0.22"/><stop offset="1" stop-color="${C.sand}" stop-opacity="0"/></radialGradient>
+    <rect width="${W}" height="${H}" fill="url(#glow)"/>
+    <radialGradient id="vig" cx="0.5" cy="0.45" r="0.8"><stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/></radialGradient>
+    ${spray}
+    <rect width="${W}" height="${H}" fill="url(#vig)"/>`;
+}
+const TAG = "DYNAMIC DIRT · SCRATCHES · CRACKS";
+const tagline = (x, y, size, anchor = "start", fill = C.sand) =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" class="bahn" font-size="${size}" fill="${fill}" letter-spacing="${size * 0.28}"
+     style="font-variation-settings:'wght' 400,'wdth' 80">${TAG}</text>`;
+const sub = (x, y, size, text, anchor = "start") =>
+  `<text x="${x}" y="${y}" text-anchor="${anchor}" class="bahn" font-size="${size}" fill="${C.muted}" letter-spacing="${size * 0.08}"
+     style="font-variation-settings:'wght' 350,'wdth' 90">${text}</text>`;
+
+// ---------- Motive ----------
+const ASSETS = {
+  // Logo (Bildmarke) mit Platte – Avatar, Repo-Icon
+  logo: [1024, 1024, (s) => mark(s)],
+  // Bildmarke freigestellt
+  "logo-transparent": [1024, 1024, (s) => mark(s, false)],
+  // Wortmarke freigestellt
+  wordmark: [2000, 760, (s) => `<svg viewBox="0 0 2000 760" xmlns="http://www.w3.org/2000/svg">
+      <svg x="100" y="40" width="1800" height="648" viewBox="0 0 1000 360" overflow="visible">${wordmark(s).replace(/^<svg[^>]*>|<\/svg>$/g, "")}</svg>
+    </svg>`],
+  // Forum-Kopfbild
+  banner: [1920, 640, (s) => { const W = 1920, H = 640; return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>${defs(s)}</defs>${background(s, W, H)}
+      <svg x="150" y="95" width="980" height="353" viewBox="0 0 1000 360" overflow="visible">${inner(wordmark(s))}</svg>
+      ${tagline(1200, 270, 40)}
+      <rect x="1200" y="300" width="120" height="6" fill="${C.paint}"/>
+      ${sub(1200, 365, 34, "for every vehicle in BeamNG.drive")}
+      ${sub(1200, 410, 26, "vanilla &amp; modded · keeps your paint and liveries")}
+    </svg>`; }],
+  // Vorschaubild 16:9 (Forum-Thread, Repo)
+  thumbnail: [1280, 720, (s) => { const W = 1280, H = 720; return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+      <defs>${defs(s)}</defs>${background(s, W, H)}
+      <svg x="190" y="120" width="900" height="324" viewBox="0 0 1000 360" overflow="visible">${inner(wordmark(s))}</svg>
+      ${tagline(640, 530, 34, "middle")}
+      <rect x="580" y="556" width="120" height="5" fill="${C.paint}"/>
+      ${sub(640, 610, 28, "for every vehicle in BeamNG.drive", "middle")}
+    </svg>`; }],
+  // Abschnitts-Köpfe für den Forenbeitrag
+  "header-scratches": [1600, 360, (s) => featureHeader(s, "SCRATCHES", "Scrapes leave marks exactly where they happen – three depths, down to bare metal.", "scratch")],
+  "header-dirt": [1600, 360, (s) => featureHeader(s, "DIRT &amp; MUD", "Wheel spray and body contact pile up dirt in the color of the ground.", "mud")],
+  "header-dust": [1600, 360, (s) => featureHeader(s, "DUST", "Fast runs on dusty roads settle a fine layer over the whole car.", "dust")],
+};
+function inner(svg) { return svg.replace(/^<svg[^>]*>/, "").replace(/<\/svg>\s*$/, ""); }
+function featureHeader(seed, title, text, kind) {
+  const W = 1600, H = 360, r = rng(seed + kind.length * 31);
+  const px = 1040, py = 50, pw = 500, ph = 260;
+  let fx = "";
+  if (kind === "scratch") fx = scratches(r, px, py, pw, ph, 3, { scale: 1.6 });
+  if (kind === "mud") fx = `<g filter="url(#splat)">${mud(r, px, py + ph * 0.25, pw, ph * 0.8, 420, { size: 1.6 })}</g>`;
+  if (kind === "dust") fx = `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="url(#dust)"/>
+     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${C.sand}" fill-opacity="0.18"/>
+     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" filter="url(#grain)"/>
+     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" filter="url(#grain)" opacity="0.7"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs>${defs(seed)}<clipPath id="panel"><rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="28"/></clipPath></defs>
+    ${background(seed, W, H)}
+    <rect x="90" y="96" width="10" height="168" fill="${C.paint}"/>
+    <text x="140" y="196" class="bahn" font-size="120" fill="${C.text}" letter-spacing="4"
+      style="font-variation-settings:'wght' 700,'wdth' 75">${title}</text>
+    ${sub(142, 252, 30, text)}
+    <g filter="url(#shadow)"><g clip-path="url(#panel)">
+      <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="url(#paint)"/>
+      <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="url(#sheen)"/>
+      ${fx}
+    </g></g>
+  </svg>`;
+}
+
+// ---------- Ausgabe ----------
+const q = new URLSearchParams(location.search);
+const name = q.get("asset") || "banner", seed = parseInt(q.get("seed") || "7", 10);
+const [W, H, fn] = ASSETS[name];
+document.body.style.width = W + "px"; document.body.style.height = H + "px";
+document.body.insertAdjacentHTML("beforeend", fn(seed).replace("<svg ", `<svg width="${W}" height="${H}" `));
+</script>
+</body></html>
