@@ -369,3 +369,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Spiegel brauner als der Rest: Ursache noch offen (anderes Material/UV?). ❓
 - **Damit deckt Weg A′ alle lackierten Teile des ETKI flächig ab.** Realistischer Look (Texturen, Verteilung, Glanz)
   ist Gestaltungsarbeit für M1+, nicht Teil des Spikes.
+
+### Spike 2b, Lauf 6 (2026-11-06) – zweites Auto, Mod-Fahrzeug, Lackierung
+- **K, zweiter ETKI (gleiches Modell):** alter behält Dreck ✅, **neuer gelb** mit Lackresten ❌.
+  Ursache: Zusatz-Stage sitzt im geteilten Material, der neue hat kein Texture-Set an `@Patina*` gebunden → Datenreste.
+  Fix (ungetestet): jedes andere Fahrzeug bekommt pro Frame über `veh:setTextureSet` ein leeres schwarzes Set
+  (`getAllVehicles()`, `ge/ge_utils.lua:503`). Später: jedes Fahrzeug eigenes Set.
+- **L, Mod-Fahrzeug `gavril_vertex`:** 2 lackierte Materialien erkannt, `coat2(1,1,0,0)` → ganzes Auto rot. ✅
+- **M, Lackierung (Legran mit Renn-Lackierung):** 4 lackierte Materialien, Lackierung unter `coat2(0.6)` erkennbar. ✅
+  Screenshot `screenshots/2026-11/screenshot_2026-11-06_15-26-14.png`.
