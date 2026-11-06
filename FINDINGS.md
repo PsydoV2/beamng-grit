@@ -887,3 +887,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Log `<User>/grit.log`. Junction `mods/unpacked/grit` → `E:\BeamNGMods\Dynamic Patina\mod` (alte `patina` entfernt).
   Spike-Skripte nach `spikes/` verschoben (nicht im Release). Ältere Einträge oben nennen noch die Patina-Namen.
 - Test nach Neustart (2026-11-06): grit aktiv, Kratzer und Dreck wie vorher ✅ (Sebastian), Log `grit.log`.
+
+### Mod-Icon im Mod-/Repo-Manager (2026-11-07)
+- Mod-Manager liest Icon und Bilder nur aus `mod_info/<ID>/info.json` im ZIP (`core/modmanager.lua:126`, `:323-337`:
+  `modData.icon` und `attachments[].thumb_filename` relativ zu `/mod_info/<ID>/`). Felder wie `resource_id`,
+  `tagid`, `resource_version_id` (`:131-144`) vergibt das offizielle Repository beim Upload.
+- `tagid` wird zur Update-Prüfung an den Server geschickt (`:1350-1351`) → **kein eigenes `mod_info` erfinden**.
+  Icon/Bilder beim Upload ins Repository hochladen (dann fügt das Repo `mod_info` selbst ein). Ein privat
+  weitergegebenes ZIP zeigt im Mod-Manager kein Bild.

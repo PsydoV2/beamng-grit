@@ -228,10 +228,15 @@ function featureHeader(seed, title, text, kind) {
   let fx = "";
   if (kind === "scratch") fx = scratches(r, px, py, pw, ph, 3, { scale: 1.6 });
   if (kind === "mud") fx = `<g filter="url(#splat)">${mud(r, px, py + ph * 0.25, pw, ph * 0.8, 420, { size: 1.6 })}</g>`;
-  if (kind === "dust") fx = `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="url(#dust)"/>
-     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${C.sand}" fill-opacity="0.18"/>
+  if (kind === "dust") fx = `<mask id="wipe" maskUnits="userSpaceOnUse" x="${px}" y="${py}" width="${pw}" height="${ph}">
+       <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="#fff"/>
+       <filter id="soft" filterUnits="userSpaceOnUse" x="${px}" y="${py}" width="${pw}" height="${ph}"><feGaussianBlur stdDeviation="5"/></filter>
+       <path d="M ${px + 70} ${py + 190} C ${px + 170} ${py + 60}, ${px + 330} ${py + 50}, ${px + 440} ${py + 150}" stroke="#000" stroke-width="46" stroke-linecap="round" fill="none" filter="url(#soft)"/>
+       ${[0, 1, 2].map(i => `<path d="M ${px + 120 + i * 26} ${py + 230} C ${px + 190 + i * 26} ${py + 170}, ${px + 250 + i * 22} ${py + 165}, ${px + 300 + i * 20} ${py + 200}" stroke="#000" stroke-opacity="0.8" stroke-width="9" stroke-linecap="round" fill="none" filter="url(#soft)"/>`).join("")}
+     </mask><g mask="url(#wipe)"><rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="url(#dust)"/>
+     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" fill="${C.sand}" fill-opacity="0.42"/>
      <rect x="${px}" y="${py}" width="${pw}" height="${ph}" filter="url(#grain)"/>
-     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" filter="url(#grain)" opacity="0.7"/>`;
+     <rect x="${px}" y="${py}" width="${pw}" height="${ph}" filter="url(#grain)" opacity="0.7"/></g>`;
   return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
     <defs>${defs(seed)}<clipPath id="panel"><rect x="${px}" y="${py}" width="${pw}" height="${ph}" rx="28"/></clipPath></defs>
     ${background(seed, W, H)}
