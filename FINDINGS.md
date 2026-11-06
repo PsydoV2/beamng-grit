@@ -378,3 +378,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - **L, Mod-Fahrzeug `gavril_vertex`:** 2 lackierte Materialien erkannt, `coat2(1,1,0,0)` → ganzes Auto rot. ✅
 - **M, Lackierung (Legran mit Renn-Lackierung):** 4 lackierte Materialien, Lackierung unter `coat2(0.6)` erkennbar. ✅
   Screenshot `screenshots/2026-11/screenshot_2026-11-06_15-26-14.png`.
+
+### Spike 2b, Lauf 7 (2026-11-06) – K′
+- Gemeinsames leeres Set (gebacken mit der Form des Patina-Autos) an alle anderen gebunden → zweiter ETKI
+  **deckend lavendelblau** statt Seafoam Green (Screenshot `…15-32-16.png`). Lavendel ≈ (0.5,0.5,1) =
+  typischer Platzhalter → das Set wirkt am anderen Fahrzeug nicht. Texture-Sets hängen offenbar an der
+  Form-Instanz der Projektion. Neuer Versuch: eigene leere Projektion pro Fahrzeug mit dessen Form.
