@@ -481,3 +481,16 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Bug im Spike: zweites `start()` legt eine weitere Stage obendrauf (Stage 2→3), weil die Skin-Kopie
   schon eine Patina-Stage hat → vorhandene Patina-Stage erkennen und wiederverwenden.
 - Offen: Verhältnis zu Lackierungs-Skins (Slot `paint_design` wird durch unseren Skin ersetzt).
+
+### Entscheidungen (2026-11-06, Sebastian)
+- Einmaliges Neuladen des Fahrzeugs beim Aktivieren von Patina ist ok (am besten beim Spawnen).
+- Lackierungsmuster (Liveries): Patina kopiert die Materialien des gewählten Skins → in Spike 4 einplanen.
+
+### Spike 2d (2026-11-06): Skin-Ansatz automatisch
+- Spawn-Ablauf geprüft: `loadBundle` ruft `jbeamLicensePlatesSkins.process` (setSkin) vor `jbeamMeshs.process`
+  (`common/jbeam/loader.lua:387,411`) → Skin muss vor dem Spawn feststehen. Hooks `onJbeamLoadingPhase1/2`
+  (`loader.lua:240,271`) laufen davor; `onVehicleSpawned` danach (`ge/main.lua:1161`).
+- Neuspawn eines beliebigen Fahrzeugs: `veh:respawn(serialize(config))` (`core/vehicle/partmgmt.lua:935`).
+- `spike2d.lua`: `start()` legt Skin-Materialien an, `setSkin`, `respawn`; `onVehicleSpawned` → Ziele neu
+  finden, Texturen sofort binden, backen. Vorhandene Patina-Stage wird erkannt (kein Doppel-Stage).
+  `stop()` → `setSkin(".")`, Neuspawn, danach Skin-Materialien löschen.
