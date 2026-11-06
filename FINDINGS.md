@@ -720,3 +720,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Chrom: erst einmal weglassen (Sebastian).
 - Achtung: `mods/repo/dynamic_scratches_mod_beta.zip` ist **aktiv** (db.json) – fremder Kratzer-Mod, kann Tests
   verfälschen. Nicht angesehen (keine fremde Logik übernehmen).
+
+### M1 Kratzer-MVP abgeschlossen ✅ (2026-11-06)
+- Flecken durch Spiegel weg ✅, fremder Kratzer-Mod deaktiviert, Screenshot-Freigabe Sebastian ✅.
+- Erfüllt: Schrammen → Kratzer an der richtigen Stelle, längs der Schleifrichtung, 3 Tiefen, auf ETKI, D-Serie,
+  Covet (Vanilla) und Gavril Vertex NA2 (Mod).
+- Offen/vertagt: Chrom-Teile (Kratzer hell auf hell); „Kontakte zu Strichen verbinden“ vorerst durch versetzte
+  Ebenen ersetzt – Budget 100 Ebenen ist bei langem Schrammen schnell voll (später: Zusammenfassen/Atlas);
+  Spike-5-Reste (g-Formel, Fahrzeug-gegen-Fahrzeug über nodeCollision?); Front/Heck-Ausrichtung ungetestet.
