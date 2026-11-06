@@ -772,3 +772,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 ### M2.1, Lauf 4 (2026-11-06) ✅ Radspritzer
 - Flackern weg ✅, Kratzer weiter sichtbar ✅. Reihenfolge stimmt: erst Kratzer, dann Dreck → Dreck deckt zu ✅;
   erst Dreck, dann Schrammen → Kratzer liegen oben (gewollt: Schrammen reibt den Dreck ab).
+
+### M2.2 Staub (2026-11-06)
+- Sensor: mind. 2 Räder auf trockenem losem Untergrund (DIRT_DUSTY 14, DIRT 15, SAND 16, SANDY_ROAD 17,
+  GRAVEL 19), Tempo ≥ 8 m/s (`obj:getVelocity()`, `vehicle/controller/dragTimer.lua:60`) → je 35 m ein Ereignis.
+- GE: 70 % Heck (+y, 0.9–1.4 m, Deckkraft 0.12 → max 0.5), 30 % Oberseite von oben (1.0–1.6 m, hinten dichter,
+  0.08 → max 0.28); monoton je Bereich; max. 80 Ereignisse. Farbe aus der Dreck-Tabelle.
+- Textur `dust.png` (Seed 5005): sehr weiche große Flecken + feine Körner.

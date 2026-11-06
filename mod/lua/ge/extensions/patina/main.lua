@@ -307,12 +307,60 @@ local function handleSprays(car, vid, list)
   end
 end
 
+-- M2.2 Staub (Konzept: großflächige Noise-Decals, geringe Deckkraft, von hinten oder oben; lagert sich am Heck und
+-- dünn auf Oberseiten ab). Deckkraft je Bereich monoton wie beim Dreck (M2.1 Lauf 2).
+local DUST = {
+  texture = "/art/patina/dust.png", depth = 0.6,
+  rear = { chance = 0.7, minSize = 0.9, maxSize = 1.4, start = 0.12, step = 0.012, max = 0.5, tol = 0.6 },
+  top  = {               minSize = 1.0, maxSize = 1.6, start = 0.08, step = 0.008, max = 0.28, tol = 0.8 },
+  maxEvents = 80,
+}
+
+local function handleDusts(car, vid, list)
+  if not list or #list == 0 then return end
+  local veh = be:getObjectByID(vid); if not veh then return end
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  car.dirtLevel = car.dirtLevel or {}
+  for _, s in ipairs(list) do
+    local col = DIRT.colors[s.m]
+    if col and (car.dusts or 0) < DUST.maxEvents then
+      local rear = math.random() < DUST.rear.chance
+      local cfg, key, pos, n = rear and DUST.rear or DUST.top, rear and "staubHeck" or "staubOben"
+      local rx, ry = math.random(), math.random()
+      if rear then   -- Heck: +y (Spike 1: −y vorne)
+        pos = vec3(mn.x + (mx.x - mn.x) * (0.15 + 0.7 * rx), mx.y, mn.z + (mx.z - mn.z) * (0.2 + 0.6 * ry))
+        n = vec3(0, 1, 0)
+      else           -- Oberseite, hinten etwas dichter
+        pos = vec3(mn.x + (mx.x - mn.x) * (0.2 + 0.6 * rx), mn.y + (mx.y - mn.y) * (0.25 + 0.75 * math.sqrt(ry)), mx.z)
+        n = vec3(0, 0, 1)
+      end
+      local a = math.random() * 2 * math.pi
+      local up = rear and vec3(math.cos(a), 0, math.sin(a)) or vec3(math.cos(a), math.sin(a), 0)
+      local size = cfg.minSize + (cfg.maxSize - cfg.minSize) * math.random()
+      local strength = math.min(cfg.max, math.max(car.dirtLevel[key] or 0, cfg.start))
+      car.dirtLevel[key] = math.min(cfg.max, strength + cfg.step)
+      local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = cfg.tol,
+        width = size, length = size, depth = DUST.depth, texture = DUST.texture,
+        color = tint(col), strength = strength, name = "Patina Staub" })
+      if ok then
+        car.dusts = (car.dusts or 0) + 1
+        if car.dusts <= 10 then
+          L("I", "Staub %s %.1f m/s → %s pos(%.2f,%.2f,%.2f) Deckkraft %.2f", DIRT.names[s.m] or "?", s.v,
+            rear and "Heck" or "oben", pos.x, pos.y, pos.z, strength)
+        end
+      end
+    end
+  end
+end
+
 -- Ereignisse vom Sensor ----------------------------------------------------------------
 
 M.onSensorEvents = function(vid, ev)
   local car = cars[vid]
   if not car or car.phase ~= "active" or type(ev) ~= "table" then return end
   handleSprays(car, vid, ev.sprays)
+  handleDusts(car, vid, ev.dusts)
   for _, s in ipairs(ev.scrapes or {}) do
     if (car.scrapes or 0) < 15 then
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
@@ -402,7 +450,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel = {}, {}, {} end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts = {}, {}, {}, 0 end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -418,8 +466,8 @@ end
 -- Konsole: patina_main.status()
 M.status = function()
   for vid, car in pairs(cars) do
-    L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d verworfen (Budget), %d ohne Treffer",
-      vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0,
+    L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d Staub, %d verworfen (Budget), %d ohne Treffer",
+      vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0, car.dusts or 0,
       car.r and car.r.dropped or 0, car.r and car.r.misses or 0)
   end
 end
@@ -442,7 +490,7 @@ end
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel = {}, {}, {} end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts = {}, {}, {}, 0 end
 end
 
 return M

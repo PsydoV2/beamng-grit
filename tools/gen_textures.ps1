@@ -100,3 +100,16 @@ for ($i = 0; $i -lt 260; $i++) {          # Tropfen, nach außen dünner
   Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (4 + 14 * $rnd.NextDouble()) (150 + $rnd.Next(105))
 }
 Save $c[0] $c[1] "dirt_splash.png"
+
+# Staub: großflächiger, unregelmäßiger Schleier aus vielen sehr weichen Flecken + feinen Körnern (M2.2)
+$rnd = New-Object System.Random(5005)
+$c = New-Canvas
+for ($i = 0; $i -lt 90; $i++) {
+  $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Sqrt($rnd.NextDouble()) * $size * 0.36
+  Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (90 + 110 * $rnd.NextDouble()) (25 + $rnd.Next(45))
+}
+for ($i = 0; $i -lt 1400; $i++) {
+  $a = $rnd.NextDouble() * 2 * [Math]::PI; $d = [Math]::Sqrt($rnd.NextDouble()) * $size * 0.45
+  Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (1.5 + 3 * $rnd.NextDouble()) (60 + $rnd.Next(120))
+}
+Save $c[0] $c[1] "dust.png"

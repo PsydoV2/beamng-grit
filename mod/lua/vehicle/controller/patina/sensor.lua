@@ -61,6 +61,36 @@ local function updateSpray(dt)
   end
 end
 
+
+-- M2.2 Staub: trockener, loser Untergrund ab mittlerem Tempo (Konzept). Häufigstes Kontaktmaterial der Räder;
+-- je DUST_DIST Meter ein Ereignis. Tempo: obj:getVelocity() (vehicle/controller/dragTimer.lua:60).
+local DUST_DIST = 35
+local DUST_MIN_SPEED = 8       -- m/s ≈ 30 km/h
+local DUSTY = { [14] = true, [15] = true, [16] = true, [17] = true, [19] = true }
+local dustDose, dusts = 0, {}
+
+local function updateDust(dt)
+  local count, best, bestN = {}, nil, 0
+  for i in pairs(wheelInfo) do
+    local wd = wheels.wheels[i]
+    if wd and not wd.isBroken and (wd.downForceRaw or 0) > 0 then
+      local mat = wd.contactMaterialID1
+      if mat == RUBBER then mat = wd.contactMaterialID2 end
+      if DUSTY[mat] then
+        count[mat] = (count[mat] or 0) + 1
+        if count[mat] > bestN then best, bestN = mat, count[mat] end
+      end
+    end
+  end
+  local spd = obj:getVelocity():length()
+  if not best or bestN < 2 or spd < DUST_MIN_SPEED then return end
+  dustDose = dustDose + spd * dt
+  if dustDose >= DUST_DIST then
+    dustDose = 0
+    table.insert(dusts, { m = best, v = r3(spd) })
+  end
+end
+
 local function initWheels()
   wheelInfo, sprayDose, sprays = {}, {}, {}
   for i = 0, (wheels.wheelCount or 0) - 1 do
@@ -105,21 +135,22 @@ local function updateGFX(dt)
   axU = obj:getDirectionVectorUp()
   axL = axU:cross(axF)
   updateSpray(dt)
+  updateDust(dt)
   sendT = sendT + dt
   if sendT < SEND_INTERVAL then return end
   sendT = 0
-  if #pending == 0 and #sprays == 0 then return end
+  if #pending == 0 and #sprays == 0 and #dusts == 0 then return end
   if #pending > MAX_PER_SEND then
     table.sort(pending, function(a, b) return a.v > b.v end)
     for i = #pending, MAX_PER_SEND + 1, -1 do pending[i] = nil end
   end
   obj:queueGameEngineLua(string.format("patina_main.onSensorEvents(%d, %s)", obj:getId(),
-    serialize({ scrapes = pending, sprays = sprays })))
-  pending, sprays = {}, {}
+    serialize({ scrapes = pending, sprays = sprays, dusts = dusts })))
+  pending, sprays, dusts = {}, {}, {}
 end
 
 local function reset()
-  pending, lastEmit, sendT, sprayDose, sprays = {}, {}, 0, {}, {}
+  pending, lastEmit, sendT, sprayDose, sprays, dustDose, dusts = {}, {}, 0, {}, {}, 0, {}
 end
 
 local function init()
