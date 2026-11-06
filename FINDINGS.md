@@ -621,3 +621,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   sonst Skin-Slot leeren und nach dem Spawn frisch vorbereiten (kostet bei Strg+R einen zweiten Spawn).
   Alte Kopien derselben ID werden gelöscht.
 - Diagnose: erste 15 Schrammen + Decal-Treffer ins Log, `patina_main.testScratch("left")`.
+
+### M1.1, Lauf 2 (2026-11-06)
+- Muster-Übertrag behoben ✅ (zweiter ETKI ohne Muster sieht richtig aus).
+- Nach Strg+L: Aktivierung in `onExtensionLoaded` scheitert, `core_vehicle_manager.getVehicleData` noch leer
+  („Neuspawn nicht möglich“), danach kein neuer Versuch. Ersetzen über den Fahrzeug-Wähler behält die ID
+  (`core/vehicles.lua:1780-1794`, `onVehicleReplaced`) und löste keine Aktivierung aus.
+- Fix: `onUpdate` prüft das Spielerfahrzeug und aktiviert es (Wiederholung alle 30 Frames). Trägt es einen
+  Patina-Skin aus unbekanntem Zustand → Skin aus, Neuspawn, dann frisch kopieren.

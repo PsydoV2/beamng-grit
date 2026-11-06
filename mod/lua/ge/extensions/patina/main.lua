@@ -187,10 +187,28 @@ local function attach(veh)
     #missing > 0 and (" (ohne: " .. table.concat(missing, ", ") .. ")") or "", car.timer and car.timer:stopAndReset() or -1)
 end
 
+-- Aktivieren. Trägt das Fahrzeug noch einen Patina-Skin aus unbekanntem Zustand (z. B. nach Strg+L), erst Skin aus
+-- und neu spawnen, damit frisch von den echten Materialien kopiert wird (M1.1 Lauf 2).
 local function activate(vid)
   local veh = be:getObjectByID(vid)
-  if not veh or (cars[vid] and cars[vid].phase) then return end
+  if not veh or (cars[vid] and cars[vid].phase) then return true end
+  local vd = core_vehicle_manager.getVehicleData(vid)
+  if not (vd and vd.config) then return false end   -- direkt nach Strg+L noch keine Fahrzeugdaten → später erneut
+  local stale = false
+  for _, t in ipairs(findTargets(veh)) do
+    if t.objName:find("%." .. SLOT .. "%.") then stale = true; break end
+  end
+  if stale then
+    local car = cars[vid] or { skinMats = {} }
+    cars[vid] = car
+    veh:setSkin(SLOT .. ".")
+    car.phase = "renew"
+    L("I", "Fahrzeug %d trägt alten Patina-Skin → Skin aus, Neuspawn", vid)
+    if not respawn(veh) then car.phase = nil; return false end
+    return true
+  end
   prepare(veh)
+  return cars[vid] ~= nil and cars[vid].phase ~= nil
 end
 
 -- Ereignisse vom Sensor ----------------------------------------------------------------
@@ -215,7 +233,18 @@ end
 
 -- Hooks ------------------------------------------------------------------------------
 
+local retryFrames = 0
 M.onUpdate = function()
+  -- Spielerfahrzeug ohne Patina? (neu, ersetzt mit gleicher ID, nach Strg+L, Fahrzeugwechsel) → aktivieren,
+  -- bei Misserfolg alle 30 Frames erneut
+  local pv = be:getPlayerVehicleID(0)
+  if pv and pv >= 0 and not (cars[pv] and cars[pv].phase) then
+    if retryFrames <= 0 then
+      if not activate(pv) then retryFrames = 30 end
+    else
+      retryFrames = retryFrames - 1
+    end
+  end
   for vid, car in pairs(cars) do
     if car.phase == "active" and car.r then
       local veh = be:getObjectByID(vid)
@@ -247,13 +276,8 @@ M.onVehicleSpawned = function(vid)
     attach(veh)
   elseif car and car.phase == "renew" then
     prepare(veh)  -- Strg+R / neues Fahrzeug / Teilewechsel: frisch kopieren, Zustand neu (Konzept: Mesh geändert/repariert)
-  elseif vid == be:getPlayerVehicleID(0) then
-    activate(vid)
   end
-end
-
-M.onVehicleSwitched = function(oldId, newId)
-  if newId and newId >= 0 and not cars[newId] then activate(newId) end
+  -- neue Spielerfahrzeuge aktiviert onUpdate (auch bei Ersetzen mit gleicher ID, core/vehicles.lua:1780-1794)
 end
 
 M.onVehicleResetted = function(vid)
@@ -266,13 +290,11 @@ end
 
 M.onVehicleDestroyed = function(vid)
   local car = cars[vid]
-  if car and car.phase ~= "respawn" then deleteSkinMaterials(car); cars[vid] = nil end
+  if car and car.phase ~= "respawn" and car.phase ~= "renew" then deleteSkinMaterials(car); cars[vid] = nil end
 end
 
 M.onExtensionLoaded = function()
   L("I", "Patina geladen.")
-  local pv = be:getPlayerVehicleID(0)
-  if pv and pv >= 0 then activate(pv) end
 end
 
 -- Konsole: patina_main.status()
@@ -286,7 +308,7 @@ end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
 M.testScratch = function(side)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
-  if not (car and car.r and veh) then L("E", "testScratch: Fahrzeug nicht aktiv"); return end
+  if not (car and car.r and veh) then L("W", "testScratch: Patina ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
   local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
   local c = (mn + mx) * 0.5
