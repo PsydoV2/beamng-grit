@@ -755,3 +755,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Mitte 1.3–2.5 r hinter dem Rad; Heck 0.45–0.8 m rund.
 - Zierleiste: Verdacht UV1-Layout der Leiste (gestreckt/überlappend → ein Fleck in der Textur erscheint entlang
   der ganzen Leiste). Kein Patina-Fehler der Platzierung; Prüfung offen (Vanilla-Decal-Editor auf der Leiste).
+
+### M2.1, Lauf 2 (2026-11-06)
+- Sebastian: deutlich besser, großflächiger ✅; aber beim Weiterfahren kommt mal mehr, mal weniger Lackfarbe durch ❌.
+- Deutung: Deckkraft nimmt ab, wenn ein schwacher Spritzer über einen starken kommt → additive Maske
+  (`blendMode = 2` am Layer) greift nicht, es wird normal überblendet. (Vermutung, nicht einzeln gemessen.)
+- Fix unabhängig vom Blend-Modus: Deckkraft je Bereich (Seite je Rad, Heck gemeinsam) monoton, max(vorher, Tempo),
+  +0.02 pro Spritzer, höchstens 0.9. Additiv-Code entfernt.

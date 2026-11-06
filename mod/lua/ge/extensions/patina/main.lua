@@ -245,6 +245,7 @@ local DIRT = {
   minSize = 0.45, maxSize = 0.8, depth = 0.35,
   maxPerWheel = 30,      -- danach ist dieser Bereich „voll“ (Ebenen-Budget)
   rearChance = 0.3,      -- Hinterrad: Anteil der Spritzer aufs Heck
+  maxStrength = 0.9, buildUp = 0.02,   -- Deckkraft je Bereich steigt pro Spritzer, nie abwärts
 }
 
 local function tint(c, s)   -- leichte Farbstreuung pro Spritzer
@@ -283,10 +284,17 @@ local function handleSprays(car, vid, list)
         w = (DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random()) * 1.6
         h = DIRT.minSize + (DIRT.maxSize - DIRT.minSize) * math.random() * 0.7
       end
-      local strength = math.min(0.75, 0.3 + math.abs(s.v) * 0.012 + math.abs(s.s) * 0.02)
+      -- M2.1 Lauf 2: „mal mehr, mal weniger Lackfarbe“ → ein schwächerer Spritzer über einem stärkeren zog die
+      -- Deckkraft herunter; die additive Maske (blendMode 2 am Layer) wirkt offenbar nicht. Deshalb pro Bereich
+      -- (Seite je Rad, Heck gemeinsam) nie schwächer als der vorige Spritzer, jeder legt etwas zu.
+      car.dirtLevel = car.dirtLevel or {}
+      local key = (n.y ~= 0) and ("heck" .. n.y) or ("rad" .. s.w)
+      local want = math.min(0.75, 0.3 + math.abs(s.v) * 0.012 + math.abs(s.s) * 0.02)
+      local strength = math.min(DIRT.maxStrength, math.max(car.dirtLevel[key] or 0, want))
+      car.dirtLevel[key] = math.min(DIRT.maxStrength, strength + DIRT.buildUp)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol,
         width = w, length = h, depth = DIRT.depth, texture = DIRT.texture,
-        color = tint(col), strength = strength, addMask = true, name = "Patina Dreck" })
+        color = tint(col), strength = strength, name = "Patina Dreck" })
       if ok then
         car.sprayCount[s.w] = cnt + 1
         car.sprays = (car.sprays or 0) + 1
@@ -394,7 +402,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount = {}, {} end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel = {}, {}, {} end   -- Reset repariert das Auto → Patina weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -434,7 +442,7 @@ end
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount = {}, {} end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel = {}, {}, {} end
 end
 
 return M
