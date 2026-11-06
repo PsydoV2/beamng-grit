@@ -343,6 +343,16 @@ M.export = function(tag)
   if veh then L("I", "Fahrzeugfarbe: %s", tostring(veh.color)) end
 end
 
+-- Diagnose: leere Projektionen der anderen Fahrzeuge exportieren
+M.exportOthers = function(tag)
+  if not state then return end
+  tag = tag or os.date("%H%M%S")
+  for id, o in pairs(state.others) do
+    local ok, e = pcall(function() return o.proj:exportTextures("/patina_export/" .. tag .. "/", "other" .. id, "png") end)
+    L("I", "exportOthers(%s): ID %d %s", tag, id, ok and "ok" or tostring(e))
+  end
+end
+
 M.clear = function()
   if not state then return end
   state.layers = {}
@@ -375,11 +385,16 @@ local function bindEmpty()
         o = { proj = p, set = p:getTextureSet() }
         refreshProj(v, p, MASK_PREFIX, o.set)
         v:setTextureSet(COLOR_PREFIX, o.set)
-        p:clearBakedTextures()
-        local r = p:bakeLayers({ baseLayer() }, v.jbeam)
         state.others[id] = o
-        L("I", "leere Projektion für %s (ID %d), code=%s", tostring(v.jbeam), id,
-          tostring(r and r.status and r.status.code))
+      end
+      -- Lauf 9: nach 30 Frames nur teilweise richtig → mehrmals neu backen (Teile laden nach?)
+      o.age = (o.age or 0) + 1
+      if o.age == 1 or o.age == 60 or o.age == 180 or o.age == 600 then
+        refreshProj(v, o.proj, MASK_PREFIX, o.set)
+        o.proj:clearBakedTextures()
+        local r = o.proj:bakeLayers({ baseLayer() }, v.jbeam)
+        L("I", "leere Projektion %s (ID %d) gebacken bei Frame %d, Materialien %d, code=%s", tostring(v.jbeam), id,
+          o.age, #(o.proj:getShapeMaterialNames() or {}), tostring(r and r.status and r.status.code))
       end
       refreshProj(v, o.proj, MASK_PREFIX, o.set)
       v:setTextureSet(COLOR_PREFIX, o.set)
