@@ -421,3 +421,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   nur dessen Meshes umschalten: `veh:getMeshesContainingMaterial(mat)`, `veh:getSwitchableMaterial(org, off, mesh)`,
   `veh:switchMaterial(msc, name)`, `veh:resetMaterials(msc)` – wie Lichter/Glowmap
   (`common/jbeam/materials.lua:67-78`, `vehicle/material.lua:19-28`).
+
+### Spike 2c, Lauf 1 (2026-11-06, ETKI)
+- `switchMaterial` funktioniert: 8 + 35 + 22 Meshes auf Kopien umgeschaltet, **zweiter ETKI bleibt sauber** ✅,
+  Projektion findet die Kopien in der Form (`patina_<id>_*` [84–86]).
+- Aber: Patina-Auto **komplett chrom** statt verdreckt ❌ → Kopie unvollständig. Kopiert war mit
+  `assignFieldsFromObject` (gibt es, `editor/api/dynamicDecals.lua:2105`) + `c.mapTo`.
+- Lauf 2: kopieren wie der Material-Editor (`editor/api/material.lua:265-279`, jedes Feld × 4 Stages +
+  dynamische Felder; `name`/`mapTo` per `setField`), Kopie gegen Original vergleichen und loggen.

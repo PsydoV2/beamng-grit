@@ -171,6 +171,19 @@ end
 -- mit Zusatz-Stage; nur die Meshes dieses Fahrzeugs werden darauf umgeschaltet. Muster: Lichter/Glowmap
 -- (common/jbeam/materials.lua:67-78 getMeshesContainingMaterial/getSwitchableMaterial,
 --  vehicle/material.lua:23-28 switchMaterial/resetMaterials).
+local DONT_COPY = { name = true, mapTo = true, persistentId = true, parentGroup = true, internalName = true, class = true,
+  className = true, superClass = true, hidden = true, locked = true, canSave = true, canSaveDynamicFields = true }  -- = editor/api/material.lua:231-245
+local function copyMaterial(src, dst)
+  for f, _ in pairs(src:getFields()) do
+    if not DONT_COPY[f] then
+      for s = 0, 3 do dst:setField(f, s, src:getField(f, s)) end
+    end
+  end
+  for _, f in ipairs(src:getDynamicFields() or {}) do
+    if not DONT_COPY[f] then dst:setDynDataFieldbyName(f, 0, src:getDynDataFieldbyName(f, 0)) end
+  end
+end
+
 local function cloneName(t) return (string.format("patina_%d_%s", state.vehId, t.objName):gsub("[^%w_]", "_")) end
 
 local function applyStages()
@@ -179,11 +192,25 @@ local function applyStages()
     local name = cloneName(t)
     local old = scenetree.findObject(name)
     if old then old:delete() end
+    -- Lauf 1 (2c): assignFieldsFromObject + c.mapTo → Kopie wirkt wie Chrom. Jetzt wie der Material-Editor
+    -- (editor/api/material.lua:265-279 copyMaterialFields, :338-344): jedes Feld pro Stage + dynamische Felder.
     local c = createObject("Material")
-    c:assignFieldsFromObject(t.orig)
-    c.mapTo = name
+    copyMaterial(t.orig, c)
+    c:setField("name", 0, name)
+    c:setField("mapTo", 0, name)
     c.canSave = false
     c:registerObject(name)
+    -- Diagnose: Felder der Kopie mit dem Original vergleichen (vor eigener Stage)
+    local diffs = {}
+    for f, _ in pairs(t.orig:getFields()) do
+      if not DONT_COPY[f] then
+        for st = 0, 3 do
+          local a, b = t.orig:getField(f, st), c:getField(f, st)
+          if a ~= b then table.insert(diffs, string.format("%s[%d] %s≠%s", f, st, tostring(a), tostring(b))) end
+        end
+      end
+    end
+    if #diffs > 0 then L("W", "  Kopie %s weicht ab (%d): %s", name, #diffs, table.concat(diffs, "; "):sub(1, 1500)) end
     local s = t.stage
     c:setField("baseColorMap", s, COLOR_PREFIX .. "BaseColor")
     c:setField("diffuseMapUseUV", s, tostring(UV_LAYER))
