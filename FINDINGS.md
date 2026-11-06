@@ -318,3 +318,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Neuer Ansatz: **zweite DecalProjection pro Fahrzeug als Maske** (`@PatinaMask`, dieselben Layer in
   Weiß × Stärke auf schwarzem Grund). Stage: `baseColorMap = @PatinaTextureBaseColor`,
   `opacityMap = @PatinaMaskBaseColor`.
+
+### Spike 2, Lauf 6 (2026-11-06, ETKI) – KERN BESTANDEN ✅
+- Zwei Projektionen (Farbe `@PatinaTexture`, Maske `@PatinaMask`), Zusatz-Stage auf `etki_main`:
+  Auto sieht normal aus, dunkelbraune „1“ vorne voll deckend; `strength(0.4)` → „1“ links halb durchsichtig,
+  Lack scheint durch.
+- **Weg A′ ist belegt:** Dreck in beliebiger Farbe und stufenloser Deckkraft über dem unveränderten Lack,
+  ohne Preset-Material, ohne Skin, ohne `paint_design`-Slot.
+- Offen für Spike 2: alle lackierten Materialien (Anbauteile/Bodykit), Mod-Fahrzeug, zweites Fahrzeug
+  desselben Modells (Material ist geteilt), aktive Lackierung (Skin-Material statt `*_main`).
