@@ -184,7 +184,10 @@ M.decal = function(side, size)
 
   local p = state.proj
   p:setDecalTexturePath("color", TEST_TEXTURE)
-  p.decalColor = Point4F(0.35, 0.22, 0.1, 1)   -- dreckbraun
+  local c = state.color or { 0.35, 0.22, 0.1 }  -- Standard: dreckbraun
+  p.decalColor = Point4F(c[1], c[2], c[3], 1)
+  if state.metallic then p.metallicIntensity = state.metallic end
+  if state.roughness then p.roughnessIntensity = state.roughness end
   p.decalScale = vec3(size, 0.1, size)         -- y = Projektionstiefe
   p.decalRotation = 0
   p.useSurfaceNormal = false
@@ -218,6 +221,19 @@ local function processPending()
   p:flushDynamicTextures()
   state.pending = nil
   rebake()
+end
+
+-- Farbe und Intensitäten für die NÄCHSTEN Decals (zum Testen, welcher Kanal die Deckkraft steuert)
+M.color = function(r, g, b)
+  if not state then L("E", "Erst start()."); return end
+  state.color = { r or 1, g or 1, b or 1 }
+  L("I", "color(): nächste Decals in %.2f/%.2f/%.2f", state.color[1], state.color[2], state.color[3])
+end
+
+M.intensity = function(metallic, roughness)
+  if not state then L("E", "Erst start()."); return end
+  state.metallic, state.roughness = metallic, roughness
+  L("I", "intensity(): metallic=%s roughness=%s", tostring(metallic), tostring(roughness))
 end
 
 M.clear = function()

@@ -289,3 +289,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - **Regel:** Namen aus `getShapeMaterialNames()` sind `mapTo`-Namen. Das Materialobjekt wird über
   `mapTo` aufgelöst (`veh:getMaterialNames()` → `scenetree.findObject(n):getField("mapTo", 0)`).
 - Zusätzlich `respawn()`, falls `mat:reload()` laufende Fahrzeuge nicht aktualisiert.
+
+### Spike 2, Lauf 2 (2026-11-06, ETKI) – SICHTBAR ✅ (schwach)
+- Material über `mapTo` gefunden: `etki_main`. Zusatz-Stage mit `baseColorMap = @PatinaTextureBaseColor`,
+  `opacityMap = @PatinaTextureBaseColor`, UV1 → schwache dunkle „1“ am **linken** Türgriff.
+  → Eigener Textur-Set-Prefix `@PatinaTexture` wird akzeptiert, Zusatz-Stage über dem Lack funktioniert,
+  kein Preset und kein Skin nötig. Weg A′ trägt grundsätzlich.
+- Hypothese „schwach“: `opacityMap` liest R/Helligkeit statt Alpha (Decal-Rot = 0,35). Test mit `color()`/`intensity()`.
