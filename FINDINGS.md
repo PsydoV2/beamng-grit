@@ -687,3 +687,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Aus Lauf 1/2 bei Rotation 0: Seite → Länge entlang z, Dach → entlang x ⇒ Bezugsachse = n × (0,1,0) (Annahme).
   Jetzt: Kamera wieder mit Schleifrichtung als up, `decalRotation` = Winkel Bezugsachse → Schleifrichtung um n.
   Vorzeichen offen → `testScratch(side, level, tilt)` mit Neigung prüfen. Front/Heck (n ∥ y) noch Rotation 0.
+
+### M1.2, Lauf 4 (2026-11-06)
+- Seiten jetzt längs ✅. `testScratch("right",3,30)` (vorne höher erwartet) → hinten höher ❌ → Drehsinn negativ.
+- Dach unsichtbar, obwohl Treffer auf dem Dach (z 1.162) mit Drehung 90°. In Lauf 1 (Rotation 0) lag der
+  Dach-Kratzer schon längs (Screenshot 20-52-12) → Annahme „Bezugsachse x auf dem Dach“ war falsch.
+  Neu: Bezugsachse = z in die Fläche projiziert, auf waagerechten Flächen y; Drehung negativ.

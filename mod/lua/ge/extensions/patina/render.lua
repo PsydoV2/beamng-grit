@@ -91,15 +91,15 @@ function R:request(d)
   up = up:normalized()
   -- Ausrichtung: Die Projektion ignoriert die Kamera-Rolle (M1.2 Lauf 2/3: up gedreht → keine Änderung).
   -- Sie richtet nach Normale + decalRotation aus (Layer-Felder decalNorm/decalRotation,
-  -- editor/api/dynamicDecals.lua:905,1789-1794). Gemessen bei Rotation 0: Länge liegt Seite (n=±x) entlang z,
-  -- Dach (n=z) entlang x → Bezugsachse = n × (0,1,0). Winkel von dort zur Schleifrichtung um n.
-  local ref = n:cross(vec3(0, 1, 0))
-  local rot = 0
-  if ref:length() > 0.2 then
-    ref = ref:normalized()
-    rot = math.atan2(ref:cross(up):dot(n), ref:dot(up)) * (R.ROT_SIGN or 1)
-    if rot < 0 then rot = rot + 2 * math.pi end
-  end
+  -- editor/api/dynamicDecals.lua:905,1789-1794). Gemessen bei Rotation 0: Seite (n=±x) Länge entlang z,
+  -- Dach (n=z) entlang y (M1.2 Lauf 1, Screenshot 20-52-12) → Bezugsachse = z in die Fläche projiziert,
+  -- auf waagerechten Flächen y (Annahme). Drehsinn gemessen M1.2 Lauf 4: negativ.
+  local function inPlane(a) return a - n * a:dot(n) end
+  local ref = inPlane(vec3(0, 0, 1))
+  if ref:length() < 0.3 then ref = inPlane(vec3(0, 1, 0)) end
+  ref = ref:normalized()
+  local rot = -math.atan2(ref:cross(up):dot(n), ref:dot(up))
+  if rot < 0 then rot = rot + 2 * math.pi end
   d.rot = rot
   local camPos = d.pos + n * (d.depth * 0.5 + 0.2)
   local q = quatFromDir(-n, up:normalized())
