@@ -64,7 +64,7 @@ end
 
 -- M2.2 Staub: trockener, loser Untergrund ab mittlerem Tempo (Konzept). Häufigstes Kontaktmaterial der Räder;
 -- je DUST_DIST Meter ein Ereignis. Tempo: obj:getVelocity() (vehicle/controller/dragTimer.lua:60).
-local DUST_DIST = 35
+local DUST_DIST = 15          -- M2.2 Lauf 3: 35 m gab zu wenig Staub
 local DUST_MIN_SPEED = 8       -- m/s ≈ 30 km/h
 local DUSTY = { [14] = true, [15] = true, [16] = true, [17] = true, [19] = true }
 local dustDose, dusts = 0, {}

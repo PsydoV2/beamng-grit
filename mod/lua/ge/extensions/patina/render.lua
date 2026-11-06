@@ -12,7 +12,7 @@ local UV_LAYER = 1
 R.COLOR_PREFIX, R.MASK_PREFIX = "@PatinaTexture", "@PatinaMask"
 local USE_MOUSE_POS = bit.lshift(1, 2)
 local FRAMES_BEFORE_READ, FRAMES_MAX = 3, 30
-R.MAX_LAYERS = 300   -- Budget. Spike 3: Voll-Bake wächst überlinear – gebraucht nur bei clear (leer) und Neuanlage (leer);
+R.MAX_LAYERS = 500   -- Budget. Spike 3: Voll-Bake wächst überlinear – gebraucht nur bei clear (leer) und Neuanlage (leer);
                      -- inkrementell 0.8 ms/Decal unabhängig von der Anzahl. M2: 100 reicht für Kratzer + Dreck nicht.
 
 -- Layer-Farben werden beim Bake sRGB → linear gewandelt (Spike 2b Lauf 5) → vorher kodieren
@@ -113,7 +113,10 @@ end
 
 -- pro Frame höchstens eine Anfrage bearbeiten (3 Frames Projektion bis getDecalData, Spike 3)
 function R:update(veh)
-  self:refresh(veh)
+  -- Abschnitts-Zeiten (M2.2 Lauf 3: render:update CPU max 36 ms) → bei > 8 ms aufschlüsseln
+  local T, sec, total = hptimer(), {}, 0
+  local function mark(name) local ms = T:stopAndReset(); total = total + ms; sec[#sec + 1] = string.format("%s %.1f", name, ms) end
+  self:refresh(veh); mark("refresh")
   local req = self.queue[1]
   if req then
     local p, d = self.color, req.d
@@ -130,10 +133,11 @@ function R:update(veh)
     end
     if bit.band(p:getSettings(), USE_MOUSE_POS) == USE_MOUSE_POS then p:toggleSetting(USE_MOUSE_POS) end
     p.cursorPosition = Point2F(0.5, 0.5)
-    p:projectDynamicDecals(req.camM, req.projM)
+    mark("setup")
+    p:projectDynamicDecals(req.camM, req.projM); mark("project")
     req.frames = req.frames + 1
     if req.frames >= FRAMES_BEFORE_READ then
-      local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end)
+      local ok, data = pcall(function() return p:getDecalData(req.camM, req.projM) end); mark("getDecalData")
       local hit = ok and data and data.decalPos and vec3(data.decalPos)
       -- Treffer weit weg = Strahl hat das Auto verfehlt (M1.1 Lauf 3: Welt-Koordinaten wie (12711, 1490, …))
       -- M1.3: Strahl durch eine Lücke trifft innen liegende Lackflächen (D-Serie: Unterboden → Motorhaube von
@@ -159,7 +163,7 @@ function R:update(veh)
         local tb = hptimer()
         self.color:bakeLayers({ cl }, veh.jbeam)
         self.mask:bakeLayers({ ml }, veh.jbeam)
-        local ms = tb:stopAndReset()
+        local ms = tb:stopAndReset(); mark("bake")
         self.bakeN, self.bakeSum = (self.bakeN or 0) + 1, (self.bakeSum or 0) + ms
         self.bakeMax = math.max(self.bakeMax or 0, ms)
         p:flushDynamicTextures(); table.remove(self.queue, 1)
@@ -177,6 +181,11 @@ function R:update(veh)
   if req or self.idleFrames <= 3 or self.idleFrames % 60 == 0 then
     self.color:combineTextures(self.colorSet)
     self.mask:combineTextures(self.maskSet)
+  end
+  mark("combine")
+  if total > 8 and self.log and (self.spikes or 0) < 10 then
+    self.spikes = (self.spikes or 0) + 1
+    self.log("I", "render:update %.1f ms: %s", total, table.concat(sec, ", "))
   end
 end
 

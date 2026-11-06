@@ -310,13 +310,16 @@ end
 -- M2.2 Staub (Konzept: großflächige Noise-Decals, geringe Deckkraft, von hinten oder oben; lagert sich am Heck und
 -- dünn auf Oberseiten ab). Deckkraft je Bereich monoton wie beim Dreck (M2.1 Lauf 2).
 local DUST = {
-  -- depth klein: Die Box-Projektion färbt alles in der Box, egal wie die Fläche liegt (kein Winkeltest,
-  -- shaders/common/dynamicDecals/decal.ps.hlsl:116-121) → bei 0.6 m wurden Türen/Bordwände unter den
-  -- Oberseiten gestreckt eingefärbt („geometrische Formen“, M2.2 Lauf 1).
-  texture = "/art/patina/dust.png", depth = 0.15,
-  rear = { chance = 0.7, minSize = 0.6, maxSize = 1.0, start = 0.12, step = 0.012, max = 0.5, tol = 0.6 },
-  top  = {               minSize = 0.7, maxSize = 1.1, start = 0.08, step = 0.008, max = 0.28, tol = 0.8 },
-  maxEvents = 80,
+  -- depth begrenzt: Die Box-Projektion färbt alles in der Box, egal wie die Fläche liegt (kein Winkeltest,
+  -- shaders/common/dynamicDecals/decal.ps.hlsl:116-121). 0.6 m war zu viel (M2.2 Lauf 1); die „Formen“ kamen
+  -- aber vor allem von Unterboden-Schrammen und abgeschnittenen Textur-Flecken (Lauf 2) → 0.3 m.
+  -- M2.2 Lauf 3: „zu wenig, feiner Staub nimmt viel größere Flächen ein“ → größer, häufiger, auch an den Seiten
+  -- (untere Hälfte). Abweichung vom Konzept (nur Heck + Oberseiten), von Sebastian gewünscht.
+  texture = "/art/patina/dust.png", depth = 0.3,
+  rear = { chance = 0.35, minSize = 1.0, maxSize = 1.5, start = 0.12, step = 0.01,  max = 0.5,  tol = 0.6 },
+  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.10, step = 0.008, max = 0.4,  tol = 0.5 },
+  top  = {                minSize = 1.0, maxSize = 1.5, start = 0.08, step = 0.006, max = 0.28, tol = 0.8 },
+  maxEvents = 220,
 }
 
 local function handleDusts(car, vid, list)
@@ -324,22 +327,28 @@ local function handleDusts(car, vid, list)
   local veh = be:getObjectByID(vid); if not veh then return end
   local aabb = veh:getSpawnLocalAABB()
   local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local ext = mx - mn
   car.dirtLevel = car.dirtLevel or {}
   for _, s in ipairs(list) do
     local col = DIRT.colors[s.m]
     if col and (car.dusts or 0) < DUST.maxEvents then
-      local rear = math.random() < DUST.rear.chance
-      local cfg, key, pos, n = rear and DUST.rear or DUST.top, rear and "staubHeck" or "staubOben"
-      local rx, ry = math.random(), math.random()
-      if rear then   -- Heck: +y (Spike 1: −y vorne)
-        pos = vec3(mn.x + (mx.x - mn.x) * (0.15 + 0.7 * rx), mx.y, mn.z + (mx.z - mn.z) * (0.2 + 0.6 * ry))
-        n = vec3(0, 1, 0)
-      else           -- Oberseite, hinten etwas dichter
-        pos = vec3(mn.x + (mx.x - mn.x) * (0.2 + 0.6 * rx), mn.y + (mx.y - mn.y) * (0.25 + 0.75 * math.sqrt(ry)), mx.z)
-        n = vec3(0, 0, 1)
-      end
+      local r, rx, ry = math.random(), math.random(), math.random()
+      local where, cfg, key, pos, n, up
       local a = math.random() * 2 * math.pi
-      local up = rear and vec3(math.cos(a), 0, math.sin(a)) or vec3(math.cos(a), math.sin(a), 0)
+      if r < DUST.rear.chance then          -- Heck: +y (Spike 1: −y vorne)
+        where, cfg, key = "Heck", DUST.rear, "staubHeck"
+        pos = vec3(mn.x + ext.x * (0.15 + 0.7 * rx), mx.y, mn.z + ext.z * (0.2 + 0.6 * ry))
+        n, up = vec3(0, 1, 0), vec3(math.cos(a), 0, math.sin(a))
+      elseif r < DUST.rear.chance + DUST.side.chance then   -- Seite, untere Hälfte, hinten dichter
+        local sd = (math.random() < 0.5) and 1 or -1
+        where, cfg, key = "Seite", DUST.side, "staubSeite" .. sd
+        pos = vec3(sd > 0 and mx.x or mn.x, mn.y + ext.y * (0.05 + 0.9 * math.sqrt(rx)), mn.z + ext.z * (0.12 + 0.4 * ry))
+        n, up = vec3(sd, 0, 0), vec3(0, math.cos(a), math.sin(a))
+      else                                  -- Oberseite, hinten etwas dichter
+        where, cfg, key = "oben", DUST.top, "staubOben"
+        pos = vec3(mn.x + ext.x * (0.2 + 0.6 * rx), mn.y + ext.y * (0.25 + 0.75 * math.sqrt(ry)), mx.z)
+        n, up = vec3(0, 0, 1), vec3(math.cos(a), math.sin(a), 0)
+      end
       local size = cfg.minSize + (cfg.maxSize - cfg.minSize) * math.random()
       local strength = math.min(cfg.max, math.max(car.dirtLevel[key] or 0, cfg.start))
       car.dirtLevel[key] = math.min(cfg.max, strength + cfg.step)
@@ -350,7 +359,7 @@ local function handleDusts(car, vid, list)
         car.dusts = (car.dusts or 0) + 1
         if car.dusts <= 10 then
           L("I", "Staub %s %.1f m/s → %s pos(%.2f,%.2f,%.2f) Deckkraft %.2f", DIRT.names[s.m] or "?", s.v,
-            rear and "Heck" or "oben", pos.x, pos.y, pos.z, strength)
+            where, pos.x, pos.y, pos.z, strength)
         end
       end
     end

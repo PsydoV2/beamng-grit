@@ -802,3 +802,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   - Einbruch am Anfang = 240 Decals auf einmal (121 Schrammen + 120 Spritzer) → lange Arbeitsphase.
 - Fixes: Unterboden-Schrammen (n.z < −0.6) ignorieren; Staub-Flecken ganz im Bild; Textur nur bei Wechsel setzen
   (Verdacht für die 30-ms-Spitze); combineTextures im Leerlauf nur alle 60 Frames.
+
+### M2.2, Lauf 3 (2026-11-06)
+- Formen weg ✅, Lack beim Kameradrehen normal ✅ (combineTextures im Leerlauf nur alle 60 Frames reicht).
+- „Zu wenig Dreck, feiner Staub nimmt viel größere Flächen ein“ → Staub auch an den Seiten (untere Hälfte),
+  größer (1.0–1.6 m), Tiefe 0.3 m, alle 15 m statt 35 m, max. 220; Budget 300 → 500 Ebenen.
+  Abweichung vom Konzept (Staub nur Heck + Oberseiten) auf Sebastians Wunsch.
+- Messung: „Patina arbeitet“ Ø 12.7 vs. Leerlauf 11.5 ms (vorher +3.7, jetzt +1.2 ms) ✅. Bake Ø 0.72–0.77 ms.
+  `render:update` CPU weiterhin Einzelspitze 35.9 ms; Leerlauf-CPU Ø 0.6 ms kommt aus `refresh()`.
+  → Abschnitts-Zeiten eingebaut: `render:update` > 8 ms loggt refresh/setup/project/getDecalData/bake/combine.
