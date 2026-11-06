@@ -256,3 +256,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Ursache laut Code: Der Treffer entsteht im GPU-Durchlauf `projectDynamicDecals(camM, projM)`, den der Editor
   jedes Frame ausführt (`dynamicDecals.lua:3036`). Außerdem fehlte `setEnabled(true)` (`ui/liveries.lua:85`).
 - Fix: Platzierung asynchron (N Frames projizieren, dann auslesen, prüfen, `flushDynamicTextures`, backen).
+
+### Spike 1, Lauf 2 (2026-11-06, ETKI)
+- `paint()` → Auto wird grün: eigene `DecalProjection` → Textur-Set → Preset-Material → sichtbar. ✅
+- Decal weiter unsichtbar. Dump zeigt `camDirection = (1,0,0)` (Kamera korrekt), aber
+  `cursorPosScreenUv = (0.086, 0.981)`: Der Strahl geht durch die **Mausposition**.
+- Fix: Flag `UseMousePos` (`1<<2`) per `toggleSetting` aus, `proj.cursorPosition = Point2F(0.5, 0.5)`
+  (Vorbild `ui/liveries/decal.lua:604-613`).

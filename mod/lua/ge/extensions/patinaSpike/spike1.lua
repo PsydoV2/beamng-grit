@@ -170,7 +170,7 @@ local FRAMES_MAX = 30
 
 local function hitInfo(data, req)
   local hit = data and data.decalPos and vec3(data.decalPos)
-  if not hit or hit.x ~= hit.x or math.abs(hit.x) > 1e4 or math.abs(hit.y) > 1e4 or math.abs(hit.z) > 1e4 then
+  if not hit or hit.x ~= hit.x or math.abs(hit.x) > 1e6 or math.abs(hit.y) > 1e6 or math.abs(hit.z) > 1e6 then
     return nil
   end
   local toHit = hit - req.camPos
@@ -179,9 +179,19 @@ local function hitInfo(data, req)
   return hit, off, along
 end
 
+-- Strahl durch die Bildmitte statt durch die Maus (ui/liveries/decal.lua:604-609, Flag UseMousePos = 1<<2)
+local USE_MOUSE_POS = bit.lshift(1, 2)
+local function centerCursor(p)
+  if bit.band(p:getSettings(), USE_MOUSE_POS) == USE_MOUSE_POS then
+    p:toggleSetting(USE_MOUSE_POS)
+  end
+  p.cursorPosition = Point2F(0.5, 0.5)
+end
+
 local function processPending(veh)
   local req = state.pending
   local p = state.proj
+  centerCursor(p)
   p:projectDynamicDecals(req.camM, req.projM)
   req.frames = req.frames + 1
   if req.frames < FRAMES_BEFORE_READ then return end
@@ -192,15 +202,16 @@ local function processPending(veh)
   local hit, off, along = hitInfo(data, req)
   if not hit then
     if req.frames < FRAMES_MAX then return end
-    L("W", "decal(%s): nach %d Frames kein gültiger Treffer. decalPos=%s", req.side, req.frames, tostring(data and data.decalPos))
+    L("W", "decal(%s): nach %d Frames kein gültiger Treffer. decalPos=%s cursorUv=%s settings=%s",
+      req.side, req.frames, tostring(data and data.decalPos), dumps(data and data.cursorPosScreenUv), tostring(p:getSettings()))
     if not state.dumped then L("I", "decalData:\n%s", dumps(data)); state.dumped = true end
     p:flushDynamicTextures()
     state.pending = nil
     return
   end
 
-  L("I", "decal(%s): Treffer nach %d Frames: hit=%s, Abstand zum Strahl=%.3f m, Tiefe=%.2f m %s",
-    req.side, req.frames, tostring(hit), off, along, off < 0.05 and "OK" or "ABWEICHUNG")
+  L("I", "decal(%s): Treffer nach %d Frames: hit=%s, Abstand zum Strahl=%.3f m, Tiefe=%.2f m, cursorUv=%s %s",
+    req.side, req.frames, tostring(hit), off, along, dumps(data.cursorPosScreenUv), off < 0.05 and "OK" or "ABWEICHUNG")
   if not state.dumped then L("I", "decalData:\n%s", dumps(data)); state.dumped = true end
 
   data.uid = uid("decal")
