@@ -369,7 +369,8 @@ end
 
 -- M2.3 Kontakt-Dreck (Konzept: Karosserie-Knoten berührt weichen Boden → Dreck genau dort). Weicher Boden schmiert
 -- statt zu kratzen (Sensor: SMEAR-Untergründe). Deckkraft je Knoten monoton wie beim Spritzer (M2.1 Lauf 2).
-local CONTACT = { minSize = 0.35, maxSize = 0.6, depth = 0.25, tol = 0.2, start = 0.45, step = 0.06, max = 0.9,
+local CONTACT = { minSize = 0.6, maxSize = 1.0, depth = 0.25,   -- M2.3 Lauf 1: „könnte größere Flecken haben“ (vorher 0.35–0.6)
+                  tol = 0.2, start = 0.45, step = 0.06, max = 0.9,
                   maxPerNode = 6, maxEvents = 150 }
 
 local function handleContacts(car, list)

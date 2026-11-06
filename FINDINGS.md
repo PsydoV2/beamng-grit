@@ -871,3 +871,7 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Schotter (19) und harte Untergründe kratzen weiter.
 - GE: Dreckfleck 0.35–0.6 m an der Kontaktstelle, Farbe nach Untergrund, Deckkraft je Knoten 0.45 → 0.9 monoton,
   max. 6 je Knoten, 150 gesamt. Zähler „Kontakt-Dreck“ in `status()`.
+
+### M2.3, Lauf 1 (2026-11-06) ✅
+- Schlamm (18 MUD) an der linken Seite: Kontakt-Dreck sitzt an der Berührstelle ✅. Sebastian: „könnte größere
+  Flecken haben“ → Größe 0.6–1.0 m (vorher 0.35–0.6).
