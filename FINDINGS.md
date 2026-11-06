@@ -462,3 +462,9 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Lauf 6: `M.skinMode`: Kopie als `<mapTo>.skin.patina<ID>` registrieren, dann `veh:setSkin(".patina<ID>")`
   zur Laufzeit. Skin pro Fahrzeug → echte Trennung gleicher Modelle. `stop()` → `setSkin(".")`.
   Offen: wirkt `setSkin` ohne Neuspawn? Verträgt es sich mit Lackierungen (Liveries)?
+
+### Spike 2c, Lauf 6 (2026-11-06)
+- `veh:setSkin(".patina<ID>")` zur Laufzeit: keine sichtbare Wirkung, beide Autos sauber. Log: die Form behält
+  ihre Original-Materialien (`character_primary[2], etki_mechanicals[6], etki[7]`) → `setSkin` wirkt
+  offenbar nur beim Spawn (wird ja auch nur in `licenseplatesSkins.process` während des Spawns aufgerufen).
+- Lauf 7: `M.keepSkin`: Skin + Materialien über Strg+R behalten, dann `start()` erneut → greift der Skin beim Neuladen?

@@ -244,6 +244,9 @@ M.repaint = function() local v = getVeh(); if v then repaint(v) end end
 -- (common/jbeam/sections/licenseplatesSkins.lua:56-58, Slot '' für paint_design). Skin pro Fahrzeug: patina<ID>.
 M.skinMode = true
 local function skinName() return "patina" .. state.vehId end
+-- Lauf 6: setSkin zur Laufzeit ohne Wirkung (Form-Materialien unverändert). Lauf 7: Skin + Materialien über
+-- Strg+R behalten (keepSkin), danach start() erneut: findet es dann die Skin-Materialien?
+M.keepSkin = true
 
 local function applyStages()
   local veh = be:getObjectByID(state.vehId)
@@ -252,7 +255,9 @@ local function applyStages()
     -- Lauf 1 (2c): assignFieldsFromObject + c.mapTo → Kopie wirkt wie Chrom. Jetzt wie der Material-Editor
     -- (editor/api/material.lua:265-279 copyMaterialFields, :338-344): jedes Feld pro Stage + dynamische Felder.
     local c = scenetree.findObject(name)
-    if c and not M.keepClones then c:delete(); c = nil end
+    if c and t.objName == name then
+      L("I", "  Skin-Material %s ist seit dem Spawn aktiv", name)
+    elseif c and not M.keepClones then c:delete(); c = nil end
     if c then L("I", "  Kopie %s wiederverwendet (existierte schon vor dem Spawn)", name)
     else c = createClone(t.orig, name) end
     -- Diagnose: Felder der Kopie mit dem Original vergleichen (vor eigener Stage)
@@ -300,6 +305,7 @@ end
 
 local function restoreStages()
   local veh = be:getObjectByID(state.vehId)
+  if M.skinMode and M.keepSkin then L("I", "  keepSkin: Skin und Materialien bleiben"); return end
   if veh and M.skinMode then veh:setSkin("."); L("I", "  setSkin('.')") end
   for _, t in ipairs(state.targets) do
     if veh then for _, msc in ipairs(t.switches or {}) do veh:resetMaterials(msc) end end
