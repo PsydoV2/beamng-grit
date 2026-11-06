@@ -886,3 +886,4 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (`gritSensor`), `art/grit/`, `scripts/grit/`, Textur-Sets `@GritTexture`/`@GritMask`, Skin-Slot `grit`,
   Log `<User>/grit.log`. Junction `mods/unpacked/grit` → `E:\BeamNGMods\Dynamic Patina\mod` (alte `patina` entfernt).
   Spike-Skripte nach `spikes/` verschoben (nicht im Release). Ältere Einträge oben nennen noch die Patina-Namen.
+- Test nach Neustart (2026-11-06): grit aktiv, Kratzer und Dreck wie vorher ✅ (Sebastian), Log `grit.log`.
