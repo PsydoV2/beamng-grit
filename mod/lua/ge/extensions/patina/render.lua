@@ -154,8 +154,12 @@ function R:update(veh)
             tostring(d.pos), math.deg(d.rot or 0), math.deg(data.decalRotation or -1))
         end
         local cl, ml = variants(data)
+        local tb = hptimer()
         self.color:bakeLayers({ cl }, veh.jbeam)
         self.mask:bakeLayers({ ml }, veh.jbeam)
+        local ms = tb:stopAndReset()
+        self.bakeN, self.bakeSum = (self.bakeN or 0) + 1, (self.bakeSum or 0) + ms
+        self.bakeMax = math.max(self.bakeMax or 0, ms)
         p:flushDynamicTextures(); table.remove(self.queue, 1)
       elseif (hit and hit.x == hit.x) or req.frames >= FRAMES_MAX then   -- weit weg: sofort verwerfen
         self.misses = (self.misses or 0) + 1

@@ -779,3 +779,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - GE: 70 % Heck (+y, 0.9–1.4 m, Deckkraft 0.12 → max 0.5), 30 % Oberseite von oben (1.0–1.6 m, hinten dichter,
   0.08 → max 0.28); monoton je Bereich; max. 80 Ereignisse. Farbe aus der Dreck-Tabelle.
 - Textur `dust.png` (Seed 5005): sehr weiche große Flecken + feine Körner.
+
+### M2.2, Lauf 1 (2026-11-06)
+- Sebastian: Staub-Deckkraft gut ✅, aber „sehr geometrische Formen“ ❌; am Anfang brechen die Frames deutlich ein ❌.
+- Screenshot `21-53-58` (D-Serie, Utah): Dreiecke/Rechtecke auf Tür und Bordwand.
+- Ursache Formen: `decal.ps.hlsl:116-121` prüft nur, ob der Pixel in der Box liegt – kein Winkeltest zur Fläche.
+  Staub-Box 0.6 m tief von oben/hinten → senkrechte Flächen darunter/daneben gestreckt eingefärbt.
+  Fix: Staub-Tiefe 0.15 m, Flecken kleiner (Heck 0.6–1.0 m, oben 0.7–1.1 m).
+- Frames: noch nicht gemessen → Messung eingebaut: `status()` loggt Frametime „Patina arbeitet“ vs. Leerlauf,
+  CPU von `render:update` und Bake-Zeit pro Decal (Ø/max).

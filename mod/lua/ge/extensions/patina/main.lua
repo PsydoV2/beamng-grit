@@ -310,9 +310,12 @@ end
 -- M2.2 Staub (Konzept: großflächige Noise-Decals, geringe Deckkraft, von hinten oder oben; lagert sich am Heck und
 -- dünn auf Oberseiten ab). Deckkraft je Bereich monoton wie beim Dreck (M2.1 Lauf 2).
 local DUST = {
-  texture = "/art/patina/dust.png", depth = 0.6,
-  rear = { chance = 0.7, minSize = 0.9, maxSize = 1.4, start = 0.12, step = 0.012, max = 0.5, tol = 0.6 },
-  top  = {               minSize = 1.0, maxSize = 1.6, start = 0.08, step = 0.008, max = 0.28, tol = 0.8 },
+  -- depth klein: Die Box-Projektion färbt alles in der Box, egal wie die Fläche liegt (kein Winkeltest,
+  -- shaders/common/dynamicDecals/decal.ps.hlsl:116-121) → bei 0.6 m wurden Türen/Bordwände unter den
+  -- Oberseiten gestreckt eingefärbt („geometrische Formen“, M2.2 Lauf 1).
+  texture = "/art/patina/dust.png", depth = 0.15,
+  rear = { chance = 0.7, minSize = 0.6, maxSize = 1.0, start = 0.12, step = 0.012, max = 0.5, tol = 0.6 },
+  top  = {               minSize = 0.7, maxSize = 1.1, start = 0.08, step = 0.008, max = 0.28, tol = 0.8 },
   maxEvents = 80,
 }
 
@@ -393,7 +396,15 @@ end
 -- Hooks ------------------------------------------------------------------------------
 
 local retryFrames = 0
-M.onUpdate = function()
+-- Messung (M2.2 Lauf 1: Frames brechen am Anfang ein): Frametime getrennt nach „Patina arbeitet“ / „leerlauf“,
+-- CPU-Zeit von render:update. Ausgabe und Zurücksetzen in M.status().
+local perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
+local function addPerf(t, ms) t.n, t.sum, t.max = t.n + 1, t.sum + ms, math.max(t.max, ms) end
+
+M.onUpdate = function(dtReal)
+  local busy = false
+  for _, car in pairs(cars) do if car.r and #car.r.queue > 0 then busy = true end end
+  if dtReal then addPerf(busy and perf.busy or perf.idle, dtReal * 1000) end
   -- Spielerfahrzeug ohne Patina? (neu, ersetzt mit gleicher ID, nach Strg+L, Fahrzeugwechsel) → aktivieren,
   -- bei Misserfolg alle 30 Frames erneut
   local pv = be:getPlayerVehicleID(0)
@@ -412,7 +423,11 @@ M.onUpdate = function()
     end
     if car.phase == "active" and car.r then
       local veh = be:getObjectByID(vid)
-      if veh then car.r:update(veh) end
+      if veh then
+        local tu = hptimer()
+        car.r:update(veh)
+        addPerf(perf.upd, tu:stopAndReset())
+      end
     end
   end
 end
@@ -469,7 +484,13 @@ M.status = function()
     L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d Staub, %d verworfen (Budget), %d ohne Treffer",
       vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0, car.dusts or 0,
       car.r and car.r.dropped or 0, car.r and car.r.misses or 0)
+    if car.r and (car.r.bakeN or 0) > 0 then
+      L("I", "  Bake: %d Decals, Ø %.2f ms, max %.2f ms", car.r.bakeN, car.r.bakeSum / car.r.bakeN, car.r.bakeMax)
+    end
   end
+  local function fmt(t) return t.n > 0 and string.format("%d Frames Ø %.1f ms max %.1f ms", t.n, t.sum / t.n, t.max) or "–" end
+  L("I", "Frametime Patina arbeitet: %s | Leerlauf: %s | render:update CPU: %s", fmt(perf.busy), fmt(perf.idle), fmt(perf.upd))
+  perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
 M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorne geneigt (Vorzeichen-Test)
