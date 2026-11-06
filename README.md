@@ -7,7 +7,7 @@ gradually, and the dirt takes its color from the ground you drive on.
 Grit is not a preset or a skin. It works on **every vehicle**, including modded ones, and it leaves your paint and
 liveries untouched.
 
-> **Status:** early development, not released yet. Built and tested on BeamNG.drive **0.40.5.0**.
+> **Version 0.2.0** (scratches + dirt) · **Status:** early development, test release. Built and tested on BeamNG.drive **0.40.5.0**.
 
 ---
 

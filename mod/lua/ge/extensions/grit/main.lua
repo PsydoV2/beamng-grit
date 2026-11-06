@@ -29,7 +29,7 @@ local SCRATCH = {
   maxPerNode = 8,
   jitter = 0.5,          -- Versatz entlang Schleifrichtung, Anteil der Länge
 }
-M.debugLog = true           -- Entwicklung: zusätzlich sofort in <User>/grit.log (beamng.log puffert Minuten)
+M.debugLog = true           -- tools/build_release.ps1 setzt false fürs Release. Entwicklung: zusätzlich sofort in <User>/grit.log (beamng.log puffert Minuten)
 local DEV_LOG = "/grit.log"
 local function L(level, fmt, ...)
   local msg = string.format(fmt, ...)

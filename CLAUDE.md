@@ -40,6 +40,8 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - `mod/lua/ge/extensions/grit/render.lua`: Decal-Renderer pro Fahrzeug (Projektion, Synthese, Backen).
   - `mod/lua/vehicle/controller/grit/sensor.lua`: Fahrzeug-Controller, erzeugt Ereignisse aus Kollisionen und Rädern.
   - `spikes/`: alte Spike-Skripte (Spike 1–5), außerhalb des Mods, nicht im Release.
+  - `tools/build_release.ps1 -Version X.Y.Z` baut `build/grit_vX.Y.Z.zip` (Inhalt von `mod/` + README + LICENSE,
+    schaltet `M.debugLog` und Sensor-`DIAG` aus, prüft das ZIP). Version auch in README.md eintragen.
   - `mod/art/grit/*.png`: Texturen, erzeugt von `tools/gen_textures.ps1` mit festen Seeds.
     Aufruf: `powershell.exe -ExecutionPolicy Bypass -File tools/gen_textures.ps1`
 - Shell: Git Bash. `cd` in Bash springt manchmal zurück, deshalb absolute Pfade benutzen.

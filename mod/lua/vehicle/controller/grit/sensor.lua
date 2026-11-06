@@ -114,8 +114,10 @@ local function initWheels()
 end
 
 -- Diagnose (M2.2 Lauf 6: Leitplanke ohne Kratzer): Karosserie-Kontakte nach Grund und Untergrund zählen
+-- Diagnose an/aus: tools/build_release.ps1 setzt DIAG = false fürs Release
+local DIAG = true
 local diag, diagT = {}, 0
-local function count(reason, mat) local k = reason .. ":" .. tostring(mat); diag[k] = (diag[k] or 0) + 1 end
+local function count(reason, mat) if not DIAG then return end; local k = reason .. ":" .. tostring(mat); diag[k] = (diag[k] or 0) + 1 end
 
 -- M2.3 Kontakt-Dreck (Konzept: Karosserie-Knoten berührt weichen Boden → Dreck genau an der Kontaktstelle).
 -- Weicher Boden schmiert statt zu kratzen; Schotter (19) und Fels kratzen weiter.
