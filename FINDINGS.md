@@ -558,3 +558,10 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Strg+R → wieder sauber, `attach: 0/6` ❌: Strg+R setzt alle Skins zurück, auch den eigenen Slot
   (anders als `veh:respawn`). Lauf 2: in `onSpawnCCallback` (feuert vor Teilen/Meshes,
   `core/vehicle/manager.lua:111-140`) den Skin erneut setzen.
+
+### Spike 4, Lauf 2 (2026-11-06) ✅ Spike 4 abgeschlossen
+- Strg+R: `onSpawnCCallback` setzt `patina.v<ID>` erneut → nach dem Spawn 6/6 auf Skin, 5 Layer neu gebacken
+  (4.3 ms), Dreck bleibt ✅ (Sebastian bestätigt).
+- Ergebnis Skin-Weg komplett: eigener Slot `patina` (Vorrang vor paint_design), Kopie des aktuell genutzten
+  Materials (Lackierungsmuster bleibt sichtbar), Skin bei jedem Spawn in `onSpawnCCallback` setzen,
+  einmaliger `veh:respawn` beim Aktivieren, Texturen in `onVehicleSpawned` binden.
