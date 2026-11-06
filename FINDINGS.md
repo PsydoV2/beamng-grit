@@ -639,3 +639,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Auto und lieferten Welt-Koordinaten (z. B. (12711, 1490, −30)) → Striche an falschen Stellen.
 - Fix: Sensor zieht Ausgangsposition des Referenzknotens ab (`v.data.refNodes[0].ref`, wie `bdebugImpl.lua:648`);
   Render verwirft Treffer > 0.6 m von der Anfrage sofort.
+
+### M1.1, Lauf 4 (2026-11-06)
+- Nach Strg+L im Auto: „alter Skin → aus, Neuspawn“ → `prepare` im `onVehicleSpawned` ruft `veh:respawn` →
+  dieser Neuspawn kam erst 37 s später beim Ersetzen an (halbes Auto weiß). → Nie im Spawn-Hook neu spawnen,
+  sondern 2 Frames später in `onUpdate` (Phase `prepareLater`).
+- Nach zweitem Ersetzen: Schrammen an den richtigen Stellen ✅ (Treffer ≤ 0.17 m von der Anfrage, rechts vorne).
+  Ferne Treffer (Welt-Koordinaten, Gegenseite x=+0.57) werden verworfen ✅.
+- ~1 % Striche auf der Gegenseite: Decal-Spiegeln (`mirrored`, `editor/api/dynamicDecals.lua:520,929,2484`,
+  Spiegelebene x = Mitte + Offset) → Layer `mirrored = false`, Projektion `mirrored = false`.

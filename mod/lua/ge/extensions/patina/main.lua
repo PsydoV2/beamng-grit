@@ -180,7 +180,7 @@ local function attach(veh)
     -- z. B. Teilewechsel: neue Teile ohne Skin-Material → noch einmal vorbereiten
     L("I", "Fahrzeug %d: %d Materialien ohne Patina (%s) → neu vorbereiten", vid, #missing, table.concat(missing, ", "))
     car.retried = true
-    prepare(veh)
+    car.phase, car.wait = "prepareLater", 2   -- nicht im Spawn-Hook neu spawnen (M1.1 Lauf 4)
     return
   end
   car.retried = nil
@@ -250,6 +250,11 @@ M.onUpdate = function()
     end
   end
   for vid, car in pairs(cars) do
+    if car.phase == "prepareLater" then
+      car.wait = car.wait - 1
+      local veh = car.wait <= 0 and be:getObjectByID(vid)
+      if veh then car.phase = nil; prepare(veh) end
+    end
     if car.phase == "active" and car.r then
       local veh = be:getObjectByID(vid)
       if veh then car.r:update(veh) end
@@ -279,7 +284,9 @@ M.onVehicleSpawned = function(vid)
   if car and car.phase == "respawn" then
     attach(veh)
   elseif car and car.phase == "renew" then
-    prepare(veh)  -- Strg+R / neues Fahrzeug / Teilewechsel: frisch kopieren, Zustand neu (Konzept: Mesh geändert/repariert)
+    -- Strg+R / neues Fahrzeug / Teilewechsel: frisch kopieren, Zustand neu (Konzept: Mesh geändert/repariert).
+    -- Nicht hier im Spawn-Hook neu spawnen – das blieb liegen (M1.1 Lauf 4) → 2 Frames später in onUpdate.
+    car.phase, car.wait = "prepareLater", 2
   end
   -- neue Spielerfahrzeuge aktiviert onUpdate (auch bei Ersetzen mit gleicher ID, core/vehicles.lua:1780-1794)
 end

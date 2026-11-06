@@ -108,6 +108,7 @@ function R:update(veh)
       p.decalScale = vec3(d.width, d.depth, d.length)
       p.decalRotation = 0
       p.useSurfaceNormal = false
+      p.mirrored = false          -- editor/api/dynamicDecals.lua:2484
     end
     if bit.band(p:getSettings(), USE_MOUSE_POS) == USE_MOUSE_POS then p:toggleSetting(USE_MOUSE_POS) end
     p.cursorPosition = Point2F(0.5, 0.5)
@@ -121,6 +122,7 @@ function R:update(veh)
       if near then
         data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Patina", true, false, {}
         data.patinaColor, data.patinaStrength = d.color, d.strength
+        data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4: Striche auf der Gegenseite
         table.insert(self.layers, data)
         if self.log and #self.layers <= 15 then
           self.log("I", "Decal %d: Treffer %s (angefragt %s)", #self.layers, tostring(hit), tostring(d.pos))
