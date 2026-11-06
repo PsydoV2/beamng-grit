@@ -504,3 +504,12 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Kleinigkeit: ein Auto, das schon Skin `patina<ID>` trägt (Rest aus 2c), bleibt bei `start()` in Phase
   „prepare“ hängen (Log 19:54–19:55) → im Mod: vorhandenen Patina-Skin erkennen, `start()` absichern (pcall).
 - `onVehicleDestroyed` feuert beim eigenen Neuspawn nicht (kein Log-Eintrag) – Schutz trotzdem drin lassen.
+
+### Spike 3 (2026-11-06): Lasttest – Aufbau
+- Basis: Spike 2d (Skin pro Fahrzeug). `load(n, s, mode)`: 3 s Grundlinie, dann n zufällige Decals (Seite +
+  Versatz, Größe 0.2–0.6, zwei Spiel-Texturen aus `/art/dynamicDecals/textures/`) gleichmäßig über s Sekunden,
+  3 s Nachlauf. Gemessen: Frametime (`onUpdate(dtReal, …)`, `ge/main.lua:1006`), Bake pro Decal (`hptimer`),
+  Frames pro Decal (Projektion + `getDecalData`), CPU von onUpdate und `combineTextures`.
+- `inc`: `bakeLayers({neu})` ohne `clearBakedTextures` – so fügt der Editor Decals hinzu
+  (`editor/api/dynamicDecals.lua:1091-1095` addDecal_Redo). `full`: clear + alle Layer
+  (`reprojectLayers`, `dynamicDecals.lua:1647-1651`).
