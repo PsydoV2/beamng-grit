@@ -449,3 +449,16 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Neue These: Schwarz + Chrom = Lack ohne Fahrzeugfarbe (Basisfarbe 0, Klarlack/Metallic aktiv). Die
   Fahrzeugfarbe hängt offenbar an den ursprünglichen Material-Instanzen. Lauf 5: nach dem Umschalten
   Lack neu setzen über `core_vehicle_manager.liveUpdateVehicleColors` (`core/vehicle/manager.lua:256-277`).
+
+### Spike 2c, Lauf 5 (2026-11-06)
+- Lack neu setzen (`liveUpdateVehicleColors`) und Farbwahl im Lackmenü → weiterhin chrom (vor Kameradrehung),
+  dann schwarz. ❌ → per `switchMaterial` umgeschaltete Materialien bekommen keine Fahrzeugfarbe.
+  (Vanilla nutzt `switchMaterial` nur für Glowmaps, `common/jbeam/materials.lua:57-78`, nie für Lack.)
+- Gefunden: `vehicleObj:setSkin(slot .. "." .. skinName)` (`common/jbeam/sections/licenseplatesSkins.lua:56-58`,
+  Slot `''` bei `paint_design`). Skin-Materialien heißen `<mapTo>.skin.<name>`
+  (`editor/api/dynamicDecals.lua:2099,2108`; Vorlage `.skin.dynamicTextures` mit `instanceDiffuse`,
+  `editor/dynamicDecals/debugSection.lua:136-150`) und werden vom Spiel lackiert.
+- Bindung der Texturen ist ohnehin pro Fahrzeug: `veh:setTextureSet(prefix, set)` (`editor/api/dynamicDecals.lua:1489-1500`).
+- Lauf 6: `M.skinMode`: Kopie als `<mapTo>.skin.patina<ID>` registrieren, dann `veh:setSkin(".patina<ID>")`
+  zur Laufzeit. Skin pro Fahrzeug → echte Trennung gleicher Modelle. `stop()` → `setSkin(".")`.
+  Offen: wirkt `setSkin` ohne Neuspawn? Verträgt es sich mit Lackierungen (Liveries)?

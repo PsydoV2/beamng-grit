@@ -239,10 +239,16 @@ local function repaint(veh)
 end
 M.repaint = function() local v = getVeh(); if v then repaint(v) end end
 
+-- Lauf 5: umgeschaltete Kopie bekommt nie Lack (auch nicht per Lack-Dialog). Das Spiel färbt aber Skin-Materialien
+-- (<mapTo>.skin.<name>, editor/api/dynamicDecals.lua:2099/2108), gesetzt über vehicleObj:setSkin(slot.."."..name)
+-- (common/jbeam/sections/licenseplatesSkins.lua:56-58, Slot '' für paint_design). Skin pro Fahrzeug: patina<ID>.
+M.skinMode = true
+local function skinName() return "patina" .. state.vehId end
+
 local function applyStages()
   local veh = be:getObjectByID(state.vehId)
   for _, t in ipairs(state.targets) do
-    local name = cloneName(t)
+    local name = M.skinMode and (t.mesh .. ".skin." .. skinName()) or cloneName(t)
     -- Lauf 1 (2c): assignFieldsFromObject + c.mapTo → Kopie wirkt wie Chrom. Jetzt wie der Material-Editor
     -- (editor/api/material.lua:265-279 copyMaterialFields, :338-344): jedes Feld pro Stage + dynamische Felder.
     local c = scenetree.findObject(name)
@@ -274,7 +280,7 @@ local function applyStages()
     c:reload()
     t.obj, t.cloneName, t.switches = c, name, {}
 
-    local meshes = split(trim(veh:getMeshesContainingMaterial(t.mesh) or ""), " ")
+    local meshes = M.skinMode and {} or split(trim(veh:getMeshesContainingMaterial(t.mesh) or ""), " ")
     for _, mesh in ipairs(meshes) do
       if mesh ~= "" then
         local msc = veh:getSwitchableMaterial(t.mesh, t.mesh, mesh)
@@ -286,13 +292,18 @@ local function applyStages()
     end
     L("I", "  %s → Kopie %s, %d Meshes, %d umgeschaltet", t.objName, name, #meshes, #t.switches)
   end
+  if M.skinMode then
+    veh:setSkin("." .. skinName())
+    L("I", "  setSkin('.%s')", skinName())
+  end
 end
 
 local function restoreStages()
   local veh = be:getObjectByID(state.vehId)
+  if veh and M.skinMode then veh:setSkin("."); L("I", "  setSkin('.')") end
   for _, t in ipairs(state.targets) do
     if veh then for _, msc in ipairs(t.switches or {}) do veh:resetMaterials(msc) end end
-    if t.obj and t.obj ~= t.orig and not M.keepClones then t.obj:delete() end
+    if t.obj and t.obj ~= t.orig and (M.skinMode or not M.keepClones) then t.obj:delete() end
     t.obj = t.orig
   end
 end
