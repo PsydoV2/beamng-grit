@@ -526,3 +526,13 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Strg+R nach `veh:respawn`-Skin: Skin verloren (`attach: 0/3 … kein Skin!`). In 2c Lauf 7 blieb er über
   Strg+R erhalten → im Mod Skin bei jedem Spawn selbst setzen (Hook vor `jbeamMeshs.process`) – offen.
 - Screenshot A (nach inc): `screenshots/2026-11/screenshot_2026-11-06_20-01-43.png`. Vergleich inc ↔ full steht aus.
+
+### Spike 3, Lauf 2 (2026-11-06) ✅ Spike 3 abgeschlossen
+- 50 Decals / 10 s inc: Frametime unverändert (Ø 11.03 → 11.02 ms, max 11.58), Bake Ø 0.68 ms pro Decal.
+- Danach `rebakeFull()` (50 Layer): 143.7 ms. Bild inc ↔ full laut Sebastian **gleich** ✅
+  (`screenshots/2026-11/screenshot_2026-11-06_20-06-19.png` vs. `…20-06-42.png`).
+- Voll-Bake wächst überlinear: 50 Layer 144 ms (2.9 ms/Layer), 200 Layer 1252–2811 ms (6–14 ms/Layer).
+- Wiederkehrender Ausreißer Patina-onUpdate ~31 ms (einmal pro Lauf, beide Läufe) – vermutlich erstes
+  Laden der Decal-Textur; im Mod beobachten.
+- Fazit für den Mod: zur Laufzeit nur inkrementell backen; Layerzahl begrenzen; Voll-Bake nur beim
+  Spawn/Laden, bei vielen Layern auf mehrere Frames verteilen oder vorher zusammenfassen.
