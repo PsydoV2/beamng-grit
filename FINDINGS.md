@@ -928,3 +928,20 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Tiefe beidseitig (Annahme bestätigt, beide Seiten getroffen).
 - Kosten: 26.2 ms / 18.9 ms einmalig je Radierer (inkl. 7 Kratzer neu). → beim echten Waschen höchstens etwa 1×/s.
 - 140 Ebenen nach dem Test, Bake Ø 0.98 ms.
+
+### M3.1 Waschen im Wasser (2026-11-07) – Aufbau
+- Sensor: alle 0.5 s `obj:inWater(cid)` für alle Knoten; Wasserlinie = höchste Ausgangsposition (relativ zu
+  `refPos`) eines Knotens im Wasser; Kosten mit `HighPerfTimer()`/`:stop()` gemessen (`vehicle/jbeam/stage2.lua:592,610`).
+  Feld `water = { z, n, v, ms }` im Ereignis-Paket.
+- GE `handleWater`: Linie = z + 0.05; höchstens 1 Radierer/s, je 40 %, 4 Schritte pro Höhe (≈ 87 % weg).
+  Steigendes Wasser oder neuer Dreck → neu. > 2 s ohne Wasser → alte Linie verfällt. Uhr aus `dtReal`.
+- Nach jedem Waschschritt: `dirtLevel` × (1 − Stärke), Mengen-Grenzen (Spritzer/Kontakt/Staub) zurück, damit
+  danach wieder Dreck entsteht (Vereinfachung: ganzes Auto).
+- Bekannt: jeder Schritt ist ein Layer im Budget (500). Waschkante hart (Spike 7).
+
+### M3.1, Lauf 1 (2026-11-07, Gavril Vertex NA2 + Moonhawk) ✅ Waschen
+- Sebastian: keine Ruckler, Waschkante gut, kurze Durchfahrt wäscht nur wenig, „funktioniert wie es soll“.
+- Log: Wasser-Messung 0.08–0.20 ms je 0.5 s; Waschschritt 6–46 ms (meist 8–20, 7–12 Kratzer neu darüber),
+  höchstens 1/s. Durchfahrt mit 12–16 m/s → 1 Schritt. 38 Waschschritte in der Sitzung.
+- **Budget wird knapp:** 337 Ebenen nach einer Sitzung (549 Spritzer, weil Waschen die Mengen-Grenzen zurücksetzt;
+  jeder Waschschritt ist selbst ein Layer). → „Layer zusammenführen“ rückt näher (offener Punkt).

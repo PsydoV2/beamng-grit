@@ -168,12 +168,36 @@ local function nodeCollision(p)
   })
 end
 
+-- M3.1 Waschen: Wasserstand am Auto. obj:inWater(cid) (vehicle/fire.lua:87, controller/playerController.lua:376)
+-- für alle Knoten alle WATER_INTERVAL s; Wasserlinie = höchste Ausgangsposition (Fahrzeugraum, relativ zum
+-- Referenzknoten) eines Knotens im Wasser. Verformung bleibt unberücksichtigt.
+local WATER_INTERVAL = 0.5
+local waterT, water = 0, nil
+
+local function updateWater(dt)
+  waterT = waterT + dt
+  if waterT < WATER_INTERVAL or not refPos then return end
+  waterT = 0
+  local t = HighPerfTimer()   -- Kosten messen (vehicle/jbeam/stage2.lua:592,610)
+  local top, n = nil, 0
+  for cid, node in pairs(v.data.nodes) do
+    if node.pos and obj:inWater(cid) then
+      n = n + 1
+      local z = node.pos.z - refPos.z
+      if not top or z > top then top = z end
+    end
+  end
+  local ms = t:stop()
+  if n > 0 then water = { z = r3(top), n = n, v = r3(obj:getVelocity():length()), ms = r3(ms) } end
+end
+
 local function updateGFX(dt)
   axF = obj:getDirectionVector()
   axU = obj:getDirectionVectorUp()
   axL = axU:cross(axF)
   updateSpray(dt)
   updateDust(dt)
+  updateWater(dt)
   diagT = diagT + dt
   if diagT >= 2 then
     diagT = 0
@@ -185,19 +209,20 @@ local function updateGFX(dt)
   sendT = sendT + dt
   if sendT < SEND_INTERVAL then return end
   sendT = 0
-  if #pending == 0 and #sprays == 0 and #dusts == 0 and #contacts == 0 then return end
+  if #pending == 0 and #sprays == 0 and #dusts == 0 and #contacts == 0 and not water then return end
   if #pending > MAX_PER_SEND then
     table.sort(pending, function(a, b) return a.v > b.v end)
     for i = #pending, MAX_PER_SEND + 1, -1 do pending[i] = nil end
   end
   obj:queueGameEngineLua(string.format("grit_main.onSensorEvents(%d, %s)", obj:getId(),
-    serialize({ scrapes = pending, sprays = sprays, dusts = dusts, contacts = contacts })))
-  pending, sprays, dusts, contacts = {}, {}, {}, {}
+    serialize({ scrapes = pending, sprays = sprays, dusts = dusts, contacts = contacts, water = water })))
+  pending, sprays, dusts, contacts, water = {}, {}, {}, {}, nil
 end
 
 local function reset()
   pending, lastEmit, sendT, sprayDose, sprays, dustDose, dusts = {}, {}, 0, {}, {}, 0, {}
   lastDirt, contacts = {}, {}
+  waterT, water = 0, nil
 end
 
 local function init()

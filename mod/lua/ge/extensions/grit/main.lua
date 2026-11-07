@@ -403,6 +403,53 @@ local function handleContacts(car, list)
     end
   end
 end
+-- M3.1 Waschen (Spike 7 Radierer). Alles bis zur Linie top (Fahrzeugraum) verliert den Anteil strength an Dreck,
+-- Kratzer darin kommen neu darüber. Box von der Seite, Tiefe = ganze Breite (beide Seiten, Spike 7 Lauf 1).
+local function isScratch(l) return l.name and (l.name:find("^Grit Kratzer") or l.name == "Grit Test") end
+local function washBelow(car, veh, top, strength)
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local ext, mid, m = mx - mn, (mn + mx) * 0.5, 0.2
+  top = math.min(top, mx.z + m)
+  local ok, info = car.r:erase(veh, {
+    pos = vec3(mid.x, mid.y, (mn.z - m + top) * 0.5), normal = vec3(1, 0, 0), up = vec3(0, 0, 1),
+    width = ext.y + 2 * m, length = top - mn.z + m, depth = ext.x + 2 * m, strength = strength,
+    isKeep = function(l) return isScratch(l) and l.decalPos and l.decalPos.z <= top + 0.3 end,
+  })
+  if ok then
+    -- Deckkraft-Gedächtnis und Mengen-Grenzen mitwaschen, sonst wäre der nächste Spritzer gleich wieder voll
+    -- deckend (Monotonie, M2.1 Lauf 2) bzw. käme gar keiner mehr (maxPerWheel/maxEvents). Vereinfachung: für das
+    -- ganze Auto, nicht nur unter der Linie.
+    for k, s in pairs(car.dirtLevel or {}) do car.dirtLevel[k] = s * (1 - strength) end
+    if strength >= 0.3 then car.sprayCount, car.contactCount, car.dusts, car.contacts = {}, {}, 0, 0 end
+  end
+  return ok, info
+end
+
+-- Wasser vom Sensor: { z = Wasserlinie, n = Knoten im Wasser, v = Tempo, ms = Messkosten }. Pro Schritt
+-- WASH.step Anteil weg, höchstens alle WASH.interval s (Radierer kostet ~20 ms, Spike 7 Lauf 1). Nach WASH.passes
+-- Schritten auf derselben Höhe ist der Bereich sauber; neuer Dreck oder steigendes Wasser startet neu.
+local WASH = { interval = 1.0, step = 0.4, passes = 4, splash = 0.05, minNodes = 3 }
+local function handleWater(car, vid, w)
+  if not w or (w.n or 0) < WASH.minNodes then return end
+  local veh = be:getObjectByID(vid); if not veh then return end
+  local now = M.clockS
+  local line = w.z + WASH.splash
+  local ws = car.wash or { z = -math.huge, passes = WASH.passes, t = -math.huge, seen = now }
+  car.wash = ws
+  if now - ws.seen > 2 then ws.z = -math.huge end   -- war aus dem Wasser → alte Linie verfällt
+  ws.seen = now
+  if line > ws.z + 0.05 then ws.z, ws.passes = line, 0 end
+  if ws.passes >= WASH.passes or now - ws.t < WASH.interval then return end
+  ws.t, ws.passes = now, ws.passes + 1
+  local ok, info = washBelow(car, veh, ws.z, WASH.step)
+  car.washes = (car.washes or 0) + 1
+  if car.washes <= 20 then
+    L("I", "Waschen %d/%d: Linie z=%.2f, %d Knoten im Wasser, %.1f m/s, Wasser-Messung %.2f ms – %s", ws.passes,
+      WASH.passes, ws.z, w.n, w.v or 0, w.ms or 0, ok and info or ("abgebrochen: " .. tostring(info)))
+  end
+end
+
 -- Ereignisse vom Sensor ----------------------------------------------------------------
 
 M.onSensorEvents = function(vid, ev)
@@ -411,6 +458,9 @@ M.onSensorEvents = function(vid, ev)
   handleSprays(car, vid, ev.sprays)
   handleDusts(car, vid, ev.dusts)
   handleContacts(car, ev.contacts)
+  -- neuer Dreck → beim nächsten Wasserkontakt wieder waschen
+  if car.wash and (#(ev.sprays or {}) + #(ev.dusts or {}) + #(ev.contacts or {})) > 0 then car.wash.passes = 0 end
+  handleWater(car, vid, ev.water)
   for _, s in ipairs(ev.scrapes or {}) do
     if (car.scrapes or 0) < 15 then
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
@@ -448,7 +498,9 @@ local retryFrames = 0
 local perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 local function addPerf(t, ms) t.n, t.sum, t.max = t.n + 1, t.sum + ms, math.max(t.max, ms) end
 
+M.clockS = 0   -- Echtzeit-Uhr in s (aus dtReal)
 M.onUpdate = function(dtReal)
+  M.clockS = M.clockS + (dtReal or 0)
   local busy = false
   for _, car in pairs(cars) do if car.r and #car.r.queue > 0 then busy = true end end
   if dtReal then addPerf(busy and perf.busy or perf.idle, dtReal * 1000) end
@@ -512,7 +564,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts = {}, {}, {}, 0, {}, 0 end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash = {}, {}, {}, 0, {}, 0, nil end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -534,7 +586,7 @@ M.status = function()
     if car.r then
       local cells = 0
       for _ in pairs(car.r.cells or {}) do cells = cells + 1 end
-      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen; Kontakt-Dreck %d", car.r.synthN or 0, car.r.skipped or 0, cells, car.contacts or 0)
+      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen; Kontakt-Dreck %d; Waschschritte %d", car.r.synthN or 0, car.r.skipped or 0, cells, car.contacts or 0, car.washes or 0)
     end
     if car.r and (car.r.bakeN or 0) > 0 then
       L("I", "  Bake: %d Decals, Ø %.2f ms, max %.2f ms", car.r.bakeN, car.r.bakeSum / car.r.bakeN, car.r.bakeMax)
@@ -567,17 +619,9 @@ M.testWash = function(height, strength)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
   if not (car and car.r and veh) then L("W", "testWash: Grit ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
-  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
-  local ext, mid = mx - mn, (mn + mx) * 0.5
+  local mn = vec3(aabb.minExtents)
   local top = mn.z + (height or 0.5)
-  local m = 0.2
-  local ok, info = car.r:erase(veh, {
-    pos = vec3(mid.x, mid.y, (mn.z - m + top) * 0.5), normal = vec3(1, 0, 0), up = vec3(0, 0, 1),
-    width = ext.y + 2 * m, length = top - mn.z + m, depth = ext.x + 2 * m, strength = strength or 0.5,
-    isKeep = function(l)
-      return l.name and (l.name:find("^Grit Kratzer") or l.name == "Grit Test") and l.decalPos and l.decalPos.z <= top + 0.3
-    end,
-  })
+  local ok, info = washBelow(car, veh, top, strength or 0.5)
   L("I", "testWash(%.2f m, %.2f): Linie z=%.2f (Unterkante %.2f), %s – %s", height or 0.5, strength or 0.5, top, mn.z,
     ok and "ok" or "abgebrochen", tostring(info))
 end
@@ -598,7 +642,7 @@ M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synt
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts = {}, {}, {}, 0, {}, 0 end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash = {}, {}, {}, 0, {}, 0, nil end
 end
 
 return M
