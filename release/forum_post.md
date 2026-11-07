@@ -4,7 +4,9 @@ Zum Einfügen in den BeamNG-Mod-Upload (XenForo, BBCode). Vorher hochladen bzw. 
 
 - Vorschaubild (Thumbnail): `branding/out/grit-thumbnail.png`
 - Im Text: `grit-banner.png`, `grit-header-scratches.png`, `grit-header-dirt.png`, `grit-header-dust.png`
-  (die `[IMG]`-Platzhalter unten durch die Bild-Links bzw. Anhänge ersetzen)
+  als Anhänge hochladen. In `[ATTACH=full]…[/ATTACH]` steht unten der Dateiname als Platzhalter: durch die
+  Anhang-Nummer ersetzen (entsteht beim Hochladen; einfacher: Platzhalterzeile löschen und im Editor beim Anhang
+  „Einfügen → Vollbild“ klicken)
 - Datei: `build/grit_v0.5.0.zip`
 
 **Titel:** Grit – Dynamic Dirt, Scratches & Cracks for every vehicle
@@ -14,7 +16,7 @@ Zum Einfügen in den BeamNG-Mod-Upload (XenForo, BBCode). Vorher hochladen bzw. 
 ---
 
 ```bbcode
-[IMG]grit-banner.png[/IMG]
+[ATTACH=full]grit-banner.png[/ATTACH]
 
 [B]Grit[/B] gives every car in BeamNG.drive a history. Scrape along a guardrail and the paint shows it. Drive off-road and mud piles up behind the wheels. Fast gravel runs leave a layer of dust on the car. Everything builds up gradually, and the dirt takes its color from the ground you drive on.
 
@@ -22,7 +24,7 @@ Grit is not a preset or a skin. It works on [B]every vehicle[/B], including modd
 
 [I]Version 0.5.0 – early test release, built and tested on BeamNG.drive 0.40.5.0. Feedback and screenshots are very welcome.[/I]
 
-[IMG]grit-header-scratches.png[/IMG]
+[ATTACH=full]grit-header-scratches.png[/ATTACH]
 [SIZE=5][B]Scratches[/B][/SIZE]
 [LIST]
 [*]Body scrapes against walls, guardrails, rocks and other hard surfaces leave scratches exactly where the contact happened.
@@ -36,7 +38,7 @@ Grit is not a preset or a skin. It works on [B]every vehicle[/B], including modd
 [*]Unpainted black plastic and glass stay as they are.
 [/LIST]
 
-[IMG]grit-header-dirt.png[/IMG]
+[ATTACH=full]grit-header-dirt.png[/ATTACH]
 [SIZE=5][B]Dirt[/B][/SIZE]
 [LIST]
 [*][B]Wheel spray:[/B] dirt, mud, sand, gravel, grass or snow is thrown onto the body behind each wheel and onto the rear.
@@ -45,7 +47,7 @@ Grit is not a preset or a skin. It works on [B]every vehicle[/B], including modd
 [*]Dirt lies on top of scratches and cracks.
 [/LIST]
 
-[IMG]grit-header-dust.png[/IMG]
+[ATTACH=full]grit-header-dust.png[/ATTACH]
 [SIZE=5][B]Dust, washing & drying[/B][/SIZE]
 [LIST]
 [*][B]Dust:[/B] at speed on dusty ground a fine layer settles on the rear, the lower sides and the top.
