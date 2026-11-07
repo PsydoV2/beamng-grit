@@ -31,10 +31,16 @@ liveries untouched.
 - **Contact dirt:** When the body itself touches mud or soil, for example when you roll into a ditch or slide
   along an embankment, the dirt stays right at that spot.
 - **Color by surface:** Mud is dark brown, sand is light and snow is white, matched to the ground material.
-- Dirt only builds up and covers scratches that came before it.
+- Dirt only builds up and covers scratches that came before it. Dust stays on the car until water washes it off.
+
+### Washing, wetness & drying ✅
+- **Washing:** Drive into water and everything below the waterline gets cleaner step by step. A quick splash
+  through a ford removes a little, standing in the water cleans it fully. Scratches stay.
+- **Wet dirt:** Mud, and any dirt picked up shortly after driving through water, goes on dark and wet.
+- **Drying:** Wet dirt turns lighter in two steps over about a minute and a half, faster with airflow at speed.
 
 ### Planned
-- **Wetness, drying & washing:** Mud dries over time and rain or water washes it off.
+- **Rain:** Rain slowly washes the car (optional).
 - **Cracks:** Glass and plastic parts get cracks that follow the real damage.
 - **Settings & UI:** Intensity, build-up speed and features can be adjusted in the game.
 
@@ -74,6 +80,7 @@ Console commands (open the Lua console, GE context) for testing:
 | `grit_main.status()` | Writes layer count, events and performance to the log |
 | `grit_main.clear()` | Removes all dirt and scratches from the current vehicle |
 | `grit_main.testScratch("left", 3)` | Places a test scratch (`"left"`, `"right"` or `"top"`, depth 1–3) |
+| `grit_main.testWash(0.6, 0.5)` | Washes everything up to 0.6 m above the bottom of the car by 50 % |
 
 ## Known limitations
 - Light scratches and dust are hard to see on white or chrome parts, because they are light on light. They show
