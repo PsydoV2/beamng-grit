@@ -195,6 +195,14 @@ local function attach(veh)
     return
   end
   car.retried = nil
+  -- M4.1 Lauf 1: Risse an der Covet-Stoßstange verfehlt → welche Meshes sind lackiert?
+  local meshes = {}
+  for _, t in ipairs(onSkin) do meshes[#meshes + 1] = t.mesh end
+  L("I", "Fahrzeug %d lackierte Meshes: %s", vid, table.concat(meshes, ", "))
+  local isT, other = {}, {}
+  for _, t in ipairs(targets) do isT[t.objName] = true end
+  for _, n in ipairs(veh:getMaterialNames() or {}) do if not isT[n] then other[#other + 1] = n end end
+  L("I", "Fahrzeug %d unlackierte Materialien: %s", vid, table.concat(other, ", "))
   car.r, car.nodeHits, car.sprayCount = render.new(veh, onSkin, L), {}, {}
   car.phase = "active"
   loadSensor(veh)
@@ -409,7 +417,6 @@ local function handleContacts(car, list)
 end
 -- M3.1 Waschen (Spike 7 Radierer). Alles bis zur Linie top (Fahrzeugraum) verliert den Anteil strength an Dreck,
 -- Kratzer darin kommen neu darüber. Box von der Seite, Tiefe = ganze Breite (beide Seiten, Spike 7 Lauf 1).
-local function isScratch(l) return l.name and (l.name:find("^Grit Kratzer") or l.name == "Grit Test") end
 local function washBelow(car, veh, top, strength)
   local aabb = veh:getSpawnLocalAABB()
   local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
@@ -418,7 +425,7 @@ local function washBelow(car, veh, top, strength)
   local ok, info = car.r:erase(veh, {
     pos = vec3(mid.x, mid.y, (mn.z - m + top) * 0.5), normal = vec3(1, 0, 0), up = vec3(0, 0, 1),
     width = ext.y + 2 * m, length = top - mn.z + m, depth = ext.x + 2 * m, strength = strength,
-    isKeep = function(l) return isScratch(l) and l.decalPos and l.decalPos.z <= top + 0.3 end,
+    isKeep = function(l) return render.isDamage(l) and l.decalPos and l.decalPos.z <= top + 0.3 end,
   })
   if ok then
     -- Deckkraft-Gedächtnis und Mengen-Grenzen mitwaschen, sonst wäre der nächste Spritzer gleich wieder voll
@@ -455,6 +462,54 @@ local function handleWater(car, vid, w)
   end
 end
 
+-- M4 Risse (Konzept: Riss-Decal in Einschlagrichtung; Atlas Haar- und Spinnennetzrisse). Ereignis vom Sensor:
+-- { c, k = "delle"|"bruch", v = Eindrückung m bzw. Bruchenergie, p*, n* (Fläche nach außen), d* (Richtung) }.
+-- Delle ab webDent oder Bruch → Spinnennetz, sonst Haarriss quer zur Richtung. Normale nur geschätzt
+-- (Hauptachse) und Knoten eingedrückt → größere Toleranz.
+local CRACK = {
+  hair = { texture = "/art/grit/crack_hair.png", minLen = 0.25, maxLen = 0.45, width = 0.16 },
+  web  = { texture = "/art/grit/crack_web.png",  minSize = 0.3, maxSize = 0.5 },
+  color = { 0.50, 0.50, 0.50 }, strength = 0.9, depth = 0.15,   -- mittelgrau: auf hellem und dunklem Lack sichtbar
+  webDent = 0.08, tolDent = 0.3, tolBreak = 0.3, maxPerNode = 2, maxEvents = 80,   -- M4.1 Lauf 2: Delle (m) statt Stoß-Tempo
+}
+local function handleCracks(car, list)
+  if not list or #list == 0 then return end
+  car.crackCount = car.crackCount or {}
+  for _, s in ipairs(list) do
+    local cnt = car.crackCount[s.c] or 0
+    if cnt < CRACK.maxPerNode and (car.cracks or 0) < CRACK.maxEvents then
+      local n = vec3(s.nx, s.ny, s.nz)
+      local dir = vec3(s.dx, s.dy, s.dz)
+      local web = s.k == "bruch" or s.v >= CRACK.webDent
+      local up, w, h, tex
+      if web then
+        local a = math.random() * 2 * math.pi
+        local t1 = n:cross(math.abs(n.z) < 0.9 and vec3(0, 0, 1) or vec3(0, 1, 0)):normalized()
+        up = t1 * math.cos(a) + n:cross(t1) * math.sin(a)
+        w = CRACK.web.minSize + (CRACK.web.maxSize - CRACK.web.minSize) * math.random(); h = w
+        tex = CRACK.web.texture
+      else
+        -- Haarriss quer zur Stoß-/Gleitrichtung; ohne Richtung zufällig
+        up = dir:length() > 1e-3 and n:cross(dir) or vec3(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5)
+        h = CRACK.hair.minLen + (CRACK.hair.maxLen - CRACK.hair.minLen) * math.random(); w = CRACK.hair.width
+        tex = CRACK.hair.texture
+      end
+      local ok = car.r:request({ pos = vec3(s.px, s.py, s.pz), normal = n, up = up,
+        tolAlong = s.k == "bruch" and CRACK.tolBreak or CRACK.tolDent, region = "riss",
+        width = w, length = h, depth = CRACK.depth, texture = tex, color = CRACK.color, strength = CRACK.strength,
+        name = web and "Grit Riss Netz" or "Grit Riss Haar" })
+      if ok then
+        car.crackCount[s.c] = cnt + 1
+        car.cracks = (car.cracks or 0) + 1
+        if car.cracks <= 15 then
+          L("I", "Riss %s n%d (%s %.2f) pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f)", web and "Netz" or "Haar", s.c, s.k, s.v,
+            s.px, s.py, s.pz, n.x, n.y, n.z)
+        end
+      end
+    end
+  end
+end
+
 -- Ereignisse vom Sensor ----------------------------------------------------------------
 
 M.onSensorEvents = function(vid, ev)
@@ -466,6 +521,7 @@ M.onSensorEvents = function(vid, ev)
   -- neuer Dreck → beim nächsten Wasserkontakt wieder waschen
   if car.wash and (#(ev.sprays or {}) + #(ev.dusts or {}) + #(ev.contacts or {})) > 0 then car.wash.passes = 0 end
   handleWater(car, vid, ev.water)
+  handleCracks(car, ev.cracks)
   for _, s in ipairs(ev.scrapes or {}) do
     if (car.scrapes or 0) < 15 then
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
@@ -577,7 +633,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil = {}, {}, {}, 0, {}, 0, nil, nil end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil, car.crackCount, car.cracks = {}, {}, {}, 0, {}, 0, nil, nil, {}, 0 end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -599,7 +655,7 @@ M.status = function()
     if car.r then
       local cells = 0
       for _ in pairs(car.r.cells or {}) do cells = cells + 1 end
-      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen; Kontakt-Dreck %d; Waschschritte %d", car.r.synthN or 0, car.r.skipped or 0, cells, car.contacts or 0, car.washes or 0)
+      L("I", "  Spike 6: %d synthetisch, %d übersprungen (Zelle verfehlt), %d Zellen; Kontakt-Dreck %d; Waschschritte %d; Risse %d", car.r.synthN or 0, car.r.skipped or 0, cells, car.contacts or 0, car.washes or 0, car.cracks or 0)
     end
     if car.r and (car.r.bakeN or 0) > 0 then
       L("I", "  Bake: %d Decals, Ø %.2f ms, max %.2f ms", car.r.bakeN, car.r.bakeSum / car.r.bakeN, car.r.bakeMax)
@@ -663,7 +719,7 @@ M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synt
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil = {}, {}, {}, 0, {}, 0, nil, nil end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil, car.crackCount, car.cracks = {}, {}, {}, 0, {}, 0, nil, nil, {}, 0 end
 end
 
 return M

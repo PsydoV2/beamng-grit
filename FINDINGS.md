@@ -966,3 +966,49 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Sebastian: Staub soll auf Asphalt **nicht** verschwinden, „erst Wasser wäscht es weg“. Abweichung vom Konzept,
   dort und im Zustandsmodell eingetragen.
 - M3 = M3.1 Waschen + M3.2 Nässe/Trocknen + Reset (seit M1) → abgeschlossen, Tag `m3-zustand`.
+
+## M4 Risse
+
+### M4.1 Riss-Erkennung und -Decals (2026-11-07) – Aufbau
+- Sebastian: erst nur Kunststoff, kein Glas.
+- Belege: Kunststoff-Knoten = `nodeMaterial == 3` (`lua/vehicle/beamstate.lua:886`, Plastiksplitter beim Bruch);
+  Einschlag = `p.perpendicularVel` (`lua/vehicle/main.lua:491`, Verwendung `particlefilter.lua:29`);
+  Bruch = Controller-Feld `beamBroken(id, energy)` (`lua/vehicle/controller.lua:596`, Aufruf `main.lua:371`),
+  Beam über `v.data.beams[id]` (`beamstate.lua:820`). `beamDeformed` nur bei Beams mit Deform-Triggern (`main.lua:376`) → nicht genutzt.
+- Sensor: Stoß ab 5 m/s auf Kunststoff-Knoten (Normale wie Schrammen) oder Bruch eines Beams an einem
+  Kunststoff-Knoten (Normale geschätzt: Hauptachse von der Fahrzeugmitte). 1 s Pause pro Knoten. Diagnose
+  `riss:stoss`, `riss:bruch`, `riss-pause`, `riss-unten`, `plastikKnoten:<Anzahl>`.
+- GE: Stoß ≥ 10 m/s oder Bruch → Spinnennetz 0.3–0.5 m, sonst Haarriss 0.25–0.45 × 0.16 m quer zur Richtung.
+  Mittelgrau (0.5), Stärke 0.9, Tiefe 0.15, tol 0.15 (Stoß) / 0.3 (Bruch); max 2 pro Knoten, 80 gesamt.
+- Risse bleiben beim Waschen und Trocknen obenauf (`render.isDamage`, gemeinsam mit Kratzern).
+- Texturen `crack_hair.png` (Seed 6006), `crack_web.png` (Seed 6007) in `tools/gen_textures.ps1`.
+- Einschränkung: Risse erscheinen nur auf lackierten Materialien (Grit-Stage). Unlackierter schwarzer Kunststoff
+  bekommt keine.
+
+### M4.1, Lauf 1 (2026-11-07, Ibishu Covet, schwarz)
+- Sebastian: erst bei 50 km/h ein paar Risse an der Aufprallstelle, Optik „erstmal ok“.
+- Log: 109 Kunststoff-Knoten. **Nur Bruch-Risse** (`riss:bruch` 6/3/29, Energie immer 0.0), **kein einziger
+  Stoß-Riss** (`riss:stoss` fehlt). 38 Risse angefragt, 13 ohne Treffer: vorne Strahl ~1 m tiefer getroffen
+  (angefragt y −1.76, Treffer y −0.4 … −0.67), Verdacht: Covet-Stoßstange ist unlackierter Kunststoff (Screenshot
+  09-51-54) → keine Grit-Ebene, Strahl geht durch.
+- Nächster Lauf: Diagnose `plastikKoll:<Tempo-Eimer>` und `plastikMax:<Höchstwert>`; Log der lackierten Meshes und
+  unlackierten Materialien beim Aktivieren.
+
+### M4.1, Lauf 2 (2026-11-07, Covet + ETK I-Series)
+- **`p.perpendicularVel` ist an Kunststoff-Knoten immer 0:** 546 Kollisionen alle im Eimer 0–1, `plastikMax:0.0`.
+  → kein Aufprall-Tempo; Stoß-Weg entfernt.
+- Covet: Stoßstange schwarz und unlackiert (Sebastian) → Risse dort unmöglich (keine Grit-Ebene).
+- ETKI: lackierte Meshes `character_primary, etki_mechanicals, etki`. Bruch-Risse an der Front (y −1.67 … −1.79),
+  wenige verworfen; Sebastian: „sieht man kaum etwas auf der Stoßstange“. Energie beim Bruch immer 0.0.
+- Neu: **Dellen-Erkennung** wie die Debug-Ansicht „displacement“: `obj:getNodePositionRelative(cid)` −
+  `obj:getOriginalNodePositionRelative(cid)` (`lua/vehicle/bdebugImpl.lua:1057-1058`), alle 0.25 s für alle
+  Kunststoff-Knoten, je 3 cm weiterer Eindrückung ein Riss (Normale = −Verschiebung auf Hauptachse); ab 8 cm Netz.
+  Diagnose `delleMax:<m> <ms>`. Offen: Ist die relative Lage fahrzeugfest? (Sonst würde Drehen als Delle zählen.)
+
+### M4.1, Lauf 3 (2026-11-07, ETK I-Series, schwarz) ✅ Dellen-Erkennung
+- 30 s Fahrt ohne Unfall: `delleMax 0.01 m`, keine Risse (Sebastian) → relative Lage ist fahrzeugfest.
+- 25 km/h frontal: Risse an der Stoßstange (Sebastian „ja“). Log: `riss:delle=44`, `riss:bruch=3`,
+  `riss-unten:delle=9`, Delle bis 0.24 m, Messung 0.35 ms je 0.25 s. 8 ohne Treffer (u. a. Heck-Knoten y 2.08,
+  Strahl traf y −0.6 → verworfen).
+- Screenshot 10-01-11: nur kleine graue Punkte sichtbar, die feinen Linien gehen in der Grit-Textur
+  (2048×1024 fürs ganze Auto) verloren → Linien in `crack_*.png` dicker.

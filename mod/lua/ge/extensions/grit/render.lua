@@ -178,6 +178,11 @@ function R:erase(veh, box)
   return true, string.format("%.1f ms, %d Kratzer neu darüber", t:stopAndReset(), #keep)
 end
 R.SOLID = "/art/grit/solid.png"
+-- Schäden (Kratzer, Test, Risse) bleiben beim Waschen und Trocknen obenauf
+function R.isDamage(l)
+  local n = l.name
+  return n and (n:find("^Grit Kratzer") or n == "Grit Test" or n:find("^Grit Riss")) and true or false
+end
 
 -- M3.2 Trocknen. Nasse Layer (gritWet > 0) altern mit dt · rate (rate wächst mit Fahrtwind). Nach DRY_TIME/2 halb,
 -- nach DRY_TIME ganz trocken. Dann nur die Farb-Variante neu backen: Die Maske bleibt, also kommt gewaschener Dreck
@@ -205,7 +210,7 @@ function R:dry(veh, dt, rate)
     local p, sc = l.decalPos, l.decalScale
     local r = sc and (math.max(sc.x, sc.z) * 0.7 + 0.3) or 1
     for _, k in ipairs(self.layers) do
-      if k.name and k.name:find("^Grit Kratzer") and k.decalPos and p and not near[k] then
+      if R.isDamage(k) and k.decalPos and p and not near[k] then
         local dx, dy, dz = k.decalPos.x - p.x, k.decalPos.y - p.y, k.decalPos.z - p.z
         if dx * dx + dy * dy + dz * dz <= r * r then near[k] = true end
       end

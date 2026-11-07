@@ -122,3 +122,61 @@ $bmp = New-Object System.Drawing.Bitmap(64, 64, [System.Drawing.Imaging.PixelFor
 $g = [System.Drawing.Graphics]::FromImage($bmp)
 $g.Clear([System.Drawing.Color]::FromArgb(255, 255, 255, 255))
 Save $bmp $g "solid.png"
+
+# M4 Risse (Konzept: Riss-Atlas, Haar- und Spinnennetzrisse für Kunststoff). Gezackte Linie mit Verzweigungen,
+# zum Ende dünner und schwächer. Alles bleibt mit Abstand im Bild (sonst harte Kanten, M2.2 Lauf 2).
+function Draw-Crack($g, $rnd, [double]$x, [double]$y, [double]$ang, [double]$len, [double]$width, [int]$alpha, [int]$depth) {
+  $steps = [Math]::Max(3, [int]($len / 14))
+  $px = $x; $py = $y
+  for ($i = 1; $i -le $steps; $i++) {
+    $t = $i / $steps
+    $ang += ($rnd.NextDouble() - 0.5) * 0.7                      # Zacken
+    $nx = $px + [Math]::Cos($ang) * $len / $steps
+    $ny = $py + [Math]::Sin($ang) * $len / $steps
+    $r = [Math]::Sqrt(($nx - $size / 2) * ($nx - $size / 2) + ($ny - $size / 2) * ($ny - $size / 2))
+    if ($r -gt $size * 0.47) { break }
+    $w = [single]([Math]::Max(0.7, $width * (1 - 0.7 * $t)))
+    $a = [int]([Math]::Max(30, $alpha * (1 - 0.5 * $t)))
+    $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb($a, 255, 255, 255), $w)
+    $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round; $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawLine($pen, [single]$px, [single]$py, [single]$nx, [single]$ny)
+    $pen.Dispose()
+    if ($depth -gt 0 -and $rnd.NextDouble() -lt 0.18) {           # Verzweigung
+      $side = if ($rnd.NextDouble() -lt 0.5) { -1 } else { 1 }
+      Draw-Crack $g $rnd $nx $ny ($ang + $side * (0.4 + 0.6 * $rnd.NextDouble())) ($len * (1 - $t) * 0.6) ($w * 0.7) ([int]($a * 0.85)) ($depth - 1)
+    }
+    $px = $nx; $py = $ny
+  }
+}
+
+# Haarriss: ein langer Riss durch die Mitte (Decal-„oben“ = Länge), wenige Äste
+$rnd = New-Object System.Random(6006)
+$c = New-Canvas
+Draw-Crack $c[1] $rnd ($size / 2) ($size / 2) (-[Math]::PI / 2) ($size * 0.44) 4.5 235 2
+Draw-Crack $c[1] $rnd ($size / 2) ($size / 2) ([Math]::PI / 2) ($size * 0.44) 4.5 235 2
+Save $c[0] $c[1] "crack_hair.png"
+
+# Spinnennetz: Strahlen vom Einschlagpunkt + gezackte Querrisse zwischen Nachbarstrahlen
+$rnd = New-Object System.Random(6007)
+$c = New-Canvas
+$rays = 9
+$angs = @()
+for ($i = 0; $i -lt $rays; $i++) { $angs += ($i / $rays) * 2 * [Math]::PI + ($rnd.NextDouble() - 0.5) * 0.4 }
+foreach ($a in $angs) { Draw-Crack $c[1] $rnd ($size / 2) ($size / 2) $a ($size * (0.30 + 0.15 * $rnd.NextDouble())) 5 240 1 }
+foreach ($ring in @(0.10, 0.19, 0.28)) {
+  for ($i = 0; $i -lt $rays; $i++) {
+    if ($rnd.NextDouble() -lt 0.75) {
+      $a0 = $angs[$i]; $a1 = $angs[($i + 1) % $rays]; if ($a1 -lt $a0) { $a1 += 2 * [Math]::PI }
+      $r0 = $size * $ring * (0.85 + 0.3 * $rnd.NextDouble()); $r1 = $size * $ring * (0.85 + 0.3 * $rnd.NextDouble())
+      $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(200, 255, 255, 255), [single](3.2 - 6 * $ring))
+      $mid = ($a0 + $a1) / 2; $rm = ($r0 + $r1) / 2 * (0.92 + 0.1 * $rnd.NextDouble())
+      $pts = @(
+        (New-Object System.Drawing.PointF([single]($size / 2 + [Math]::Cos($a0) * $r0), [single]($size / 2 + [Math]::Sin($a0) * $r0))),
+        (New-Object System.Drawing.PointF([single]($size / 2 + [Math]::Cos($mid) * $rm), [single]($size / 2 + [Math]::Sin($mid) * $rm))),
+        (New-Object System.Drawing.PointF([single]($size / 2 + [Math]::Cos($a1) * $r1), [single]($size / 2 + [Math]::Sin($a1) * $r1))))
+      $g = $c[1]; $g.DrawLines($pen, [System.Drawing.PointF[]]$pts); $pen.Dispose()
+    }
+  }
+}
+Draw-Blob $c[1] ($size / 2) ($size / 2) 22 220                       # Einschlagpunkt
+Save $c[0] $c[1] "crack_web.png"

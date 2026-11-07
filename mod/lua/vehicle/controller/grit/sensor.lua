@@ -139,6 +139,76 @@ local function contactDirt(p, cid)
     pz = r3(node.pos.z - refPos.z), nx = r3(n.x), ny = r3(n.y), nz = r3(n.z), v = r3(p.slipVel), m = p.materialID1 })
 end
 
+-- M4 Risse (Konzept: Kunststoff-Knoten bekommt Einschlag über Schwellwert oder ein angrenzender Beam bricht).
+-- Kunststoff = nodeMaterial 3 (vehicle/beamstate.lua:886, dort Plastiksplitter beim Bruch).
+-- Bruch = Controller-Feld beamBroken(id, energy) (vehicle/controller.lua:596, main.lua:371), Beam über
+-- v.data.beams[id] (beamstate.lua:820).
+-- Einschlag: p.perpendicularVel ist an Kunststoff-Knoten immer 0 (M4.1 Lauf 2: 546 Kollisionen, max 0.0) →
+-- stattdessen Delle = Verschiebung gegen die Ausgangslage, wie die Debug-Ansicht „displacement“:
+-- obj:getNodePositionRelative(cid) − obj:getOriginalNodePositionRelative(cid) (vehicle/bdebugImpl.lua:1057-1058).
+-- Je DENT_STEP weiterer Eindrückung ein Riss.
+local DENT_STEP = 0.03          -- m
+local DENT_INTERVAL = 0.25      -- s
+local CRACK_COOLDOWN = 1.0      -- s pro Knoten
+local plastic, lastCrack, cracks = {}, {}, {}
+local dentDone, dentT, dentMax = {}, 0, 0
+
+-- Richtung auf die Hauptachse runden (keine Flächennormale bekannt)
+local function snapAxis(d)
+  local ax, ay, az = math.abs(d.x), math.abs(d.y), math.abs(d.z)
+  if ax >= ay and ax >= az then return vec3(d.x > 0 and 1 or -1, 0, 0) end
+  if ay >= az then return vec3(0, d.y > 0 and 1 or -1, 0) end
+  return vec3(0, 0, d.z > 0 and 1 or -1)
+end
+
+local function addCrack(cid, n, kind, val, dir)
+  local now = obj:getSimTime()
+  if lastCrack[cid] and now - lastCrack[cid] < CRACK_COOLDOWN then count("riss-pause", kind); return end
+  local node = v.data.nodes[cid]
+  if not node or not refPos then return end
+  if n.z < -0.6 then count("riss-unten", kind); return end
+  lastCrack[cid] = now
+  count("riss", kind)
+  table.insert(cracks, { c = cid, k = kind, v = r3(val), px = r3(node.pos.x - refPos.x), py = r3(node.pos.y - refPos.y),
+    pz = r3(node.pos.z - refPos.z), nx = r3(n.x), ny = r3(n.y), nz = r3(n.z),
+    dx = r3(dir and dir.x or 0), dy = r3(dir and dir.y or 0), dz = r3(dir and dir.z or 0) })
+end
+
+local function beamBroken(id, energy)
+  local b = v.data.beams[id]
+  if not b or not refPos then return end
+  local cid = plastic[b.id1] and b.id1 or (plastic[b.id2] and b.id2 or nil)
+  if not cid or wheelNodes[cid] then return end
+  local n = snapAxis(vec3(v.data.nodes[cid].pos) - refPos - center)   -- von der Fahrzeugmitte nach außen
+  local a, c = v.data.nodes[b.id1].pos, v.data.nodes[b.id2].pos
+  addCrack(cid, n, "bruch", energy or 0, vec3(c) - vec3(a))
+end
+
+local function updateDents(dt)
+  dentT = dentT + dt
+  if dentT < DENT_INTERVAL or not refPos then return end
+  dentT = 0
+  local t = HighPerfTimer()
+  local maxD = 0
+  for cid in pairs(plastic) do
+    local d = obj:getNodePositionRelative(cid)
+    d:setSub(obj:getOriginalNodePositionRelative(cid))
+    local len = d:length()
+    if len > maxD then maxD = len end
+    local done = dentDone[cid] or 0
+    if len >= done + DENT_STEP then
+      dentDone[cid] = len
+      -- eingedrückt → außen ist entgegen der Verschiebung; Riss quer zur Verschiebung
+      addCrack(cid, snapAxis(-d), "delle", len, d)
+    end
+  end
+  local ms = t:stop()
+  if DIAG and maxD > dentMax + 0.01 then
+    dentMax = maxD
+    count("delleMax", string.format("%.2f m %.2f ms", maxD, ms))
+  end
+end
+
 local function nodeCollision(p)
   if p.materialID2 == RUBBER or not axF then return end
   local cid = p.id1
@@ -198,6 +268,7 @@ local function updateGFX(dt)
   updateSpray(dt)
   updateDust(dt)
   updateWater(dt)
+  updateDents(dt)
   diagT = diagT + dt
   if diagT >= 2 then
     diagT = 0
@@ -209,20 +280,21 @@ local function updateGFX(dt)
   sendT = sendT + dt
   if sendT < SEND_INTERVAL then return end
   sendT = 0
-  if #pending == 0 and #sprays == 0 and #dusts == 0 and #contacts == 0 and not water then return end
+  if #pending == 0 and #sprays == 0 and #dusts == 0 and #contacts == 0 and #cracks == 0 and not water then return end
   if #pending > MAX_PER_SEND then
     table.sort(pending, function(a, b) return a.v > b.v end)
     for i = #pending, MAX_PER_SEND + 1, -1 do pending[i] = nil end
   end
   obj:queueGameEngineLua(string.format("grit_main.onSensorEvents(%d, %s)", obj:getId(),
-    serialize({ scrapes = pending, sprays = sprays, dusts = dusts, contacts = contacts, water = water })))
-  pending, sprays, dusts, contacts, water = {}, {}, {}, {}, nil
+    serialize({ scrapes = pending, sprays = sprays, dusts = dusts, contacts = contacts, water = water, cracks = cracks })))
+  pending, sprays, dusts, contacts, water, cracks = {}, {}, {}, {}, nil, {}
 end
 
 local function reset()
   pending, lastEmit, sendT, sprayDose, sprays, dustDose, dusts = {}, {}, 0, {}, {}, 0, {}
   lastDirt, contacts = {}, {}
   waterT, water = 0, nil
+  lastCrack, cracks, dentDone, dentT, dentMax = {}, {}, {}, 0, 0
 end
 
 local function init()
@@ -243,13 +315,18 @@ local function init()
       for _, n in pairs(wd.treadNodes or {}) do wheelNodes[n] = true end
     end
   end
+  plastic = {}
+  local np = 0
+  for cid, nd in pairs(v.data.nodes) do if nd.nodeMaterial == 3 then plastic[cid] = true; np = np + 1 end end
   initWheels()
   reset()
+  if DIAG then count("plastikKnoten", np) end
 end
 
 M.init = init
 M.reset = reset
 M.updateGFX = updateGFX
 M.nodeCollision = nodeCollision
+M.beamBroken = beamBroken
 
 return M
