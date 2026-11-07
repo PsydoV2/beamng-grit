@@ -221,6 +221,17 @@ local function loadSensor(veh)
   veh:queueLuaCommand(string.format('controller.loadControllerExternal(%q, %q, {})', SENSOR_FILE, SENSOR_NAME))
 end
 
+-- M6 Lauf 2: nach Strg+L zeigten frische Texturen manchmal Datenreste (weiße Streifen), die die Grundebene nicht
+-- löschte; ein echtes projiziertes Decal (testScratch) schon → beim Aktivieren ein unsichtbares Decal (Maske schwarz,
+-- Stärke 0) mitten auf die linke Seite. Liefert nebenbei die Vorlage für Spike 6 / den Radierer.
+local function primeTextures(car, veh)
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local c = (mn + mx) * 0.5
+  car.r:request({ pos = vec3(mx.x, c.y, c.z), normal = vec3(1, 0, 0), up = vec3(0, -1, 0), width = 0.2, length = 0.2,
+    depth = 0.4, texture = render.SOLID, color = { 0, 0, 0 }, strength = 0, name = "Grit Init" })
+end
+
 local function attach(veh)
   local vid = veh:getID()
   local car = cars[vid]
@@ -248,6 +259,9 @@ local function attach(veh)
   car.r, car.nodeHits, car.sprayCount = render.new(veh, onSkin, L), {}, {}
   car.targets = onSkin
   car.phase = "active"
+  -- Lauf 3: direkt hier kam das Decal nie an (Log ohne Projektion; vermutlich leert ein Reset-Hook nach dem Spawn
+  -- die Warteschlange) → 10 Frames später aus onUpdate
+  car.primeIn = 10
   loadSensor(veh)
   L("I", "Fahrzeug %d aktiv: %d/%d Materialien auf Grit%s, Neuspawn %.0f ms", vid, #onSkin, #targets,
     #missing > 0 and (" (ohne: " .. table.concat(missing, ", ") .. ")") or "", car.timer and car.timer:stopAndReset() or -1)
@@ -636,6 +650,10 @@ M.onUpdate = function(dtReal, dtSim)
       local veh = be:getObjectByID(vid)
       if veh then
         local tu = hptimer()
+        if car.primeIn then
+          car.primeIn = car.primeIn - 1
+          if car.primeIn <= 0 then car.primeIn = nil; primeTextures(car, veh); L("I", "Fahrzeug %d: Init-Decal angefragt", vid) end
+        end
         car.r:update(veh)
         if (dtSim or 0) > 0 then
           local rate = math.min(DRY.maxRate, 1 + veh:getVelocity():length() * DRY.windPerMs) * settings.get("dryingSpeed")

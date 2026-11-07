@@ -162,7 +162,7 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 - Covet: Stoßstangen teilen sich eine gestreckte UV1-Fläche (uvCheck, M5.3 Lauf 6) → Kratzer dort erscheinen auf beiden
   als große Fläche. Als Einschränkung in README (Sebastian 2026-11-07).
 - Später: neuer Kratzer auf Dreck kratzt den Dreck weg (Radierer an der Stelle), Sebastian „merken“.
-- M6: beim Entladen des Mods Skin zurücksetzen (sonst weiße Streifen bis zum Neuspawn, gesehen bei Strg+L).
+- Strg+L: selten kurz halb matt/halb metallisch bis zum Losfahren (M6 Lauf 4), Sebastian: nicht weiter verfolgen.
 - Meshes mit „mechanical“ im Namen bekommen kein Grit (ETK teilt dort UVs mit der Karosserie, M5.1 Lauf 5).
 - Ungetestet:
   - Ausrichtung an Front und Heck

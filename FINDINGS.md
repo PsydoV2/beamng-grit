@@ -1221,3 +1221,15 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (12 s nach „aktiv“, Stapel leer): weiße senkrechte Streifen über die ganze Karosserie, lila Fensterrahmen →
   Datenreste **nach** der frischen Aktivierung, nicht nur in der Lücke. Grundebene (Bake bei Frame 5/60) reicht
   nicht immer; früher verschwand es mit dem ersten echten Decal.
+- Lauf 2 (Sebastian): Streifen nach ≈ 10× Strg+L wieder da. `clear()` (Voll-Bake nur Grundebene) half nicht,
+  `testScratch("left", 3)` (echte Projektion + Bake) beseitigte sie am ganzen Auto. Der Kratzer geht ins Schaden-Paar,
+  die Projektion aber über `self.color` → vermutlich räumt erst `projectDynamicDecals`/der erste echte Decal-Bake
+  den Speicher auf.
+- Bau 2: `primeTextures` in `attach`: ein unsichtbares Decal (solid.png, Maske schwarz, Stärke 0, 0.2 × 0.2 m, Mitte
+  linke Seite) direkt nach dem Aktivieren. Kostet einmal eine Projektion (12–15 ms) pro Spawn, liefert die Vorlage.
+- Lauf 3 (Sebastian): beim 3. Strg+L Streifen, weg sobald Dreck kam; linke Seite normal. Log 13:38–13:41: nach
+  „aktiv“ **keine** Projektion des Init-Decals (kein „Decal 1“, kein render:update > 8 ms) → die Anfrage kam nie an.
+  Vermutung: ein Reset-Hook nach dem Spawn (`onVehicleResetted` → `R:clear`) leert die Warteschlange.
+- Bau 3: Init-Decal 10 Frames nach „aktiv“ aus onUpdate anfragen, Log „Init-Decal angefragt“.
+- Lauf 4 (Sebastian): ≈ 15× Strg+L ohne Streifen. Einmal kurz eine Hälfte matt, die andere metallisch, normal
+  sobald man losfährt. Sebastian: kein weiterer Fokus nötig. → bekannter kleiner Restpunkt.
