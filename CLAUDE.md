@@ -140,10 +140,12 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
     Beam-Bruch an einem Kunststoff-Knoten. `perpendicularVel` ist dort immer 0, also unbrauchbar.
   - Haarriss bzw. ab 8 cm / Bruch Spinnennetz, mittelgrau, bleibt beim Waschen/Trocknen (`render.isDamage`).
   - Nur auf lackierten Teilen (z. B. ETK-Stoßstange), nicht auf unlackiertem Kunststoff (Covet-Stoßstange).
-- **M5 Einstellungen/UI:** M5.1 Einstellungen ✅ (`settings.lua`, `settings/grit.json`), M5.2 UI-App ✅
+- **M5 Einstellungen/UI ✅:** M5.1 Einstellungen ✅ (`settings.lua`, `settings/grit.json`), M5.2 UI-App ✅
   (`mod/ui/modules/apps/Grit/`, klappbar, offenes Fenster `position: fixed` wegen `overflow: hidden` am App-Rahmen).
   M5.3: trockener Dreck nur noch in der Textur (`R:retire`) ✅; Qualitätsstufen gestrichen (Sebastian, high kaum besser,
-  Bake 7 ms statt 1 ms); KI-Verkehr später. **Offen: Waschschritt ≈ 2 ms je Schaden (55 Kratzer = 120 ms Ruckler).**
+  Bake 7 ms statt 1 ms); KI-Verkehr später. Schäden im eigenen Paar `@GritDamage`/`@GritDamageMask` unter dem Dreck
+  (Stage s, Dreck s+1), Waschschritt 0.5 ms statt 120 ms ✅. Grundebene deckend schwarz gegen Datenreste. Dellen über
+  0.4 m (abgerissen) und in den ersten 2 s ignoriert. Diagnose `grit_main.uvCheck()` zeigt die UV1-Belegung.
 - **Danach:** M6 Release.
 
 ## Offene Punkte
