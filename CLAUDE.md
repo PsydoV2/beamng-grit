@@ -154,6 +154,9 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 - Später (Sebastian 2026-11-07): **Livery-Editor (Karriere, Skin „Dynamic Textures“)** prüfen, nicht in M5.
 - Später (optional, Sebastian 2026-11-07): **Regen wäscht Dreck langsam ab** (`core_environment.getPrecipitation()`).
   Erst nach M3.1–M3.3, jetzt keine Arbeit hinein.
+- Covet: Stoßstangen nach Streifen/Frontal teils ganz weiß (Sebastian 2026-11-07), nicht nachgestellt, Screenshot fehlt.
+- M6: beim Entladen des Mods Skin zurücksetzen (sonst weiße Streifen bis zum Neuspawn, gesehen bei Strg+L).
+- Meshes mit „mechanical“ im Namen bekommen kein Grit (ETK teilt dort UVs mit der Karosserie, M5.1 Lauf 5).
 - Ungetestet:
   - Ausrichtung an Front und Heck
   - Fahrzeug-gegen-Fahrzeug
