@@ -1017,3 +1017,37 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Dickere Linien: Risse als Linien klar sichtbar (Screenshot 10-04-30), Sebastian: „Alles passt“ (Sichtbarkeit,
   Mittelgrau, Menge). Log: `riss:delle=8`, Delle bis 0.47 m.
 - M4 = Kunststoff-Risse; Glas bleibt Vanilla (Konzept, Sebastian). Tag `m4-risse`.
+
+## M5 Einstellungen / UI
+
+### M5-Umfang (2026-11-07, mit Sebastian)
+- M5.1 Einstellungen → M5.2 UI-App (Schalter, Regler, Buttons Waschen / Sofort dreckig / Alles zurücksetzen,
+  Warnung bei anderen Dreck-/Kratzer-Mods) → M5.3 Qualitätsstufen (Budget, Zusammenführen, KI-Verkehr).
+- **Livery-Editor (Karriere, Skin „Dynamic Textures“): später**, jetzt ignorieren (Sebastian).
+- KI-Verkehr: Einstellung, Standard aus (Konzept). Zustand speichern: später, nicht in M5.
+
+### M5.1 Einstellungen (2026-11-07) – Aufbau
+- `lua/ge/extensions/grit/settings.lua` (per require, wie render.lua). Datei `<User>/settings/grit.json` mit
+  `jsonReadFile`/`jsonWriteFile` (`lua/common/utils.lua:466,484`), Vorbild `core/vehicle/mirror.lua:33-37`.
+- Schlüssel: `dirt`, `scratches`, `cracks` (an/aus), `dirtStrength` 0.25–2 (× Deckkraft, max 1), `dryingSpeed`
+  0.25–4 (× Trocknungsrate), `aiVehicles`, `quality` low/medium/high (beide erst ab M5.3 wirksam).
+  Ungültige Werte werden abgelehnt, Zahlen auf den Bereich begrenzt.
+- Dreck aus → keine neuen Spritzer/Staub/Kontakt-Dreck; Waschen läuft weiter. Bestehendes bleibt.
+- Konsole: `grit_main.settings()`, `grit_main.set(key, wert)`, `grit_main.get(key)`, `grit_main.resetSettings()`.
+
+### M5.1, Lauf 1 (2026-11-07)
+- Speichern/Laden ✅ (Neustart: Werte da, `settings/grit.json`), `scratches=false` ✅ keine Kratzer,
+  `quality="ultra"` abgelehnt ✅.
+- `dirtStrength=2`: **kein sichtbarer Unterschied** (Sebastian). Ursache: nur Deckkraft × 2; Staub 0.12–0.2,
+  Maske gamma-kodiert (enc), Spritzer nahe der Grenze 1.
+- Änderung: Stärke skaliert jetzt auch die **Menge** (jedes Dreck-Ereignis zählt k-mal, Bruchteil per Zufall) und
+  die Obergrenzen (maxPerWheel, Staub/Kontakt maxEvents/maxPerNode × k). Log zeigt die wirksame Deckkraft.
+  Achtung Budget: bei 2 füllt sich das Ebenen-Budget doppelt so schnell.
+
+### M5.1, Lauf 2 (2026-11-07, Gavril Grand Marshal, schwarz) ✅ Dreck-Stärke
+- 0.5 vs. 2: klarer Unterschied, Menge bei 2 ok (Sebastian). M5.1 Einstellungen bestätigt.
+- ❌ Bei 2 auf einer Seite Streifen „vom Vorderreifen zum Fenster zum Hinterreifen“ (Screenshot 10-24-19:
+  schräges Band über die Vordertür, gerade Kante am B-Holm). Verdacht: Seiten-Staub 1.0–1.6 m groß, Box nur 0.3 m
+  tief → färbt nur, wo die gewölbte Seitenwand im ±0.15-m-Streifen liegt (Höhenlinie). Test: Seite depth 0.5.
+- LuaJIT jetzt installiert (`C:\Users\sebfa\scoop\shims\luajit.exe`) → Syntax-Check vor jedem Test
+  (`luajit -b datei.lua /dev/null`), alle Dateien ok.

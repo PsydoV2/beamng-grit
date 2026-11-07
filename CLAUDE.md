@@ -47,6 +47,7 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - `mod/art/grit/*.png`: Texturen, erzeugt von `tools/gen_textures.ps1` mit festen Seeds.
     Aufruf: `powershell.exe -ExecutionPolicy Bypass -File tools/gen_textures.ps1`
 - Shell: Git Bash. `cd` in Bash springt manchmal zurück, deshalb absolute Pfade benutzen.
+- Syntax-Check vor jedem Test: `/c/Users/sebfa/scoop/shims/luajit.exe -b <datei.lua> /dev/null` (nicht im Bash-PATH).
 
 ## Architektur (Weg A′)
 - **Zwei DecalProjections pro Fahrzeug:**
@@ -115,6 +116,8 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   Danach werden die Messwerte zurückgesetzt.
 - `grit_main.testScratch("left"|"right"|"top", level 1–3, tiltGrad)`: Test-Kratzer.
 - `grit_main.testWash(höhe_m, stärke 0–1)`: Spike 7, Radierer bis höhe m über der Unterkante.
+- `grit_main.settings()`, `grit_main.set("dirtStrength", 1.5)`, `grit_main.resetSettings()`: Einstellungen (M5.1),
+  gespeichert in `<User>/settings/grit.json`.
 - `grit_main.clear()`: Dreck und Kratzer am aktuellen Auto löschen. Ein Fahrzeug-Reset löscht ebenfalls.
 - `grit_main.synthetic(true|false)`
 - Log lesen: `grep … "$USER/AppData/Local/BeamNG/BeamNG.drive/current/grit.log"`, ab der letzten Zeile
@@ -148,6 +151,7 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 - Zierleiste der D-Serie verschmiert im UV (optional mit dem Vanilla-Decal-Editor prüfen).
 - Später: Layer zusammenführen und Persistenz. **Budget beobachten** (Sebastian 2026-11-07): nach einer Sitzung mit
   Waschen 337/500 Ebenen (jeder Waschschritt = 1 Layer, Waschen setzt Mengen-Grenzen zurück).
+- Später (Sebastian 2026-11-07): **Livery-Editor (Karriere, Skin „Dynamic Textures“)** prüfen, nicht in M5.
 - Später (optional, Sebastian 2026-11-07): **Regen wäscht Dreck langsam ab** (`core_environment.getPrecipitation()`).
   Erst nach M3.1–M3.3, jetzt keine Arbeit hinein.
 - Ungetestet:

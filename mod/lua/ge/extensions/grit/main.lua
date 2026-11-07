@@ -10,6 +10,21 @@
 local M = {}
 local logTag = "grit"
 local render = require("ge/extensions/grit/render")
+local settings = require("ge/extensions/grit/settings")   -- M5.1
+-- Dreck-Stärke (Einstellung dirtStrength) auf die Deckkraft, höchstens 1
+local function dirtK(s) return math.min(1, s * settings.get("dirtStrength")) end
+-- M5.1 Lauf 1: nur Deckkraft × 2 war kaum sichtbar (Staub 0.12–0.2, Gamma) → Stärke skaliert auch die Menge:
+-- jedes Ereignis zählt k-mal (Bruchteil per Zufall), 0.5 = halb so viele, 2 = doppelt so viele.
+local function scaled(list)
+  local k = settings.get("dirtStrength")
+  if not list or #list == 0 or k == 1 then return list end
+  local out = {}
+  for _, e in ipairs(list) do
+    local n = math.floor(k) + ((math.random() < k - math.floor(k)) and 1 or 0)
+    for _ = 1, n do out[#out + 1] = e end
+  end
+  return out
+end
 
 local SLOT = "grit"
 local SENSOR_FILE, SENSOR_NAME = "grit/sensor", "gritSensor"
@@ -275,7 +290,7 @@ local function handleSprays(car, vid, list)
   for _, s in ipairs(list) do
     local col = DIRT.colors[s.m]
     local cnt = car.sprayCount[s.w] or 0
-    if col and cnt < DIRT.maxPerWheel then
+    if col and cnt < DIRT.maxPerWheel * settings.get("dirtStrength") then   -- Grenzen wachsen mit der Stärke (M5.1)
       local back = s.v >= 0 and 1 or -1        -- vorwärts (−y) → Spritzer nach hinten (+y)
       local side = (s.ox >= mid.x) and 1 or -1
       local pos, n, tol, up, w, h
@@ -306,7 +321,7 @@ local function handleSprays(car, vid, list)
       car.dirtLevel[key] = math.min(DIRT.maxStrength, strength + DIRT.buildUp)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol, region = key,
         width = w, length = h, depth = DIRT.depth, texture = DIRT.texture,
-        color = tint(col), strength = strength, wet = wetOf(car, s.m), name = "Grit Dreck" })
+        color = tint(col), strength = dirtK(strength), wet = wetOf(car, s.m), name = "Grit Dreck" })
       if ok then
         car.sprayCount[s.w] = cnt + 1
         car.sprays = (car.sprays or 0) + 1
@@ -329,7 +344,9 @@ local DUST = {
   -- (untere Hälfte). Abweichung vom Konzept (nur Heck + Oberseiten), von Sebastian gewünscht.
   texture = "/art/grit/dust.png", depth = 0.3,
   rear = { chance = 0.35, minSize = 1.0, maxSize = 1.5, start = 0.18, step = 0.01,  max = 0.5,  tol = 0.6 },
-  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.15, step = 0.008, max = 0.4,  tol = 0.5 },
+  -- M5.1 Lauf 2: Streifen Rad → Fenster → Rad an der Seite (Box 0.3 m schneidet die gewölbte Seitenwand entlang
+  -- einer Höhenlinie, bei dirtStrength 2 sichtbar) → Seite tiefer
+  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.15, step = 0.008, max = 0.4,  tol = 0.5, depth = 0.5 },
   top  = {                minSize = 1.0, maxSize = 1.5, start = 0.12, step = 0.006, max = 0.28, tol = 1.2 },  -- tol: Ladefläche 1 m unter AABB-Oberkante
   maxEvents = 220,
 }
@@ -343,7 +360,7 @@ local function handleDusts(car, vid, list)
   car.dirtLevel = car.dirtLevel or {}
   for _, s in ipairs(list) do
     local col = DIRT.colors[s.m]
-    if col and (car.dusts or 0) < DUST.maxEvents then
+    if col and (car.dusts or 0) < DUST.maxEvents * settings.get("dirtStrength") then
       local r, rx, ry = math.random(), math.random(), math.random()
       local where, cfg, key, pos, n, up
       local a = math.random() * 2 * math.pi
@@ -365,13 +382,13 @@ local function handleDusts(car, vid, list)
       local strength = math.min(cfg.max, math.max(car.dirtLevel[key] or 0, cfg.start))
       car.dirtLevel[key] = math.min(cfg.max, strength + cfg.step)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = cfg.tol, region = key,
-        width = size, length = size, depth = DUST.depth, texture = DUST.texture,
-        color = tint(col), strength = strength, name = "Grit Staub" })
+        width = size, length = size, depth = cfg.depth or DUST.depth, texture = DUST.texture,
+        color = tint(col), strength = dirtK(strength), name = "Grit Staub" })
       if ok then
         car.dusts = (car.dusts or 0) + 1
         if car.dusts <= 10 then
           L("I", "Staub %s %.1f m/s → %s pos(%.2f,%.2f,%.2f) Deckkraft %.2f", DIRT.names[s.m] or "?", s.v,
-            where, pos.x, pos.y, pos.z, strength)
+            where, pos.x, pos.y, pos.z, dirtK(strength))
         end
       end
     end
@@ -392,7 +409,8 @@ local function handleContacts(car, list)
   for _, s in ipairs(list) do
     local col = DIRT.colors[s.m]
     local cnt = car.contactCount[s.c] or 0
-    if col and cnt < CONTACT.maxPerNode and (car.contacts or 0) < CONTACT.maxEvents then
+    local k = settings.get("dirtStrength")
+    if col and cnt < CONTACT.maxPerNode * k and (car.contacts or 0) < CONTACT.maxEvents * k then
       local n = vec3(s.nx, s.ny, s.nz)
       local a = math.random() * 2 * math.pi
       local t1 = n:cross(math.abs(n.z) < 0.9 and vec3(0, 0, 1) or vec3(0, 1, 0)):normalized()
@@ -403,7 +421,7 @@ local function handleContacts(car, list)
       local size = CONTACT.minSize + (CONTACT.maxSize - CONTACT.minSize) * math.random()
       local ok = car.r:request({ pos = vec3(s.px, s.py, s.pz), normal = n, up = up, tolAlong = CONTACT.tol,
         region = "kontakt", width = size, length = size * (0.7 + 0.3 * math.random()), depth = CONTACT.depth,
-        texture = DIRT.texture, color = tint(col), strength = strength, wet = wetOf(car, s.m), name = "Grit Kontakt" })
+        texture = DIRT.texture, color = tint(col), strength = dirtK(strength), wet = wetOf(car, s.m), name = "Grit Kontakt" })
       if ok then
         car.contactCount[s.c] = cnt + 1
         car.contacts = (car.contacts or 0) + 1
@@ -515,14 +533,17 @@ end
 M.onSensorEvents = function(vid, ev)
   local car = cars[vid]
   if not car or car.phase ~= "active" or type(ev) ~= "table" then return end
-  handleSprays(car, vid, ev.sprays)
-  handleDusts(car, vid, ev.dusts)
-  handleContacts(car, ev.contacts)
+  local dirtOn = settings.get("dirt")   -- M5.1: Dreck aus → keine neuen Ablagerungen (Waschen läuft weiter)
+  if dirtOn then
+    handleSprays(car, vid, scaled(ev.sprays))
+    handleDusts(car, vid, scaled(ev.dusts))
+    handleContacts(car, scaled(ev.contacts))
+  end
   -- neuer Dreck → beim nächsten Wasserkontakt wieder waschen
   if car.wash and (#(ev.sprays or {}) + #(ev.dusts or {}) + #(ev.contacts or {})) > 0 then car.wash.passes = 0 end
   handleWater(car, vid, ev.water)
-  handleCracks(car, ev.cracks)
-  for _, s in ipairs(ev.scrapes or {}) do
+  if settings.get("cracks") then handleCracks(car, ev.cracks) end
+  for _, s in ipairs(settings.get("scratches") and ev.scrapes or {}) do
     if (car.scrapes or 0) < 15 then
       L("I", "Schramme n%d pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f) dir(%.2f,%.2f,%.2f) %.1f m/s mat %d/%d",
         s.c, s.px, s.py, s.pz, s.nx, s.ny, s.nz, s.sx, s.sy, s.sz, s.v, s.m1, s.m2)
@@ -591,7 +612,7 @@ M.onUpdate = function(dtReal, dtSim)
         local tu = hptimer()
         car.r:update(veh)
         if (dtSim or 0) > 0 then
-          local rate = math.min(DRY.maxRate, 1 + veh:getVelocity():length() * DRY.windPerMs)
+          local rate = math.min(DRY.maxRate, 1 + veh:getVelocity():length() * DRY.windPerMs) * settings.get("dryingSpeed")
           car.r:dry(veh, dtSim, rate)
         end
         addPerf(perf.upd, tu:stopAndReset())
@@ -644,6 +665,7 @@ end
 
 M.onExtensionLoaded = function()
   L("I", "Grit geladen.")
+  L("I", "Einstellungen: %s", settings.describe())
 end
 
 -- Konsole: grit_main.status()
@@ -721,5 +743,17 @@ M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
   if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil, car.crackCount, car.cracks = {}, {}, {}, 0, {}, 0, nil, nil, {}, 0 end
 end
+
+-- M5.1 Einstellungen (settings.lua). Konsole: grit_main.settings(), grit_main.set("dirtStrength", 1.5),
+-- grit_main.resetSettings(). Gespeichert in <User>/settings/grit.json.
+M.settings = function() L("I", "Einstellungen: %s", settings.describe()) end
+M.set = function(key, value)
+  local ok, v = settings.set(key, value)
+  if ok then L("I", "Einstellung %s = %s (gespeichert)", tostring(key), tostring(v))
+  else L("W", "Einstellung %s nicht gesetzt: %s", tostring(key), tostring(v)) end
+  return ok
+end
+M.get = function(key) return settings.get(key) end
+M.resetSettings = function() settings.reset(); L("I", "Einstellungen zurückgesetzt: %s", settings.describe()) end
 
 return M
