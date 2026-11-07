@@ -689,6 +689,24 @@ M.onVehicleDestroyed = function(vid)
   if car and car.phase ~= "respawn" and car.phase ~= "renew" then deleteSkinMaterials(car); cars[vid] = nil end
 end
 
+-- M6: vor Strg+L (exportPersistentData → onSerialize, ge/main.lua:1267-1270, common/extensions.lua:993-995) und beim
+-- Entladen (common/extensions.lua:240-241) die Grit-Stages der Skin-Kopien abschalten. Sonst zeigen sie bis zum
+-- Neuspawn Datenreste der verwaisten Texturen (weiße Streifen, lila Flecken). activeLayers + reload wie
+-- editor/api/material.lua:66-68. Nach dem Laden erkennt activate den alten Skin und spawnt frisch.
+local function neutralize(why)
+  local n = 0
+  for _, car in pairs(cars) do
+    for _, name in ipairs(car.skinMats or {}) do
+      local m = scenetree.findObject(name)
+      local s = m and gritStage(m)
+      if s then m:setField("activeLayers", 0, tostring(s)); m:reload(); n = n + 1 end
+    end
+  end
+  L("I", "%s: Grit-Stages an %d Materialien abgeschaltet", why, n)
+end
+M.onSerialize = function() neutralize("Lua neu laden") end
+M.onExtensionUnloaded = function() neutralize("Entladen") end
+
 M.onExtensionLoaded = function()
   L("I", "Grit geladen.")
   L("I", "Einstellungen: %s", settings.describe())

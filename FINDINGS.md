@@ -1205,3 +1205,19 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Texeldichte (große Kästchen, daher die Treppenkante). Ein Kratzer auf einer dieser Flächen erscheint auf allen.
   Das ist eine Eigenschaft des Modells (UV1 = Dynamic-Decal-UV), nicht von Grit. Prüfbar mit dem Vanilla-Decal-Editor.
 - Entscheidung (Sebastian): als bekannte Einschränkung in die README, ohne Gegenprobe im Vanilla-Editor.
+
+## M6 Release
+
+### Bau 1: Skin beim Entladen/Neuladen neutralisieren
+- Strg+L ruft vor dem Neuladen `exportPersistentData` → `serializePackages` → `onSerialize` jeder Extension
+  (`ge/main.lua:1267-1270`, `common/utils.lua:995-1008`, `common/extensions.lua:993-995`). Entladen ruft
+  `onExtensionUnloaded` (`common/extensions.lua:240-241`). Einen eigenen Hook vor Strg+L gibt es sonst nicht.
+- Beide schalten die Grit-Stages der Skin-Kopien ab: `activeLayers` = erste Grit-Stage, dann `mat:reload()`
+  (wie `editor/api/material.lua:66-68`). Nach dem Laden erkennt `activate` den alten Skin → Neuspawn wie bisher.
+- Version 0.5.0 (Sebastian).
+- Lauf 1 (Sebastian): ZIP funktioniert wie der Ordner. Deaktivieren im Mod-Manager: Auto sieht unverändert aus
+  (Log „Entladen: Grit-Stages an 3 Materialien abgeschaltet“). Strg+L: Hooks laufen (Log „Lua neu laden … 2
+  Materialien“, danach „alten Grit-Skin → Neuspawn“), aber erst beim 4. Strg+L ohne Glitches. Screenshot 13-26-04
+  (12 s nach „aktiv“, Stapel leer): weiße senkrechte Streifen über die ganze Karosserie, lila Fensterrahmen →
+  Datenreste **nach** der frischen Aktivierung, nicht nur in der Lücke. Grundebene (Bake bei Frame 5/60) reicht
+  nicht immer; früher verschwand es mit dem ersten echten Decal.
