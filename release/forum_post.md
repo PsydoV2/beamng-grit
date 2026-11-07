@@ -12,7 +12,8 @@ Zum Einfügen in den BeamNG-Mod-Upload (XenForo, BBCode). Vorher hochladen bzw. 
 - Datei: `build/grit_v0.5.0.zip`
 
 **Titel:** Grit – Dynamic Dirt, Scratches & Cracks for every vehicle
-**Kurzbeschreibung (Tagline):** Your car keeps a history: scratches where you hit, dirt from the ground you drive on.
+**Tagline (Subtitle):** Dynamic dirt, scratches and cracks for every vehicle
+**Tags** (nur vorhandene erlaubt): lua, offroad, rally, app, user interface, experimental
 **Version:** 0.5.0
 
 ---
