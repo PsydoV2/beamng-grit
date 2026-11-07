@@ -920,3 +920,11 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Konsole `grit_main.testWash(höhe, stärke)`: Box von der Seite (n = +x), alles bis `höhe` m über der
   AABB-Unterkante. Log: Linie, Zeit, Anzahl Kratzer neu.
 - Offen: Ist `decalPos` die Box-Mitte (Tiefe beidseitig)? Annahme aus `R:request` (Kamera bei pos + n·(depth/2+0.2)).
+
+### Spike 7, Lauf 1 (2026-11-07, Gavril Vertex NA2, schwarz) ✅ Radierer funktioniert
+- `testWash(0.6, 0.5)` und `(0.6, 1)`: Dreck bis zur Linie auf allen Seiten weg (Sebastian), Kratzer im sauberen
+  Bereich bleiben, keine Formen/Streifen. Screenshots 09-10-45 (vorher), 09-11-08, 09-11-29.
+- Kante ist hart (waagerechte Linie an der Tür). Linie z = 0.40 bei Unterkante −0.20 → Box-Mitte = `decalPos`,
+  Tiefe beidseitig (Annahme bestätigt, beide Seiten getroffen).
+- Kosten: 26.2 ms / 18.9 ms einmalig je Radierer (inkl. 7 Kratzer neu). → beim echten Waschen höchstens etwa 1×/s.
+- 140 Ebenen nach dem Test, Bake Ø 0.98 ms.
