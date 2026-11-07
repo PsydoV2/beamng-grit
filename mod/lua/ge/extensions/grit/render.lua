@@ -7,6 +7,7 @@
 local R = {}
 R.__index = R
 
+-- M5.3 Lauf 2: Qualitätsstufen gestrichen (Sebastian). 4096×2048 kaum sichtbar besser, Bake Ø 7 ms statt ≈ 1 ms.
 local RESOLUTION = Point2I(2048, 1024)
 local UV_LAYER = 1
 R.COLOR_PREFIX, R.MASK_PREFIX = "@GritTexture", "@GritMask"
@@ -105,7 +106,7 @@ end
 
 function R:clear(veh)
   self:refresh(veh, true)   -- Reparatur kann die Form ändern
-  self.layers, self.queue, self.dryQueue = {}, {}, {}
+  self.layers, self.queue, self.dryQueue, self.baked, self.committed = {}, {}, {}, 0, 0
   self.cells = {}            -- Oberflächen-Abstände neu lernen
   self:rebake(veh)
 end
@@ -190,9 +191,27 @@ function R:erase(veh, box)
   self.layers = rest
   if #keep > 0 then self.color:bakeLayers(cs, veh.jbeam); self.mask:bakeLayers(ms, veh.jbeam) end
   self.idleFrames = 0
+  self:retire()
   return true, string.format("%.1f ms, %d Kratzer neu darüber", t:stopAndReset(), #keep)
 end
 R.SOLID = "/art/grit/solid.png"
+
+-- M5.3 Zusammenführen (Konzept „Budget“: alte, stabile Ablagerungen in eine gebackene Ebene). Die Textur IST diese
+-- gebackene Ebene: Die Liste braucht Grit nur noch für Schäden (Waschen backt sie neu obenauf, R:erase), nasse
+-- Layer (R:dry) und das volle Neu-Backen – das läuft nur bei leerer Liste (R.new, R:clear). Trockener Dreck und
+-- Radierer werden nie wieder gelesen → aus der Liste nehmen, sie bleiben in der Textur. Das Budget zählt danach nur
+-- Schäden und nassen Dreck.
+function R:retire()
+  local keep, n = {}, 0
+  for _, l in ipairs(self.layers) do
+    if R.isDamage(l) or l.gritWet or l.gritDryQueued then keep[#keep + 1] = l else n = n + 1 end
+  end
+  if n > 0 then
+    self.layers = keep
+    self.baked = (self.baked or 0) + n
+  end
+  return n
+end
 -- Schäden (Kratzer, Test, Risse) bleiben beim Waschen und Trocknen obenauf
 function R.isDamage(l)
   local n = l.name
@@ -234,6 +253,7 @@ function R:dry(veh, dt, rate)
   for _, k in ipairs(self.layers) do if near[k] then cs[#cs + 1] = (variants(k)) end end
   self.color:bakeLayers(cs, veh.jbeam)
   self.idleFrames = 0
+  self:retire()
   local ms = t:stopAndReset()
   self.dryN, self.drySum, self.dryMax = (self.dryN or 0) + 1, (self.drySum or 0) + ms, math.max(self.dryMax or 0, ms)
 end
@@ -244,9 +264,11 @@ function R:commit(data, d, veh, how, mark)
   data.gritColor, data.gritStrength = d.color, d.strength
   if (d.wet or 0) > 0 then data.gritWet, data.gritDryAge = d.wet, 0 end
   data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4
-  table.insert(self.layers, data)
-  if self.log and #self.layers <= 15 then
-    self.log("I", "Decal %d (%s): pos %s (angefragt %s), Drehung %.0f°", #self.layers, how, tostring(data.decalPos),
+  -- M5.3: trockener Dreck bleibt nur in der Textur (R:retire), Schäden und nasser Dreck auch in der Liste
+  if R.isDamage(data) or data.gritWet then table.insert(self.layers, data) else self.baked = (self.baked or 0) + 1 end
+  self.committed = (self.committed or 0) + 1
+  if self.log and self.committed <= 15 then
+    self.log("I", "Decal %d (%s): pos %s (angefragt %s), Drehung %.0f°", self.committed, how, tostring(data.decalPos),
       tostring(d.pos), math.deg(d.rot or 0))
   end
   local cl, ml = variants(data)

@@ -142,7 +142,8 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - Nur auf lackierten Teilen (z. B. ETK-Stoßstange), nicht auf unlackiertem Kunststoff (Covet-Stoßstange).
 - **M5 Einstellungen/UI:** M5.1 Einstellungen ✅ (`settings.lua`, `settings/grit.json`), M5.2 UI-App ✅
   (`mod/ui/modules/apps/Grit/`, klappbar, offenes Fenster `position: fixed` wegen `overflow: hidden` am App-Rahmen).
-  **Nächster Schritt: M5.3** Qualitätsstufen (Budget, Layer zusammenführen), KI-Verkehr (`aiVehicles`, Standard aus).
+  M5.3: trockener Dreck nur noch in der Textur (`R:retire`) ✅; Qualitätsstufen gestrichen (Sebastian, high kaum besser,
+  Bake 7 ms statt 1 ms); KI-Verkehr später. **Offen: Waschschritt ≈ 2 ms je Schaden (55 Kratzer = 120 ms Ruckler).**
 - **Danach:** M6 Release.
 
 ## Offene Punkte

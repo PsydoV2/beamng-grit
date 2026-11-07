@@ -1121,3 +1121,33 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Schalter zeigten `true` als leeres Kästchen (grit.json: alle true). Änderung: `height: auto`, `display: block`,
   eigene Schalter (Kästchen orange = an) statt md-checkbox.
 - Lauf 6 ✅: Fenster so lang wie der Inhalt, Schalter richtig (Sebastian). **M5.2 UI-App bestätigt.**
+
+### M5.3 Budget und Qualitätsstufen – Bau 1: Zusammenführen (2026-11-07)
+- KI-Verkehr auf später verschoben (Sebastian).
+- Konzept „Budget“: alte, stabile Ablagerungen in eine gebackene Ebene zusammenführen, falls die API das kann.
+- Prüfung im Code, wofür `self.layers` gebraucht wird:
+  - volles Neu-Backen (`R:rebake`) nur bei leerer Liste (`R.new`, `R:clear`, `initBake`)
+  - Waschen backt nur Schäden neu obenauf (`R:erase`, `isKeep` = `R.isDamage`)
+  - Trocknen liest nur nasse Layer und Schäden in der Nähe (`R:dry`)
+  → trockener Dreck und Radierer werden nach dem Backen nie wieder gelesen. Die Textur ist die gebackene Ebene.
+- Bau: `R:retire()` nimmt trockenen Dreck und Radierer aus der Liste (nach erase und dry); `R:commit` legt trockenen
+  Dreck gar nicht erst in die Liste. Zähler `baked` („nur in der Textur“) in `status()`. Budget 500 zählt damit nur
+  noch Schäden und nassen Dreck. Erwartung: keine sichtbare Änderung, Ebenen-Zahl bleibt klein.
+- Lauf 1 ✅ (Sebastian: Dreck, Waschen, Trocknen wie vorher, Kratzer bleiben). Log 12:18:20: 53 Ebenen in der Liste,
+  257 nur in der Textur; 12:20:32: 61 / 261. Bake Ø 0.86 ms.
+- ❗ Messung: Waschschritt 110–133 ms bei 55 Kratzern neu darüber (vorher 11 Kratzer: 21–27 ms) → ≈ 2 ms je Schaden,
+  ein Ruckler pro Waschschritt. Trocknen max 59 ms. Nächster Fix nach den Qualitätsstufen.
+- Bau 2 Qualitätsstufen (Sebastian: „genau so wie vorgeschlagen“): `R.QUALITY` low 1024×512 / 200, medium
+  2048×1024 / 500, high 4096×2048 / 800 (Auflösung / Schaden-Budget). 4096×2048 nutzt auch der Vanilla-Editor
+  (`editor/api/dynamicDecals.lua:1475`). Wechsel legt die Projektionen neu an (`R:destroy`: setEnabled(false), Referenz
+  weg wie `dynamicDecals.lua:3066`) und löscht dabei Dreck und Kratzer. App: Auswahl low/medium/high.
+- Lauf 2 (Gavril D-Serie, 2026-11-07): kaum sichtbarer Unterschied zwischen low und high, je höher desto mehr
+  Ruckeln (Sebastian). Messung:
+  - Bake je Decal: medium Ø ≈ 0.8–2.9 ms (Log 12:28:52–57), **high Ø 6.99 ms, max 8.51 ms** (318 Decals, Status
+    12:33:05) → etwa 8× teurer, bei 4 synthetischen pro Frame bis 35 ms.
+  - Neu anlegen: low ≈ 10–12 ms, medium ≈ 14–19 ms, high ≈ 45 ms (einmalig).
+  - Frametime (high): arbeitet Ø 11.4 ms / Leerlauf Ø 11.9 ms, Leerlauf max 220 ms, render:update max 46 ms.
+- Folgerung: high bringt optisch nichts und kostet viel → Vorschlag an Sebastian: high streichen.
+- Entscheidung (Sebastian): **Qualitätsstufen ganz weglassen**, fest 2048×1024 und Budget 500. Abweichung vom Konzept
+  („Qualitätsstufen niedrig, mittel und hoch“). Entfernt aus settings.lua, render.lua, main.lua und der App.
+  Alte `quality`-Einträge in grit.json werden beim Laden ignoriert (`coerce` → nil).

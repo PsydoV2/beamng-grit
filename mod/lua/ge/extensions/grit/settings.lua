@@ -14,9 +14,8 @@ local DEFS = {
   dirtStrength = { default = 1.0,   kind = "number", min = 0.25, max = 2.0 },
   dryingSpeed  = { default = 1.0,   kind = "number", min = 0.25, max = 4.0 },
   aiVehicles   = { default = false, kind = "bool" },          -- wirkt ab M5.3
-  quality      = { default = "medium", kind = "choice", choices = { low = true, medium = true, high = true } },  -- wirkt ab M5.3
 }
-S.ORDER = { "dirt", "scratches", "cracks", "dirtStrength", "dryingSpeed", "aiVehicles", "quality" }
+S.ORDER = { "dirt", "scratches", "cracks", "dirtStrength", "dryingSpeed", "aiVehicles" }   -- quality gestrichen (M5.3 Lauf 2)
 
 local values = {}
 

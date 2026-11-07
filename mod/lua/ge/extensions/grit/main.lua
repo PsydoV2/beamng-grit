@@ -680,8 +680,8 @@ end
 -- Konsole: grit_main.status()
 M.status = function()
   for vid, car in pairs(cars) do
-    L("I", "Fahrzeug %d: Phase %s, %d Ebenen, %d in Warteschlange, %d Schrammen, %d Spritzer, %d Staub, %d verworfen (Budget), %d ohne Treffer",
-      vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0, car.dusts or 0,
+    L("I", "Fahrzeug %d: Phase %s, %d Ebenen (+%d nur in der Textur, M5.3), %d in Warteschlange, %d Schrammen, %d Spritzer, %d Staub, %d verworfen (Budget), %d ohne Treffer",
+      vid, tostring(car.phase), car.r and #car.r.layers or 0, car.r and car.r.baked or 0, car.r and #car.r.queue or 0, car.scrapes or 0, car.sprays or 0, car.dusts or 0,
       car.r and car.r.dropped or 0, car.r and car.r.misses or 0)
     if car.r then
       local cells = 0

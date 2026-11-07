@@ -53,7 +53,7 @@ liveries untouched.
 
 ### Planned
 - **Rain:** Rain slowly washes the car (optional).
-- **Quality levels and AI traffic:** Layer budget per quality setting, optional dirt on AI cars.
+- **AI traffic:** Optional dirt and scratches on AI cars.
 
 ---
 
