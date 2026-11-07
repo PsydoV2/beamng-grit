@@ -59,7 +59,22 @@ function R.new(veh, targets, log)
   self.colorSet, self.maskSet = self.color:getTextureSet(), self.mask:getTextureSet()
   self:refresh(veh, true)
   self:rebake(veh)
+  -- M5.1 Lauf 4: frisch gespawnte ETK zeigte ein buntes Punktraster (ungelöschter Speicher?) → leeren Stapel nach
+  -- einigen Frames noch einmal backen, wenn die Render-Ziele sicher stehen
+  self.initBake = { 5, 60 }
   return self
+end
+
+-- Test M5.1 Lauf 4: Projektion nur auf bestimmte Meshes (geteilte UVs zwischen Meshes?)
+function R:setTargets(veh, targets)
+  for _, p in ipairs({ self.color, self.mask }) do
+    p:clearMaterialIdx()
+    local seen = {}
+    for _, t in ipairs(targets) do
+      if not seen[t.idx] then p:addMaterialIdx(t.idx); seen[t.idx] = true end
+    end
+  end
+  self:clear(veh)
 end
 
 -- full: Form neu setzen. M2.2 Lauf 4: projectDynamicDecals kostet 8–16 ms CPU je Aufruf; Verdacht, dass setShape
@@ -265,6 +280,12 @@ function R:update(veh)
   local T, sec, total = hptimer(), {}, 0
   local function mark(name) local ms = T:stopAndReset(); total = total + ms; sec[#sec + 1] = string.format("%s %.1f", name, ms) end
   self:refresh(veh); mark("refresh")
+  self.frameN = (self.frameN or 0) + 1
+  if self.initBake and self.frameN == self.initBake[1] then
+    table.remove(self.initBake, 1)
+    if #self.initBake == 0 then self.initBake = nil end
+    if #self.layers == 0 then self:rebake(veh) end
+  end
   self.cells = self.cells or {}
   local worked = #self.queue > 0
   -- synthetische zuerst, mehrere pro Frame

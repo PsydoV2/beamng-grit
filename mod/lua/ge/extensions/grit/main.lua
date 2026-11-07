@@ -78,6 +78,15 @@ local function meshStem(mapTo) return mapTo and mapTo:match("^([^%.]+)") or nil 
 local function skinOf(vid) return "v" .. vid end
 local function skinMatName(mesh, vid) return mesh .. "." .. SLOT .. "." .. skinOf(vid) end
 
+-- M5.1 Lauf 5: ETK-Mesh `etki_mechanicals` ist lackiert, teilt sich aber UV-Flächen mit der Karosserie → Dreck
+-- auf Teilen dieses Meshes erschien als Streifen auf der Tür (Test onlyMeshes). Solche Meshes bekommen kein Grit.
+local EXCLUDE_MESH = { "mechanical" }
+local function excluded(mesh)
+  local m = mesh:lower()
+  for _, p in ipairs(EXCLUDE_MESH) do if m:find(p, 1, true) then return true end end
+  return false
+end
+
 -- lackierte Materialien des Fahrzeugs mit Index in der Decal-Form
 local function findTargets(veh)
   local probe = DecalProjection("", Point2I(16, 16), 1, 0)
@@ -92,7 +101,7 @@ local function findTargets(veh)
       local mapTo = m:getField("mapTo", 0)
       local mesh = idxByMesh[mapTo] and mapTo or meshStem(mapTo)
       local idx = mesh and idxByMesh[mesh]
-      if idx and isPaintable(m) then
+      if idx and isPaintable(m) and not excluded(mesh) then
         if (tonumber(m:getField("activeLayers", 0)) or 1) >= 4 and not objName:find("%." .. SLOT .. "%.") then
           table.insert(skipped, objName)
         else
@@ -219,6 +228,7 @@ local function attach(veh)
   for _, n in ipairs(veh:getMaterialNames() or {}) do if not isT[n] then other[#other + 1] = n end end
   L("I", "Fahrzeug %d unlackierte Materialien: %s", vid, table.concat(other, ", "))
   car.r, car.nodeHits, car.sprayCount = render.new(veh, onSkin, L), {}, {}
+  car.targets = onSkin
   car.phase = "active"
   loadSensor(veh)
   L("I", "Fahrzeug %d aktiv: %d/%d Materialien auf Grit%s, Neuspawn %.0f ms", vid, #onSkin, #targets,
@@ -344,9 +354,8 @@ local DUST = {
   -- (untere Hälfte). Abweichung vom Konzept (nur Heck + Oberseiten), von Sebastian gewünscht.
   texture = "/art/grit/dust.png", depth = 0.3,
   rear = { chance = 0.35, minSize = 1.0, maxSize = 1.5, start = 0.18, step = 0.01,  max = 0.5,  tol = 0.6 },
-  -- M5.1 Lauf 2: Streifen Rad → Fenster → Rad an der Seite (Box 0.3 m schneidet die gewölbte Seitenwand entlang
-  -- einer Höhenlinie, bei dirtStrength 2 sichtbar) → Seite tiefer
-  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.15, step = 0.008, max = 0.4,  tol = 0.5, depth = 0.5 },
+  -- M5.1 Lauf 3: Tiefe 0.5 an der Seite änderte nichts an den Streifen links → zurück auf 0.3 (DUST.depth)
+  side = { chance = 0.45, minSize = 1.0, maxSize = 1.6, start = 0.15, step = 0.008, max = 0.4,  tol = 0.5 },
   top  = {                minSize = 1.0, maxSize = 1.5, start = 0.12, step = 0.006, max = 0.28, tol = 1.2 },  -- tol: Ladefläche 1 m unter AABB-Oberkante
   maxEvents = 220,
 }
@@ -535,9 +544,9 @@ M.onSensorEvents = function(vid, ev)
   if not car or car.phase ~= "active" or type(ev) ~= "table" then return end
   local dirtOn = settings.get("dirt")   -- M5.1: Dreck aus → keine neuen Ablagerungen (Waschen läuft weiter)
   if dirtOn then
-    handleSprays(car, vid, scaled(ev.sprays))
-    handleDusts(car, vid, scaled(ev.dusts))
-    handleContacts(car, scaled(ev.contacts))
+    if not M.only or M.only == "spray" then handleSprays(car, vid, scaled(ev.sprays)) end   -- M.only: Test-Filter (M5.1 Streifen)
+    if not M.only or M.only == "dust" then handleDusts(car, vid, scaled(ev.dusts)) end
+    if not M.only or M.only == "contact" then handleContacts(car, scaled(ev.contacts)) end
   end
   -- neuer Dreck → beim nächsten Wasserkontakt wieder waschen
   if car.wash and (#(ev.sprays or {}) + #(ev.dusts or {}) + #(ev.contacts or {})) > 0 then car.wash.passes = 0 end
@@ -696,14 +705,15 @@ M.status = function()
   perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
-M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorne geneigt (Vorzeichen-Test)
+M.testScratch = function(side, level, tilt, along)   -- tilt: Grad (Vorzeichen-Test); along: 0 = vorne … 1 = hinten (UV-Test M5.1)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
   if not (car and car.r and veh) then L("W", "testScratch: Grit ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
   local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
   local c = (mn + mx) * 0.5
   local n = ({ left = vec3(1, 0, 0), right = vec3(-1, 0, 0), top = vec3(0, 0, 1) })[side or "left"]
-  local pos = vec3(n.x > 0 and mx.x or (n.x < 0 and mn.x or c.x), c.y, n.z > 0 and mx.z or c.z)
+  local y = along and (mn.y + (mx.y - mn.y) * along) or c.y
+  local pos = vec3(n.x > 0 and mx.x or (n.x < 0 and mn.x or c.x), y, n.z > 0 and mx.z or c.z)
   local lv = SCRATCH.levels[level or 3] or SCRATCH.levels[3]
   local a = math.rad(tilt or 0)
   local up = n.z > 0.5 and vec3(-math.sin(a), -math.cos(a), 0) or vec3(0, -math.cos(a), math.sin(a))
@@ -755,5 +765,18 @@ M.set = function(key, value)
 end
 M.get = function(key) return settings.get(key) end
 M.resetSettings = function() settings.reset(); L("I", "Einstellungen zurückgesetzt: %s", settings.describe()) end
+-- Test M5.1 Lauf 4: nur Meshes, deren Name das Muster enthält (nil = alle); löscht Dreck und Kratzer
+M.onlyMeshes = function(pattern)
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
+  if not (car and car.r and car.targets and veh) then L("W", "onlyMeshes: Grit nicht aktiv"); return end
+  local list, names = {}, {}
+  for _, t in ipairs(car.targets) do
+    if not pattern or t.mesh == pattern then list[#list + 1] = t; names[#names + 1] = t.mesh end
+  end
+  car.r:setTargets(veh, list)
+  car.nodeHits, car.sprayCount, car.contactCount, car.dirtLevel, car.dusts, car.contacts = {}, {}, {}, {}, 0, 0
+  L("I", "Test-Filter Meshes: %s", #names > 0 and table.concat(names, ", ") or "keine")
+end
+M.onlyDirt = function(kind) M.only = kind; L("I", "Test-Filter Dreck: %s", tostring(kind or "alle")) end   -- "spray"|"dust"|"contact"|nil
 
 return M

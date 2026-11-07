@@ -1051,3 +1051,40 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   tief → färbt nur, wo die gewölbte Seitenwand im ±0.15-m-Streifen liegt (Höhenlinie). Test: Seite depth 0.5.
 - LuaJIT jetzt installiert (`C:\Users\sebfa\scoop\shims\luajit.exe`) → Syntax-Check vor jedem Test
   (`luajit -b datei.lua /dev/null`), alle Dateien ok.
+
+### M5.1, Lauf 3 (2026-11-07, Grand Marshal) – Streifen links
+- Seiten-Staub depth 0.5: Streifen unverändert, weiterhin **nur links**, keine neuen Formen (Sebastian) → zurück auf 0.3.
+- Screenshot 10-28-47: harte schräge Kante vom Spiegelfuß zur Türunterkante. Verdeckung ausgeschlossen: Shader prüft
+  nur „Pixel in der Box“ (`decal.ps.hlsl:116-121`), Projektions-Flags ohne Tiefen-/Verdeckungsoption
+  (`editor/api/dynamicDecals.lua:768-778`); VS malt in UV-Raum (`decal.vs.hlsl:83`).
+- Verdacht: **geteilte UVs** (zwei Stellen des Modells auf derselben UV-Fläche) → Dreck von dort erscheint auch hier,
+  Kanten folgen der UV-Insel. Test: `testScratch(seite, 3, 0, along)` mit neuem Parameter along (0 vorne … 1 hinten).
+- UV-Test (`testScratch` along 0.3/0.5/0.7, beide Seiten): nichts auf der Gegenseite (Sebastian) → **geteilte UVs
+  ausgeschlossen**. „links“ = Fahrerseite = Code `left` (+x).
+- Nächster Test: Filter `grit_main.onlyDirt("spray"|"dust"|"contact")` – welche Dreck-Art macht den Streifen?
+
+### M5.1, Lauf 4 (2026-11-07) – Streifen nur am ETK, Punktraster, Covet weiß
+- Korrektur: Streifen-Läufe 1–3 waren **ETK I-Series** (Log 10:18–10:27, `etki`), nicht Grand Marshal. Der UV-Test
+  lief am Grand Marshal (`fullsize`) → geteilte UVs am ETK **nicht** ausgeschlossen. Sebastian: Streifen nur am ETK.
+- ETK hat 3 lackierte Meshes: `character_primary`, `etki_mechanicals`, `etki` (Log 10:36:08). Verdacht: ein Mesh
+  (z. B. `etki_mechanicals`) nutzt dieselbe UV-Fläche wie die Karosserie → Dreck dort landet auf der Tür.
+  Test: `grit_main.onlyMeshes("etki")` projiziert nur auf ein Mesh (`R:setTargets`, clearMaterialIdx/addMaterialIdx
+  wie `newProj`).
+- Neu gespawnte ETK (107542, 10:36:08) mit buntem Punktraster (Screenshot 10-36-19). Verdacht: Bake beim Anlegen
+  trifft Render-Ziele, die noch nicht stehen → Speicher nie gelöscht. Änderung: leerer Stapel nach 5 und 60 Frames
+  noch einmal backen (`initBake`).
+- Covet: Stoßstangen vorne/hinten nach Streifen/Frontal teils ganz weiß. Noch kein Screenshot.
+
+### M5.1, Lauf 5 (2026-11-07) ✅ Ursache Streifen
+- `onlyMeshes("etki")`: kein Streifen. `onlyMeshes("etki_mechanicals")`: **genau und nur** die Streifen (Sebastian)
+  → bestätigt: `etki_mechanicals` teilt UV-Flächen mit der Karosserie.
+- Punktraster nach `initBake` nicht mehr aufgetaucht (mehrere Spawns) ✅.
+- Fix: Meshes mit „mechanical“ im Namen bekommen kein Grit (`EXCLUDE_MESH` in main.lua). Bleiben im Vanilla-Lack.
+- Covet weiße Stoßstange: nicht nachgestellt, offen.
+- Lauf 5b: Streifen weg, nichts sichtbar zu sauber (Sebastian) ✅.
+- Beobachtung: Screenshot 11-25-29 (vor „Grit geladen“ 11:25:33) ETK mit weißen Querstreifen. Das ist das Fenster
+  beim Strg+L: alte Projektionen weg, Fahrzeug trägt noch den Grit-Skin → Stage liest ungültige Textur. Nach dem
+  Neuspawn weg. Betrifft Spieler nur beim Abschalten des Mods im laufenden Spiel → für M6 vormerken
+  (beim Entladen Skin zurücksetzen).
+- Nebenbefund: nach Strg+L steht die alte Kopie `etki_mechanicals.grit.v108000` noch im Szenenbaum (unlackiert-Liste)
+  und wird vom Skin genutzt; frisch gestartet entsteht sie nicht.
