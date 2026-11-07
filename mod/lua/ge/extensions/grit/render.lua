@@ -39,6 +39,10 @@ end
 
 -- aus einem Grit-Layer (gritColor, gritStrength) die Farb- und die Masken-Variante
 local function variants(l)
+  if l.gritErase then   -- Radierer (Spike 7): nur Maske, schwarz mit Alpha = Stärke; Farbe bleibt
+    local ml = shallowcopy(l); ml.color = Point4F(0, 0, 0, l.gritErase); ml.uid = l.uid .. "-m"
+    return nil, ml
+  end
   local c, s = l.gritColor, l.gritStrength
   local cl = shallowcopy(l); cl.color = Point4F(enc(c[1]), enc(c[2]), enc(c[3]), 1); cl.uid = l.uid .. "-c"
   local e = enc(s); local ml = shallowcopy(l); ml.color = Point4F(e, e, e, 1); ml.uid = l.uid .. "-m"
@@ -74,7 +78,7 @@ end
 function R:rebake(veh)
   local cs, ms = { baseLayer() }, { baseLayer() }
   for _, l in ipairs(self.layers) do
-    local cl, ml = variants(l); table.insert(cs, cl); table.insert(ms, ml)
+    local cl, ml = variants(l); if cl then table.insert(cs, cl) end; table.insert(ms, ml)
   end
   local t = hptimer()
   self.color:clearBakedTextures(); self.color:bakeLayers(cs, veh.jbeam)
@@ -104,10 +108,9 @@ local function cellKey(d)
   return string.format("%s:%d,%d,%d", d.region or "-", q(d.pos.x), q(d.pos.y), q(d.pos.z))
 end
 
--- Decal anfragen. d = { pos, normal, up (vec3, Fahrzeugraum), width, length, depth, texture, color{r,g,b}, strength,
--- name, tolAlong?, region? }
-function R:request(d)
-  if #self.layers + #self.queue >= R.MAX_LAYERS then self.dropped = (self.dropped or 0) + 1; return false end
+-- Kamera, Ausrichtung und Zelle für ein Decal. d = { pos, normal, up (vec3, Fahrzeugraum), width, length, depth,
+-- texture, color{r,g,b}, strength, name, tolAlong?, region? }
+local function buildReq(d)
   local n = d.normal:normalized()
   local up = d.up - n * d.up:dot(n)
   if up:length() < 1e-3 then up = math.abs(n.z) < 0.9 and vec3(0, 0, 1) or vec3(0, 1, 0) end
@@ -129,9 +132,51 @@ function R:request(d)
   local q = quatFromDir(-n, up)
   local camM = QuatF(q.x, q.y, q.z, q.w):getMatrix()
   camM:setPosition(camPos)
-  table.insert(self.queue, { d = d, n = n, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0 })
+  return { d = d, n = n, camPos = camPos, camM = camM, projM = getCameraProjMatrix(), frames = 0 }
+end
+
+function R:request(d)
+  if #self.layers + #self.queue >= R.MAX_LAYERS then self.dropped = (self.dropped or 0) + 1; return false end
+  table.insert(self.queue, buildReq(d))
   return true
 end
+
+-- Spike 7 (M3 Waschen): Radierer. Eine große synthetische Box (Spike 6) wird schwarz nur in die Maske gebacken,
+-- Alpha = Stärke (decal.ps.hlsl:222 alpha *= color.a) → Dreck darunter verblasst um diesen Anteil. Die Box färbt
+-- ohne Winkeltest alles in ihr (decal.ps.hlsl:116-121) → eine Projektion von der Seite mit Tiefe = Fahrzeugbreite
+-- trifft beide Seiten. Kratzer liegen in derselben Maske → danach die Kratzer in der Box neu darüber backen
+-- (ans Ende der Liste verschoben, damit ein Voll-Bake dieselbe Reihenfolge hat). Inkrementell, kein Voll-Bake.
+-- box = { pos (Mitte), normal, up, width, length, depth, strength, isKeep(layer) → true = neu darüber backen }
+function R:erase(veh, box)
+  if not self.template then return false, "noch keine Vorlage (erst ein echtes Decal nötig)" end
+  local t = hptimer()
+  local req = buildReq({ pos = box.pos, normal = box.normal, up = box.up, width = box.width, length = box.length,
+    depth = box.depth, texture = R.SOLID, region = "radierer" })
+  local data = self:synth(req, 0)
+  data.uid, data.name, data.enabled, data.locked, data.children = uid("e"), "Grit Radierer", true, false, {}
+  data.mirrored = false
+  data.gritErase = box.strength
+  table.insert(self.layers, data)
+  local _, ml = variants(data)
+  self.mask:bakeLayers({ ml }, veh.jbeam)
+  -- Kratzer in der Box wieder obenauf
+  local keep, rest = {}, {}
+  for i = 1, #self.layers - 1 do
+    local l = self.layers[i]
+    if not l.gritErase and box.isKeep and box.isKeep(l) then keep[#keep + 1] = l else rest[#rest + 1] = l end
+  end
+  rest[#rest + 1] = data
+  local cs, ms = {}, {}
+  for _, l in ipairs(keep) do
+    rest[#rest + 1] = l
+    local cl, m2 = variants(l); cs[#cs + 1] = cl; ms[#ms + 1] = m2
+  end
+  self.layers = rest
+  if #keep > 0 then self.color:bakeLayers(cs, veh.jbeam); self.mask:bakeLayers(ms, veh.jbeam) end
+  self.idleFrames = 0
+  return true, string.format("%.1f ms, %d Kratzer neu darüber", t:stopAndReset(), #keep)
+end
+R.SOLID = "/art/grit/solid.png"
 
 -- fertige Layer-Daten übernehmen und dazubacken
 function R:commit(data, d, veh, how, mark)

@@ -895,3 +895,28 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - `tagid` wird zur Update-Prüfung an den Server geschickt (`:1350-1351`) → **kein eigenes `mod_info` erfinden**.
   Icon/Bilder beim Upload ins Repository hochladen (dann fügt das Repo `mod_info` selbst ein). Ein privat
   weitergegebenes ZIP zeigt im Mod-Manager kein Bild.
+
+## M3 Zustand
+
+### M3-Plan (2026-11-07, mit Sebastian abgestimmt)
+- Problem: Waschen/Trocknen ändern bestehende Decals → Voll-Bake (Spike 3: 200 Layer 1,2–2,8 s) unbrauchbar.
+- **Radierer** (Sebastian: ja): große synthetische Box (Spike 6), schwarz nur in die Maske, Alpha = Stärke.
+  Belege: `shaders/common/dynamicDecals/decal.ps.hlsl:222` (`alpha *= color.a`, Layer-Farbe skaliert die Deckung),
+  Box ohne Winkeltest `:116-121` → Box von der Seite mit Tiefe = Fahrzeugbreite trifft beide Seiten.
+  Kratzer liegen in derselben Maske → in der Box danach neu darüber backen (inkrementell).
+- **Nässe = dunkler, ohne Glanz** (Sebastian: ja). Abweichung vom Konzept (dort „dunkel und glänzend“):
+  die Grit-Stage hat feste `roughnessFactor 1` (`main.lua` ensureSkinMaterial).
+- **Regen wäscht ab**: Sebastian ja, aber optional/später, jetzt keine Arbeit hinein.
+- Gefundene APIs: Knoten im Wasser `obj:inWater(cid)` (`lua/vehicle/fire.lua:87`,
+  `lua/vehicle/controller/playerController.lua:376`); Regen `core_environment.getPrecipitation()` → `numDrops`
+  des Objekts „Precipitation“ (`lua/ge/extensions/core/environment.lua:1241-1248`, nil ohne Regen-Objekt).
+- Schritte: Spike 7 Radierer (`testWash`) → M3.1 Waschen im Wasser → M3.2 Nässe/Trocknen → M3.3 Staub auf Asphalt.
+
+### Spike 7: Radierer (2026-11-07) – Aufbau
+- `render.lua` `R:erase(veh, box)`: Layer per `R:synth` (Vorlage nötig, d. h. erst ein echtes Decal), Textur
+  `art/grit/solid.png` (64², voll weiß, `tools/gen_textures.ps1`), Masken-Farbe `(0,0,0,Stärke)`, keine Farb-Variante.
+  Layer bleibt in `self.layers` (Feld `gritErase`), Voll-Bake spielt ihn mit. Kratzer in der Box werden ans
+  Listenende verschoben und neu gebacken.
+- Konsole `grit_main.testWash(höhe, stärke)`: Box von der Seite (n = +x), alles bis `höhe` m über der
+  AABB-Unterkante. Log: Linie, Zeit, Anzahl Kratzer neu.
+- Offen: Ist `decalPos` die Box-Mitte (Tiefe beidseitig)? Annahme aus `R:request` (Kamera bei pos + n·(depth/2+0.2)).

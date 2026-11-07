@@ -561,6 +561,27 @@ M.testScratch = function(side, level, tilt)   -- tilt: Grad, Spur nach oben/vorn
   L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
 end
 
+-- Spike 7: Waschen von Hand. Alles bis height m über der Fahrzeug-Unterkante verliert den Anteil strength
+-- (0–1) an Dreck; Kratzer darin werden neu darüber gebacken. Box von der Seite, Tiefe = ganze Breite.
+M.testWash = function(height, strength)
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
+  if not (car and car.r and veh) then L("W", "testWash: Grit ist für dieses Fahrzeug (noch) nicht aktiv"); return end
+  local aabb = veh:getSpawnLocalAABB()
+  local mn, mx = vec3(aabb.minExtents), vec3(aabb.maxExtents)
+  local ext, mid = mx - mn, (mn + mx) * 0.5
+  local top = mn.z + (height or 0.5)
+  local m = 0.2
+  local ok, info = car.r:erase(veh, {
+    pos = vec3(mid.x, mid.y, (mn.z - m + top) * 0.5), normal = vec3(1, 0, 0), up = vec3(0, 0, 1),
+    width = ext.y + 2 * m, length = top - mn.z + m, depth = ext.x + 2 * m, strength = strength or 0.5,
+    isKeep = function(l)
+      return l.name and (l.name:find("^Grit Kratzer") or l.name == "Grit Test") and l.decalPos and l.decalPos.z <= top + 0.3
+    end,
+  })
+  L("I", "testWash(%.2f m, %.2f): Linie z=%.2f (Unterkante %.2f), %s – %s", height or 0.5, strength or 0.5, top, mn.z,
+    ok and "ok" or "abgebrochen", tostring(info))
+end
+
 -- Diagnose vom Sensor: Karosserie-Kontakte je Grund:Untergrund-ID (2 s), die ersten 40 Meldungen ins Log
 local diagMsgs = 0
 M.onSensorDiag = function(vid, d)

@@ -115,3 +115,10 @@ for ($i = 0; $i -lt 1400; $i++) {
   Draw-Blob $c[1] ($size / 2 + [Math]::Cos($a) * $d) ($size / 2 + [Math]::Sin($a) * $d) (1.5 + 3 * $rnd.NextDouble()) (60 + $rnd.Next(120))
 }
 Save $c[0] $c[1] "dust.png"
+
+# Radierer (Spike 7, M3 Waschen): voll deckend weiß. Die Form gibt die Box vor, die Stärke das Alpha der
+# Layer-Farbe (decal.ps.hlsl:222 alpha *= color.a)
+$bmp = New-Object System.Drawing.Bitmap(64, 64, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.Clear([System.Drawing.Color]::FromArgb(255, 255, 255, 255))
+Save $bmp $g "solid.png"

@@ -114,6 +114,7 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 
   Danach werden die Messwerte zurückgesetzt.
 - `grit_main.testScratch("left"|"right"|"top", level 1–3, tiltGrad)`: Test-Kratzer.
+- `grit_main.testWash(höhe_m, stärke 0–1)`: Spike 7, Radierer bis höhe m über der Unterkante.
 - `grit_main.clear()`: Dreck und Kratzer am aktuellen Auto löschen. Ein Fahrzeug-Reset löscht ebenfalls.
 - `grit_main.synthetic(true|false)`
 - Log lesen: `grep … "$USER/AppData/Local/BeamNG/BeamNG.drive/current/grit.log"`, ab der letzten Zeile
@@ -139,6 +140,8 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   Möglicher Ausbau: bei Dauerkontakt größere oder tiefere Kratzer. Mit Sebastian noch nicht entschieden.
 - Zierleiste der D-Serie verschmiert im UV (optional mit dem Vanilla-Decal-Editor prüfen).
 - Später: Layer zusammenführen und Persistenz.
+- Später (optional, Sebastian 2026-11-07): **Regen wäscht Dreck langsam ab** (`core_environment.getPrecipitation()`).
+  Erst nach M3.1–M3.3, jetzt keine Arbeit hinein.
 - Ungetestet:
   - Ausrichtung an Front und Heck
   - Fahrzeug-gegen-Fahrzeug
