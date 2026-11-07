@@ -92,12 +92,17 @@ Console commands (open the Lua console, GE context) for testing:
 | `grit_main.clear()` | Removes all dirt and scratches from the current vehicle |
 | `grit_main.testScratch("left", 3)` | Places a test scratch (`"left"`, `"right"` or `"top"`, depth 1–3) |
 | `grit_main.testWash(0.6, 0.5)` | Washes everything up to 0.6 m above the bottom of the car by 50 % |
+| `grit_main.uvCheck()` | Paints the decal texture layout over the car (diagnosis); `clear()` removes it |
 
 ## Known limitations
 - Light scratches and dust are hard to see on white or chrome parts, because they are light on light. They show
   up clearly on dark paint.
 - Some vehicles only have collision points low on the body. On those cars, guardrail scratches stay near the
   sills and bumper corners.
+- Some models reuse the same spot of their decal texture (UV1) for several parts. On the Ibishu Covet, for example,
+  both bumpers share one small, stretched area, so a scratch there can show up on both bumpers as a large patch.
+  `grit_main.uvCheck()` shows the layout of any car
+  (`grit_main.clear()` turns it off).
 - Dirt and scratches are not saved yet. They are gone after a reset, a repair or a restart.
 
 ---

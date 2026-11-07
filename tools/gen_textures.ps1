@@ -181,3 +181,16 @@ foreach ($ring in @(0.10, 0.19, 0.28)) {
 }
 Draw-Blob $c[1] ($size / 2) ($size / 2) 34 235                       # Einschlagpunkt
 Save $c[0] $c[1] "crack_web.png"
+
+# Diagnose M5.3 (Covet weiße Stoßstange): UV-Karte. Rot = u, Grün = v, Blau = Schachbrett 8×8. Als Textur-Füllung über
+# das ganze Auto gebacken zeigt sie, welche Teile dieselbe UV-Fläche nutzen (gleiche Farbe = gleiche Stelle).
+$n = 256
+$bmp = New-Object System.Drawing.Bitmap($n, $n, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+for ($y = 0; $y -lt $n; $y++) {
+  for ($x = 0; $x -lt $n; $x++) {
+    $b = if (((([int]($x / 32)) + ([int]($y / 32))) % 2) -eq 0) { 0 } else { 255 }
+    $bmp.SetPixel($x, $y, [System.Drawing.Color]::FromArgb(255, $x, $y, $b))
+  }
+}
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+Save $bmp $g "uvcheck.png"

@@ -125,8 +125,23 @@ local function copyMaterial(src, dst)
   end
 end
 
+-- erste Grit-Stage (Schäden oder Dreck), damit eine erneute Kopie nicht weitere Stages anhängt
 local function gritStage(m)
-  for s = 0, 3 do if m:getField("baseColorMap", s) == render.COLOR_PREFIX .. "BaseColor" then return s end end
+  for s = 0, 3 do
+    local b = m:getField("baseColorMap", s)
+    if b == render.COLOR_PREFIX .. "BaseColor" or b == render.DMG_COLOR_PREFIX .. "BaseColor" then return s end
+  end
+end
+
+-- eine Stage mit Farbe aus prefix und Deckkraft aus maskPrefix (Spike 2, FINDINGS)
+local function setStage(c, s, prefix, maskPrefix)
+  c:setField("baseColorMap", s, prefix .. "BaseColor")
+  c:setField("diffuseMapUseUV", s, "1")
+  c:setField("opacityMap", s, maskPrefix .. "BaseColor")
+  c:setField("opacityMapUseUV", s, "1")
+  c:setField("metallicFactor", s, "0")
+  c:setField("roughnessFactor", s, "1")
+  c:setField("instanceDiffuse", s, "0")
 end
 
 local function ensureSkinMaterial(orig, name)
@@ -139,14 +154,17 @@ local function ensureSkinMaterial(orig, name)
   c:setField("name", 0, name)
   c:setField("mapTo", 0, name)
   local s = gritStage(c) or (tonumber(c:getField("activeLayers", 0)) or 1)
-  c:setField("baseColorMap", s, render.COLOR_PREFIX .. "BaseColor")
-  c:setField("diffuseMapUseUV", s, "1")
-  c:setField("opacityMap", s, render.MASK_PREFIX .. "BaseColor")
-  c:setField("opacityMapUseUV", s, "1")
-  c:setField("metallicFactor", s, "0")
-  c:setField("roughnessFactor", s, "1")
-  c:setField("instanceDiffuse", s, "0")
-  c:setField("activeLayers", 0, tostring(s + 1))
+  -- M5.3 Lauf 3: Schäden in Stage s, Dreck darüber in Stage s+1 (Dreck über Kratzern, Sebastian). Ist nur eine
+  -- Stage frei (activeLayers 3), bekommt das Material nur Dreck.
+  if s <= 2 then
+    setStage(c, s, render.DMG_COLOR_PREFIX, render.DMG_MASK_PREFIX)
+    setStage(c, s + 1, render.COLOR_PREFIX, render.MASK_PREFIX)
+    c:setField("activeLayers", 0, tostring(s + 2))
+  else
+    setStage(c, s, render.COLOR_PREFIX, render.MASK_PREFIX)
+    c:setField("activeLayers", 0, tostring(s + 1))
+    L("W", "Material %s: nur eine Stage frei → nur Dreck, keine Kratzer", tostring(name))
+  end
   c.canSave = false
   c:registerObject(name)
   return c
@@ -452,7 +470,6 @@ local function washBelow(car, veh, top, strength)
   local ok, info = car.r:erase(veh, {
     pos = vec3(mid.x, mid.y, (mn.z - m + top) * 0.5), normal = vec3(1, 0, 0), up = vec3(0, 0, 1),
     width = ext.y + 2 * m, length = top - mn.z + m, depth = ext.x + 2 * m, strength = strength,
-    isKeep = function(l) return render.isDamage(l) and l.decalPos and l.decalPos.z <= top + 0.3 end,
   })
   if ok then
     -- Deckkraft-Gedächtnis und Mengen-Grenzen mitwaschen, sonst wäre der nächste Spritzer gleich wieder voll
@@ -786,6 +803,30 @@ M.washNow = function()
   return ok
 end
 M.resetSettings = function() settings.reset(); L("I", "Einstellungen zurückgesetzt: %s", settings.describe()) end
+-- Diagnose M5.3: UV-Karte zeigen (Rot = u, Grün = v, Schachbrett). Zurück mit grit_main.clear()
+M.uvCheck = function()
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
+  if not (car and car.r and veh) then L("W", "uvCheck: Grit nicht aktiv"); return end
+  car.r:uvCheck(veh)
+  L("I", "uvCheck: UV-Karte gebacken, zurück mit grit_main.clear()")
+end
+-- Test M5.3 (Covet weiße Stoßstange): Schaden genau wie ein Log-Eintrag nachstellen.
+-- kind "netz" | "haar" | "kratzer"; Position und Normale im Fahrzeugraum wie im Log („pos(…) n(…)“)
+M.testAt = function(kind, x, y, z, nx, ny, nz)
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]
+  if not (car and car.r) then L("W", "testAt: Grit nicht aktiv"); return end
+  if kind == "kratzer" then
+    local n = vec3(nx, ny, nz)
+    local lv = SCRATCH.levels[3]
+    car.r:request({ pos = vec3(x, y, z), normal = n, up = vec3(0, 1, 0), width = 0.2, length = 0.6, depth = 0.4,
+      texture = lv.texture, color = lv.color, strength = lv.strength, name = "Grit Test" })
+  else
+    car.crackCount, car.cracks = {}, 0
+    handleCracks(car, { { c = -1, k = kind == "netz" and "bruch" or "delle", v = 0.04, px = x, py = y, pz = z,
+      nx = nx, ny = ny, nz = nz, dx = 0, dy = 0, dz = 0 } })
+  end
+  L("I", "testAt(%s): pos(%.2f,%.2f,%.2f) n(%.2f,%.2f,%.2f)", tostring(kind), x, y, z, nx, ny, nz)
+end
 -- Test M5.1 Lauf 4: nur Meshes, deren Name das Muster enthält (nil = alle); löscht Dreck und Kratzer
 M.onlyMeshes = function(pattern)
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)

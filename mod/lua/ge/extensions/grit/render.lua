@@ -11,6 +11,10 @@ R.__index = R
 local RESOLUTION = Point2I(2048, 1024)
 local UV_LAYER = 1
 R.COLOR_PREFIX, R.MASK_PREFIX = "@GritTexture", "@GritMask"
+-- M5.3 Lauf 3 (Weg A, Sebastian): Schäden (Kratzer, Risse) in einem eigenen Texturpaar und einer eigenen
+-- Material-Stage UNTER dem Dreck. Waschen und Trocknen ändern nur das Dreck-Paar → nichts muss neu gebacken werden
+-- (vorher ≈ 2 ms je Schaden pro Waschschritt). Waschen legt Kratzer frei.
+R.DMG_COLOR_PREFIX, R.DMG_MASK_PREFIX = "@GritDamage", "@GritDamageMask"
 local USE_MOUSE_POS = bit.lshift(1, 2)
 local FRAMES_BEFORE_READ, FRAMES_MAX = 3, 30
 R.PROJECT_EVERY = 3        -- Projektion einmal, dann 3 Frames warten bis getDecalData (Spike 3: 3 Frames nötig)
@@ -33,8 +37,11 @@ local function newProj(veh, targets)
   return p
 end
 
-local function baseLayer()   -- schwarz = unsichtbar in der Maske (Spike 2 Lauf 3)
-  return { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 0), colorPaletteMapId = 0,
+-- schwarz = unsichtbar in der Maske (Spike 2 Lauf 3: Deckkraft = Helligkeit). M5.3 Lauf 3: nach Strg+L war das ganze
+-- Auto blau gefleckt (Datenreste, Screenshot 12-44-07) trotz Grundebene → Alpha 1 statt 0, damit die Fill-Ebene den
+-- alten Inhalt sicher überschreibt statt ihn transparent stehen zu lassen.
+local function baseLayer()
+  return { type = 1, blendMode = 1, color = Point4F(0, 0, 0, 1), colorPaletteMapId = 0,
            enabled = true, locked = false, uid = uid("base"), name = "Grit Base", children = {} }
 end
 
@@ -57,7 +64,10 @@ function R.new(veh, targets, log)
   self.layers, self.queue = {}, {}
   self.color = newProj(veh, targets)
   self.mask = newProj(veh, targets)
+  self.dcolor = newProj(veh, targets)
+  self.dmask = newProj(veh, targets)
   self.colorSet, self.maskSet = self.color:getTextureSet(), self.mask:getTextureSet()
+  self.dcolorSet, self.dmaskSet = self.dcolor:getTextureSet(), self.dmask:getTextureSet()
   self:refresh(veh, true)
   self:rebake(veh)
   -- M5.1 Lauf 4: frisch gespawnte ETK zeigte ein buntes Punktraster (ungelöschter Speicher?) → leeren Stapel nach
@@ -66,9 +76,22 @@ function R.new(veh, targets, log)
   return self
 end
 
+-- Diagnose M5.3: UV-Karte über das ganze Auto (Textur-Füllung, Layer-Felder wie editor/api/dynamicDecals.lua:1232-1243,
+-- 307-315). Schaden-Paar zeigt die Karte voll deckend, Dreck wird ausgeblendet. Zurück mit R:clear.
+function R:uvCheck(veh)
+  local tf = { type = 2, blendMode = 1, color = Point4F(1, 1, 1, 1), colorPaletteMapId = 0,
+    fillTexturePath = "/art/grit/uvcheck.png", scale = Point2F(1, 1), offset = Point2F(0, 0),
+    enabled = true, locked = false, uid = uid("uv"), name = "Grit UV-Karte", children = {} }
+  local white = baseLayer(); white.color = Point4F(1, 1, 1, 1)
+  self.dcolor:clearBakedTextures(); self.dcolor:bakeLayers({ baseLayer(), tf }, veh.jbeam)
+  self.dmask:clearBakedTextures();  self.dmask:bakeLayers({ white }, veh.jbeam)
+  self.mask:clearBakedTextures();   self.mask:bakeLayers({ baseLayer() }, veh.jbeam)
+  self.idleFrames = 0
+end
+
 -- Test M5.1 Lauf 4: Projektion nur auf bestimmte Meshes (geteilte UVs zwischen Meshes?)
 function R:setTargets(veh, targets)
-  for _, p in ipairs({ self.color, self.mask }) do
+  for _, p in ipairs({ self.color, self.mask, self.dcolor, self.dmask }) do
     p:clearMaterialIdx()
     local seen = {}
     for _, t in ipairs(targets) do
@@ -81,7 +104,8 @@ end
 -- full: Form neu setzen. M2.2 Lauf 4: projectDynamicDecals kostet 8–16 ms CPU je Aufruf; Verdacht, dass setShape
 -- jeden Frame die Mesh-Aufbereitung neu anstößt → Form nur bei Neuanlage/Rebake setzen.
 function R:refresh(veh, full)
-  for _, x in ipairs({ { self.color, R.COLOR_PREFIX, self.colorSet }, { self.mask, R.MASK_PREFIX, self.maskSet } }) do
+  for _, x in ipairs({ { self.color, R.COLOR_PREFIX, self.colorSet }, { self.mask, R.MASK_PREFIX, self.maskSet },
+                       { self.dcolor, R.DMG_COLOR_PREFIX, self.dcolorSet }, { self.dmask, R.DMG_MASK_PREFIX, self.dmaskSet } }) do
     local p = x[1]
     veh:setTextureSet(x[2], x[3])
     if full or not self.shapeSet then p:setShape(veh:getDecalProjectionShape()) end
@@ -93,13 +117,17 @@ end
 
 -- alles neu backen (teuer, nur bei Spawn/Reset)
 function R:rebake(veh)
-  local cs, ms = { baseLayer() }, { baseLayer() }
+  local cs, ms, dcs, dms = { baseLayer() }, { baseLayer() }, { baseLayer() }, { baseLayer() }
   for _, l in ipairs(self.layers) do
-    local cl, ml = variants(l); if cl then table.insert(cs, cl) end; table.insert(ms, ml)
+    local cl, ml = variants(l)
+    if R.isDamage(l) then dcs[#dcs + 1] = cl; dms[#dms + 1] = ml
+    else if cl then cs[#cs + 1] = cl end; ms[#ms + 1] = ml end
   end
   local t = hptimer()
   self.color:clearBakedTextures(); self.color:bakeLayers(cs, veh.jbeam)
   self.mask:clearBakedTextures();  self.mask:bakeLayers(ms, veh.jbeam)
+  self.dcolor:clearBakedTextures(); self.dcolor:bakeLayers(dcs, veh.jbeam)
+  self.dmask:clearBakedTextures();  self.dmask:bakeLayers(dms, veh.jbeam)
   self.idleFrames = 0   -- danach wieder zusammenführen
   return t:stopAndReset()
 end
@@ -173,26 +201,11 @@ function R:erase(veh, box)
   data.uid, data.name, data.enabled, data.locked, data.children = uid("e"), "Grit Radierer", true, false, {}
   data.mirrored = false
   data.gritErase = box.strength
-  table.insert(self.layers, data)
   local _, ml = variants(data)
-  self.mask:bakeLayers({ ml }, veh.jbeam)
-  -- Kratzer in der Box wieder obenauf
-  local keep, rest = {}, {}
-  for i = 1, #self.layers - 1 do
-    local l = self.layers[i]
-    if not l.gritErase and box.isKeep and box.isKeep(l) then keep[#keep + 1] = l else rest[#rest + 1] = l end
-  end
-  rest[#rest + 1] = data
-  local cs, ms = {}, {}
-  for _, l in ipairs(keep) do
-    rest[#rest + 1] = l
-    local cl, m2 = variants(l); cs[#cs + 1] = cl; ms[#ms + 1] = m2
-  end
-  self.layers = rest
-  if #keep > 0 then self.color:bakeLayers(cs, veh.jbeam); self.mask:bakeLayers(ms, veh.jbeam) end
+  self.mask:bakeLayers({ ml }, veh.jbeam)   -- M5.3 Lauf 3: Schäden liegen im eigenen Paar, bleiben unberührt
   self.idleFrames = 0
-  self:retire()
-  return true, string.format("%.1f ms, %d Kratzer neu darüber", t:stopAndReset(), #keep)
+  self.baked = (self.baked or 0) + 1
+  return true, string.format("%.1f ms", t:stopAndReset())
 end
 R.SOLID = "/art/grit/solid.png"
 
@@ -204,7 +217,7 @@ R.SOLID = "/art/grit/solid.png"
 function R:retire()
   local keep, n = {}, 0
   for _, l in ipairs(self.layers) do
-    if R.isDamage(l) or l.gritWet or l.gritDryQueued then keep[#keep + 1] = l else n = n + 1 end
+    if l.gritWet or l.gritDryQueued then keep[#keep + 1] = l else n = n + 1 end   -- M5.3 Lauf 3: Schäden auch nur in der Textur
   end
   if n > 0 then
     self.layers = keep
@@ -235,22 +248,14 @@ function R:dry(veh, dt, rate)
     end
   end
   if #self.dryQueue == 0 then return end
-  local t, cs, near = hptimer(), {}, {}
+  local t, cs = hptimer(), {}
   for _ = 1, math.min(R.DRY_PER_FRAME, #self.dryQueue) do
     local l = table.remove(self.dryQueue, 1)
     l.gritWet, l.gritDryQueued = stageOf(l.gritDryAge), nil
     if l.gritWet <= 0 then l.gritWet = nil end
     local cl = variants(l); cs[#cs + 1] = cl
-    local p, sc = l.decalPos, l.decalScale
-    local r = sc and (math.max(sc.x, sc.z) * 0.7 + 0.3) or 1
-    for _, k in ipairs(self.layers) do
-      if R.isDamage(k) and k.decalPos and p and not near[k] then
-        local dx, dy, dz = k.decalPos.x - p.x, k.decalPos.y - p.y, k.decalPos.z - p.z
-        if dx * dx + dy * dy + dz * dz <= r * r then near[k] = true end
-      end
-    end
   end
-  for _, k in ipairs(self.layers) do if near[k] then cs[#cs + 1] = (variants(k)) end end
+  -- M5.3 Lauf 3: Schäden liegen im eigenen Paar, kein Neu-Färben mehr nötig
   self.color:bakeLayers(cs, veh.jbeam)
   self.idleFrames = 0
   self:retire()
@@ -265,7 +270,7 @@ function R:commit(data, d, veh, how, mark)
   if (d.wet or 0) > 0 then data.gritWet, data.gritDryAge = d.wet, 0 end
   data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4
   -- M5.3: trockener Dreck bleibt nur in der Textur (R:retire), Schäden und nasser Dreck auch in der Liste
-  if R.isDamage(data) or data.gritWet then table.insert(self.layers, data) else self.baked = (self.baked or 0) + 1 end
+  if data.gritWet then table.insert(self.layers, data) else self.baked = (self.baked or 0) + 1 end
   self.committed = (self.committed or 0) + 1
   if self.log and self.committed <= 15 then
     self.log("I", "Decal %d (%s): pos %s (angefragt %s), Drehung %.0f°", self.committed, how, tostring(data.decalPos),
@@ -273,8 +278,9 @@ function R:commit(data, d, veh, how, mark)
   end
   local cl, ml = variants(data)
   local tb = hptimer()
-  self.color:bakeLayers({ cl }, veh.jbeam)
-  self.mask:bakeLayers({ ml }, veh.jbeam)
+  local dmg = R.isDamage(data)
+  ;(dmg and self.dcolor or self.color):bakeLayers({ cl }, veh.jbeam)
+  ;(dmg and self.dmask or self.mask):bakeLayers({ ml }, veh.jbeam)
   local ms = tb:stopAndReset(); mark("bake")
   self.bakeN, self.bakeSum = (self.bakeN or 0) + 1, (self.bakeSum or 0) + ms
   self.bakeMax = math.max(self.bakeMax or 0, ms)
@@ -380,6 +386,8 @@ function R:update(veh)
   if worked or self.idleFrames <= 3 or self.idleFrames % 60 == 0 then
     self.color:combineTextures(self.colorSet)
     self.mask:combineTextures(self.maskSet)
+    self.dcolor:combineTextures(self.dcolorSet)
+    self.dmask:combineTextures(self.dmaskSet)
   end
   mark("combine")
   if total > 8 and self.log and (self.spikes or 0) < 10 then

@@ -149,9 +149,16 @@ end
 -- Je DENT_STEP weiterer Eindrückung ein Riss.
 local DENT_STEP = 0.03          -- m
 local DENT_INTERVAL = 0.25      -- s
+-- M5.3 (Covet): Log 13:00:04–20 delleMax bis 118 m → Teil abgerissen und mitgeschleift, jeder Schritt gab Risse.
+-- Ab DENT_MAX gilt der Knoten als abgerissen/zerstört: keine weiteren Risse von ihm.
+local DENT_MAX = 0.4            -- m
+-- Haarrisse am Covet-Heck 5 s nach jedem Laden ohne Crash (Delle 0.03–0.04, Einfedern) → erst nach DENT_SETTLE
+-- Sekunden messen und die Lage dann als Ausgangslage nehmen.
+local DENT_SETTLE = 2.0         -- s
 local CRACK_COOLDOWN = 1.0      -- s pro Knoten
 local plastic, lastCrack, cracks = {}, {}, {}
 local dentDone, dentT, dentMax = {}, 0, 0
+local dentAge, dentBase = 0, nil   -- M5.3: Einfeder-Zeit und Ausgangslage nach dem Spawn
 
 -- Richtung auf die Hauptachse runden (keine Flächennormale bekannt)
 local function snapAxis(d)
@@ -186,17 +193,24 @@ end
 
 local function updateDents(dt)
   dentT = dentT + dt
-  if dentT < DENT_INTERVAL or not refPos then return end
+  dentAge = dentAge + dt
+  if dentT < DENT_INTERVAL or not refPos or dentAge < DENT_SETTLE then return end
   dentT = 0
   local t = HighPerfTimer()
   local maxD = 0
+  local first = not dentBase
+  if first then dentBase = {} end
   for cid in pairs(plastic) do
     local d = obj:getNodePositionRelative(cid)
     d:setSub(obj:getOriginalNodePositionRelative(cid))
+    if first then dentBase[cid] = vec3(d) end
+    d:setSub(dentBase[cid])
     local len = d:length()
     if len > maxD then maxD = len end
     local done = dentDone[cid] or 0
-    if len >= done + DENT_STEP then
+    if len > DENT_MAX then
+      if done < math.huge then dentDone[cid] = math.huge; count("delle-abgerissen") end
+    elseif len >= done + DENT_STEP then
       dentDone[cid] = len
       -- eingedrückt → außen ist entgegen der Verschiebung; Riss quer zur Verschiebung
       addCrack(cid, snapAxis(-d), "delle", len, d)
@@ -295,6 +309,7 @@ local function reset()
   lastDirt, contacts = {}, {}
   waterT, water = 0, nil
   lastCrack, cracks, dentDone, dentT, dentMax = {}, {}, {}, 0, 0
+  dentAge, dentBase = 0, nil
 end
 
 local function init()

@@ -1151,3 +1151,57 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Entscheidung (Sebastian): **Qualitätsstufen ganz weglassen**, fest 2048×1024 und Budget 500. Abweichung vom Konzept
   („Qualitätsstufen niedrig, mittel und hoch“). Entfernt aus settings.lua, render.lua, main.lua und der App.
   Alte `quality`-Einträge in grit.json werden beim Laden ignoriert (`coerce` → nil).
+
+### M5.3, Bau 3: Schäden in eigener Ebene (Weg A, 2026-11-07)
+- Entscheidung Sebastian: eigenes Texturpaar für Schäden, **Dreck über Kratzern** (Waschen legt sie frei).
+- Bau:
+  - render.lua: zweites Paar `@GritDamage` / `@GritDamageMask` (`dcolor`, `dmask`). `commit` backt Schäden dort hinein,
+    Dreck ins alte Paar. `erase` backt nur noch den Radierer in die Dreck-Maske (kein Neu-Backen), `dry` färbt keine
+    Schäden mehr neu. In der Liste bleiben nur noch nasse Layer; alles andere steckt nur in der Textur.
+  - main.lua: Skin-Material bekommt zwei Stages, Schäden in Stage s, Dreck in s+1 (höhere Stage liegt oben –
+    Annahme, im Test prüfen). Nur eine Stage frei (`activeLayers` 3) → nur Dreck, Warnung im Log.
+- Erwartung: Waschschritt nur noch der Radierer (≈ 20 ms vorher ohne Kratzer → messen), Trocknen ohne Neu-Färben.
+- Folge der Entscheidung: ein neuer Kratzer auf schon dreckigem Lack liegt UNTER dem Dreck und ist erst nach dem
+  Waschen zu sehen.
+- Lauf 1 (ETK): Dreck liegt über den Kratzern, Waschen legt sie frei ✅; kein Ruckeln beim Waschen ✅ (Sebastian).
+  Messung: Waschschritt **0.5–1.1 ms** (vorher 110–133 ms bei 55 Kratzern). Trocknen Ø 1.22 ms, max 10.3 ms (vorher max
+  59 ms). Bake Ø 1.05 ms. Liste: 100 Ebenen (alle nass/halb), 241 nur in der Textur.
+- Kratzer auf Dreck kratzt den Dreck weg: „erstmal nicht, aber merken“ (Sebastian).
+- ❌ Nach Strg+L ganzes Auto blau gefleckt (Screenshot 12-44-07, Datenreste), weg nach dem Neuspawn 12:44:10 bzw. dem
+  ersten Dreck. Grundebene war schwarz mit Alpha 0 → Änderung: Alpha 1, damit die Fill-Ebene alte Inhalte überschreibt.
+- Lauf 2: kein Flecktarn mehr nach mehrfach Strg+L ✅, Lack normal ✅ (Sebastian).
+- Covet (12:50, Screenshots 12-51-40/44): Stoßstangen vorne und hinten großflächig hellgrau/weiß mit treppenförmiger
+  schräger Kante (grobe Texel). Davor: Riss-Ereignisse an beiden Stoßstangen (Haar/Netz, y = ±1.05/−1.43) und
+  Schrammen links vorne (x ≈ 1.1–1.2). Treppenkante = Grenze einer UV-Fläche mit wenig Texeln → Verdacht wie beim ETK:
+  Stoßstange teilt/streckt UVs. Unklar, ob Risse oder Kratzer. Test: testScratch an der Seite ohne Crash,
+  und Crash mit Rissen aus.
+- Lauf 3: weder Testkratzer (links, along 0.1/0.5/0.9, z = Mitte) noch Frontal-Crash nur mit Rissen bzw. nur mit
+  Kratzern machen die Stoßstangen weiß (Sebastian). Nebenbefund: Haarrisse am Heck (n20–n22, y 1.05, z 0.10) kommen
+  5 s nach jedem Laden ohne Crash (Delle 0.03–0.04 beim Einfedern?).
+- Unterschied zum Auftreten 12:50:50: lange Schramme links an der Wand mit Rissen an der **Seite** und Normale −y
+  (Netz n317 pos(1.21,−0.33,0.75), n321 pos(1.23,−0.33,0.66), Haar n323 pos(1.14,−0.43,0.71)). Neuer Befehl
+  `grit_main.testAt(kind, x,y,z, nx,ny,nz)` stellt einzelne Log-Einträge nach.
+- Lauf 4: `testAt` mit den vier Log-Einträgen: nichts weiß. Erst beim langen Schrammen **rechts** mit ≈ 60 km/h
+  wieder weiß (Sebastian). Log 13:00:03–20: 7 Netz-Risse links (Bruch), danach `delleMax` steigt stetig von 0.45 auf
+  **118 m** → ein Kunststoffteil ist abgerissen und wurde mitgeschleift (Lage relativ zum Referenzknoten).
+  Jeder 3-cm-Schritt gab ein Riss-Ereignis (`riss:delle` laufend, bis maxEvents 80) – Risse mit Positionen weit
+  weg bzw. auf dem verbogenen Teil. Verdacht: viele Netz-Risse (grau, Stärke 0.9) decken die Stoßstange flächig.
+- Fix sensor.lua: ab `DENT_MAX` 0.4 m gilt der Knoten als abgerissen (keine Risse mehr, Diagnose
+  `delle-abgerissen`); Messung erst nach `DENT_SETTLE` 2 s, Lage dann als Ausgangslage (gegen die Haarrisse am Heck
+  nach jedem Laden).
+- Lauf 5: Stoßstangen bleiben weiß, mit und ohne Risse (Sebastian) → nicht die Risse. Screenshot 13-04-15: vordere
+  Stoßstange untere Hälfte grau mit Treppenkante. Nebenbefund 13-03-18: Covet lila/schwarz gefleckt im Strg+L-Fenster
+  (vor „Grit geladen“, bekannter M6-Punkt).
+- Diagnose gebaut: `grit_main.uvCheck()` backt eine UV-Karte (`mod/art/grit/uvcheck.png`, Rot = u, Grün = v,
+  Schachbrett 32 px; erzeugt von gen_textures.ps1) als Textur-Füllung (Layer type 2, Felder wie
+  `editor/api/dynamicDecals.lua:1232-1243,307-315`) voll deckend ins Schaden-Paar. Gleiche Farbe auf zwei Teilen =
+  gleiche UV-Stelle.
+- Lauf 6 `uvCheck` (Covet, Screenshots 13-08-22/25/29/33), Farbe = UV1-Stelle (Rot = u, Grün = v):
+  - linke Seite grün/türkis/blau (u klein, v groß), rechte Seite rot/lila/magenta (u groß, v klein) → Seiten getrennt.
+  - **vordere und hintere Stoßstange: dasselbe Muster grün | türkis | grün** in großen Kästchen, also dieselbe
+    UV1-Fläche, und diese liegt im Farbbereich der linken Seite (vorne am Kotflügel/Radlauf ebenfalls grün/türkis).
+  - Grill und Kennzeichenleiste oliv (einheitlich, UV auf einen Punkt gestaucht).
+  → Die Stoßstangen teilen sich UV1 untereinander und vermutlich mit einem Stück der linken Seite, bei geringer
+  Texeldichte (große Kästchen, daher die Treppenkante). Ein Kratzer auf einer dieser Flächen erscheint auf allen.
+  Das ist eine Eigenschaft des Modells (UV1 = Dynamic-Decal-UV), nicht von Grit. Prüfbar mit dem Vanilla-Decal-Editor.
+- Entscheidung (Sebastian): als bekannte Einschränkung in die README, ohne Gegenprobe im Vanilla-Editor.
