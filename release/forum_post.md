@@ -3,7 +3,9 @@
 Zum Einfügen in den BeamNG-Mod-Upload (XenForo, BBCode). Vorher hochladen bzw. anhängen:
 
 - Vorschaubild (Thumbnail): `branding/out/grit-thumbnail.png`
-- Im Text: `grit-banner.png`, `grit-header-scratches.png`, `grit-header-dirt.png`, `grit-header-dust.png`
+- Im Text: `branding/out/` grit-banner.png, grit-header-scratches.png, grit-header-dirt.png, grit-header-dust.png
+  und `screenshots/` screenshot_scratch.png (Kratzer), screenshot_mud.png (Schlamm),
+  screenshot_dirt.png (Staub)
   als Anhänge hochladen. In `[ATTACH=full]…[/ATTACH]` steht unten der Dateiname als Platzhalter: durch die
   Anhang-Nummer ersetzen (entsteht beim Hochladen; einfacher: Platzhalterzeile löschen und im Editor beim Anhang
   „Einfügen → Vollbild“ klicken)
@@ -31,6 +33,7 @@ Grit is not a preset or a skin. It works on [B]every vehicle[/B], including modd
 [*]Three depths: light clear-coat scuff, primer, bare metal. A longer or harder slide cuts deeper.
 [*]Scratches follow the direction of the slide. Bushes, fabric and water never scratch.
 [/LIST]
+[ATTACH=full]screenshot_scratch.png[/ATTACH]
 
 [SIZE=5][B]Cracks[/B][/SIZE]
 [LIST]
@@ -46,6 +49,7 @@ Grit is not a preset or a skin. It works on [B]every vehicle[/B], including modd
 [*][B]Color by surface:[/B] mud is dark brown, sand is light, snow is white.
 [*]Dirt lies on top of scratches and cracks.
 [/LIST]
+[ATTACH=full]screenshot_mud.png[/ATTACH]
 
 [ATTACH=full]grit-header-dust.png[/ATTACH]
 [SIZE=5][B]Dust, washing & drying[/B][/SIZE]
@@ -54,6 +58,7 @@ Grit is not a preset or a skin. It works on [B]every vehicle[/B], including modd
 [*][B]Washing:[/B] drive into water and everything below the waterline gets cleaner step by step. Scratches and cracks stay.
 [*][B]Wet dirt and drying:[/B] fresh mud goes on dark and wet and dries lighter over about a minute and a half, faster at speed.
 [/LIST]
+[ATTACH=full]screenshot_dirt.png[/ATTACH]
 
 [SIZE=5][B]In-game app[/B][/SIZE]
 Add the [B]Grit[/B] app from the UI apps menu. It sits as a small "Grit ▾" tab and folds out on click:

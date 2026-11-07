@@ -23,6 +23,8 @@ liveries untouched.
 - Scratches follow the direction of the slide.
 - Soft things like bushes, fabric and water never scratch.
 
+![Scratches on the front bumper after a scrape](screenshots/screenshot_scratch.png)
+
 ### Dirt ✅
 - **Wheel spray:** Driving on dirt, mud, sand, gravel, grass or snow throws material onto the body behind each
   wheel and onto the rear of the car.
@@ -31,13 +33,17 @@ liveries untouched.
 - **Contact dirt:** When the body itself touches mud or soil, for example when you roll into a ditch or slide
   along an embankment, the dirt stays right at that spot.
 - **Color by surface:** Mud is dark brown, sand is light and snow is white, matched to the ground material.
-- Dirt only builds up and covers scratches that came before it. Dust stays on the car until water washes it off.
+- Dirt lies on top of scratches and cracks. Dust stays on the car until water washes it off.
+
+![Mud thrown onto the body behind the wheels](screenshots/screenshot_mud.png)
 
 ### Washing, wetness & drying ✅
 - **Washing:** Drive into water and everything below the waterline gets cleaner step by step. A quick splash
   through a ford removes a little, standing in the water cleans it fully. Scratches stay.
 - **Wet dirt:** Mud, and any dirt picked up shortly after driving through water, goes on dark and wet.
 - **Drying:** Wet dirt turns lighter in two steps over about a minute and a half, faster with airflow at speed.
+
+![Dust after a fast gravel run](screenshots/screenshot_dirt.png)
 
 ### Cracks ✅
 - **Plastic cracks:** When a plastic part such as a bumper gets dented or breaks, hairline cracks or spiderweb
