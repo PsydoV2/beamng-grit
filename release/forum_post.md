@@ -60,11 +60,11 @@ Add the [B]Grit[/B] app from the UI apps menu. It sits as a small "Grit ▾" tab
 [*]dirt strength (0.25–2) and drying speed (0.25–4)
 [*][B]Wash[/B] (cleans everything, damage stays) and [B]Clear all[/B]
 [/LIST]
-Settings are saved in [ICODE]settings/grit.json[/ICODE] in your user folder.
+Settings are saved in [B]settings/grit.json[/B] in your user folder.
 
 [SIZE=5][B]Installation[/B][/SIZE]
 [LIST=1]
-[*]Put [ICODE]grit_v0.5.0.zip[/ICODE] into [ICODE]%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods\[/ICODE]. Do not unpack it.
+[*]Put [B]grit_v0.5.0.zip[/B] into [B]%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\mods\[/B]. Do not unpack it.
 [*]Start the game and make sure [B]Grit[/B] is enabled in the mod manager.
 [*]Spawn a vehicle and drive. Grit activates on its own. The car respawns once at the start (under a second).
 [/LIST]
@@ -83,7 +83,7 @@ Repairing or resetting the vehicle removes all dirt and damage.
 [LIST]
 [*]Light scratches and dust are hard to see on white or chrome parts. They show up clearly on dark paint.
 [*]Some vehicles only have collision points low on the body, so guardrail scratches stay near the sills and bumper corners.
-[*]Some models reuse the same spot of their decal texture for several parts. On the Ibishu Covet both bumpers share one stretched area, so a scratch there can show up on both as a large patch. [ICODE]grit_main.uvCheck()[/ICODE] in the Lua console shows the layout of any car, [ICODE]grit_main.clear()[/ICODE] turns it off.
+[*]Some models reuse the same spot of their decal texture for several parts. On the Ibishu Covet both bumpers share one stretched area, so a scratch there can show up on both as a large patch. [B]grit_main.uvCheck()[/B] in the Lua console shows the layout of any car, [B]grit_main.clear()[/B] turns it off.
 [*]Only the player vehicle gets Grit for now.
 [*]Dirt and scratches are not saved yet. They are gone after a reset, a repair or a restart.
 [/LIST]
