@@ -44,7 +44,8 @@ local function variants(l)
     return nil, ml
   end
   local c, s = l.gritColor, l.gritStrength
-  local cl = shallowcopy(l); cl.color = Point4F(enc(c[1]), enc(c[2]), enc(c[3]), 1); cl.uid = l.uid .. "-c"
+  local dk = 1 - R.WET_DARK * (l.gritWet or 0)   -- M3.2: nass = dunkler (ohne Glanz, Stage-Rauheit fest)
+  local cl = shallowcopy(l); cl.color = Point4F(enc(c[1] * dk), enc(c[2] * dk), enc(c[3] * dk), 1); cl.uid = l.uid .. "-c"
   local e = enc(s); local ml = shallowcopy(l); ml.color = Point4F(e, e, e, 1); ml.uid = l.uid .. "-m"
   return cl, ml
 end
@@ -89,7 +90,7 @@ end
 
 function R:clear(veh)
   self:refresh(veh, true)   -- Reparatur kann die Form ändern
-  self.layers, self.queue = {}, {}
+  self.layers, self.queue, self.dryQueue = {}, {}, {}
   self.cells = {}            -- Oberflächen-Abstände neu lernen
   self:rebake(veh)
 end
@@ -178,10 +179,50 @@ function R:erase(veh, box)
 end
 R.SOLID = "/art/grit/solid.png"
 
+-- M3.2 Trocknen. Nasse Layer (gritWet > 0) altern mit dt · rate (rate wächst mit Fahrtwind). Nach DRY_TIME/2 halb,
+-- nach DRY_TIME ganz trocken. Dann nur die Farb-Variante neu backen: Die Maske bleibt, also kommt gewaschener Dreck
+-- nicht zurück, und es entsteht kein neuer Layer. Kratzer in der Nähe bekommen danach ihre Farbe neu darüber
+-- (sonst überdeckt die neue Dreckfarbe sie in der Farb-Textur).
+R.WET_DARK = 0.45
+R.DRY_TIME = 90
+R.DRY_PER_FRAME = 4
+local function stageOf(age) return age >= R.DRY_TIME and 0 or (age >= R.DRY_TIME * 0.5 and 0.5 or 1) end
+function R:dry(veh, dt, rate)
+  self.dryQueue = self.dryQueue or {}
+  for _, l in ipairs(self.layers) do
+    if l.gritWet and l.gritWet > 0 and not l.gritDryQueued then
+      l.gritDryAge = (l.gritDryAge or 0) + dt * rate
+      if stageOf(l.gritDryAge) < l.gritWet then l.gritDryQueued = true; table.insert(self.dryQueue, l) end
+    end
+  end
+  if #self.dryQueue == 0 then return end
+  local t, cs, near = hptimer(), {}, {}
+  for _ = 1, math.min(R.DRY_PER_FRAME, #self.dryQueue) do
+    local l = table.remove(self.dryQueue, 1)
+    l.gritWet, l.gritDryQueued = stageOf(l.gritDryAge), nil
+    if l.gritWet <= 0 then l.gritWet = nil end
+    local cl = variants(l); cs[#cs + 1] = cl
+    local p, sc = l.decalPos, l.decalScale
+    local r = sc and (math.max(sc.x, sc.z) * 0.7 + 0.3) or 1
+    for _, k in ipairs(self.layers) do
+      if k.name and k.name:find("^Grit Kratzer") and k.decalPos and p and not near[k] then
+        local dx, dy, dz = k.decalPos.x - p.x, k.decalPos.y - p.y, k.decalPos.z - p.z
+        if dx * dx + dy * dy + dz * dz <= r * r then near[k] = true end
+      end
+    end
+  end
+  for _, k in ipairs(self.layers) do if near[k] then cs[#cs + 1] = (variants(k)) end end
+  self.color:bakeLayers(cs, veh.jbeam)
+  self.idleFrames = 0
+  local ms = t:stopAndReset()
+  self.dryN, self.drySum, self.dryMax = (self.dryN or 0) + 1, (self.drySum or 0) + ms, math.max(self.dryMax or 0, ms)
+end
+
 -- fertige Layer-Daten übernehmen und dazubacken
 function R:commit(data, d, veh, how, mark)
   data.uid, data.name, data.enabled, data.locked, data.children = uid("p"), d.name or "Grit", true, false, {}
   data.gritColor, data.gritStrength = d.color, d.strength
+  if (d.wet or 0) > 0 then data.gritWet, data.gritDryAge = d.wet, 0 end
   data.mirrored = false   -- Layer-Feld „mirrored“ (editor/api/dynamicDecals.lua:520,929); M1.1 Lauf 4
   table.insert(self.layers, data)
   if self.log and #self.layers <= 15 then

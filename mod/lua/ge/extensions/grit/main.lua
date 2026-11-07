@@ -253,6 +253,10 @@ local function tint(c, s)   -- leichte Farbstreuung pro Spritzer
   return { math.min(1, c[1] * f), math.min(1, c[2] * f), math.min(1, c[3] * f) }
 end
 
+-- M3.2 Nässe: Schlamm (18) immer nass, sonst nass bis WET_AFTER_WATER s nach dem letzten Waschschritt
+local WET_AFTER_WATER = 60
+local function wetOf(car, m) return (m == 18 or M.simS < (car.wetUntil or -1)) and 1 or 0 end
+
 local function handleSprays(car, vid, list)
   if not list or #list == 0 then return end
   local veh = be:getObjectByID(vid); if not veh then return end
@@ -294,7 +298,7 @@ local function handleSprays(car, vid, list)
       car.dirtLevel[key] = math.min(DIRT.maxStrength, strength + DIRT.buildUp)
       local ok = car.r:request({ pos = pos, normal = n, up = up, tolAlong = tol, region = key,
         width = w, length = h, depth = DIRT.depth, texture = DIRT.texture,
-        color = tint(col), strength = strength, name = "Grit Dreck" })
+        color = tint(col), strength = strength, wet = wetOf(car, s.m), name = "Grit Dreck" })
       if ok then
         car.sprayCount[s.w] = cnt + 1
         car.sprays = (car.sprays or 0) + 1
@@ -391,7 +395,7 @@ local function handleContacts(car, list)
       local size = CONTACT.minSize + (CONTACT.maxSize - CONTACT.minSize) * math.random()
       local ok = car.r:request({ pos = vec3(s.px, s.py, s.pz), normal = n, up = up, tolAlong = CONTACT.tol,
         region = "kontakt", width = size, length = size * (0.7 + 0.3 * math.random()), depth = CONTACT.depth,
-        texture = DIRT.texture, color = tint(col), strength = strength, name = "Grit Kontakt" })
+        texture = DIRT.texture, color = tint(col), strength = strength, wet = wetOf(car, s.m), name = "Grit Kontakt" })
       if ok then
         car.contactCount[s.c] = cnt + 1
         car.contacts = (car.contacts or 0) + 1
@@ -433,6 +437,7 @@ local WASH = { interval = 1.0, step = 0.4, passes = 4, splash = 0.05, minNodes =
 local function handleWater(car, vid, w)
   if not w or (w.n or 0) < WASH.minNodes then return end
   local veh = be:getObjectByID(vid); if not veh then return end
+  car.wetUntil = M.simS + WET_AFTER_WATER   -- M3.2: Auto ist nass, solange es im Wasser ist und 60 s danach
   local now = M.clockS
   local line = w.z + WASH.splash
   local ws = car.wash or { z = -math.huge, passes = WASH.passes, t = -math.huge, seen = now }
@@ -499,8 +504,12 @@ local perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max 
 local function addPerf(t, ms) t.n, t.sum, t.max = t.n + 1, t.sum + ms, math.max(t.max, ms) end
 
 M.clockS = 0   -- Echtzeit-Uhr in s (aus dtReal)
-M.onUpdate = function(dtReal)
+M.simS = 0     -- Spielzeit in s (dtSim, steht bei Pause; ge/main.lua:1006 hook('onUpdate', dtReal, dtSim, dtRaw))
+-- M3.2 Trocknen: Tempo-Faktor (Fahrtwind), veh:getVelocity() wie career/modules/fuel.lua:317
+local DRY = { windPerMs = 0.1, maxRate = 4 }
+M.onUpdate = function(dtReal, dtSim)
   M.clockS = M.clockS + (dtReal or 0)
+  M.simS = M.simS + (dtSim or 0)
   local busy = false
   for _, car in pairs(cars) do if car.r and #car.r.queue > 0 then busy = true end end
   if dtReal then addPerf(busy and perf.busy or perf.idle, dtReal * 1000) end
@@ -525,6 +534,10 @@ M.onUpdate = function(dtReal)
       if veh then
         local tu = hptimer()
         car.r:update(veh)
+        if (dtSim or 0) > 0 then
+          local rate = math.min(DRY.maxRate, 1 + veh:getVelocity():length() * DRY.windPerMs)
+          car.r:dry(veh, dtSim, rate)
+        end
         addPerf(perf.upd, tu:stopAndReset())
       end
     end
@@ -564,7 +577,7 @@ M.onVehicleResetted = function(vid)
   local car = cars[vid]
   if car and car.phase == "active" and car.r then
     local veh = be:getObjectByID(vid)
-    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash = {}, {}, {}, 0, {}, 0, nil end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
+    if veh then car.r:clear(veh); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil = {}, {}, {}, 0, {}, 0, nil, nil end   -- Reset repariert das Auto → Grit weg (Konzept, Zustandsmodell)
   end
 end
 
@@ -590,6 +603,14 @@ M.status = function()
     end
     if car.r and (car.r.bakeN or 0) > 0 then
       L("I", "  Bake: %d Decals, Ø %.2f ms, max %.2f ms", car.r.bakeN, car.r.bakeSum / car.r.bakeN, car.r.bakeMax)
+    end
+    if car.r then   -- M3.2
+      local wet, half = 0, 0
+      for _, l in ipairs(car.r.layers) do if l.gritWet == 1 then wet = wet + 1 elseif l.gritWet then half = half + 1 end end
+      L("I", "  Nässe: %d nass, %d halb, Auto nass noch %.0f s; Trocknen: %d Bakes, Ø %.2f ms, max %.2f ms", wet, half,
+        math.max(0, (car.wetUntil or 0) - M.simS), car.r.dryN or 0, (car.r.dryN or 0) > 0 and car.r.drySum / car.r.dryN or 0,
+        car.r.dryMax or 0)
+      car.r.dryN, car.r.drySum, car.r.dryMax = 0, 0, 0
     end
   end
   local function fmt(t) return t.n > 0 and string.format("%d Frames Ø %.1f ms max %.1f ms", t.n, t.sum / t.n, t.max) or "–" end
@@ -642,7 +663,7 @@ M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synt
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash = {}, {}, {}, 0, {}, 0, nil end
+  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil = {}, {}, {}, 0, {}, 0, nil, nil end
 end
 
 return M

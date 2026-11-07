@@ -945,3 +945,19 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   höchstens 1/s. Durchfahrt mit 12–16 m/s → 1 Schritt. 38 Waschschritte in der Sitzung.
 - **Budget wird knapp:** 337 Ebenen nach einer Sitzung (549 Spritzer, weil Waschen die Mengen-Grenzen zurücksetzt;
   jeder Waschschritt ist selbst ein Layer). → „Layer zusammenführen“ rückt näher (offener Punkt).
+
+### M3.2 Nässe und Trocknen (2026-11-07) – Aufbau
+- Nass = Farbe × (1 − 0.45·Nässe), ohne Glanz (Sebastian ja). Nass: Schlamm (18) immer; Spritzer und Kontakt-Dreck
+  bis 60 s Spielzeit nach dem letzten Wasserkontakt (`car.wetUntil`, jedes Wasser-Ereignis frischt auf).
+  Staub bleibt trocken.
+- Trocknen in `R:dry`: Alter += dtSim · rate, rate = min(4, 1 + 0.1·Tempo m/s) (Fahrtwind). Ab 45 s halb (0.5), ab 90 s
+  trocken. Dann **nur die Farb-Variante** neu backen (Maske bleibt → Gewaschenes bleibt weg, kein neuer Layer),
+  höchstens 4 Layer pro Frame; Kratzer im Umkreis (0.7·max(Breite, Länge) + 0.3 m) bekommen ihre Farbe neu darüber.
+- Belege: `onUpdate(dtReal, dtSim, dtRaw)` (`lua/ge/main.lua:1006`), `veh:getVelocity()` im GE
+  (`lua/ge/extensions/career/modules/fuel.lua:317`).
+- `status()` zeigt „Nässe: n nass, n halb, Auto nass noch s; Trocknen: Bakes Ø/max“.
+
+### M3.2, Lauf 1 (2026-11-07, Moonhawk) ✅ Nässe und Trocknen
+- Sebastian: nass sichtbar dunkler, wird in Stufen heller, kein Aufblitzen/Ruckler, Kratzer bleiben beim Trocknen.
+- Log: 102 Spritzer nass → 18 nass / 83 halb → 0/0; 106 Trocknungs-Bakes Ø 0.60 ms, max 1.35 ms;
+  render:update CPU max 2.0 ms im zweiten Abschnitt.
