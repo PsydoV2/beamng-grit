@@ -15,6 +15,8 @@ liveries untouched.
 
 ## Features
 
+![Scratches](branding/out/grit-header-scratches.png)
+
 ### Scratches ✅
 - Body scrapes against walls, guardrails, rocks and other hard surfaces leave scratches exactly where the contact
   happened.
@@ -24,6 +26,8 @@ liveries untouched.
 - Soft things like bushes, fabric and water never scratch.
 
 ![Scratches on the front bumper after a scrape](screenshots/screenshot_scratch.png)
+
+![Dirt](branding/out/grit-header-dirt.png)
 
 ### Dirt ✅
 - **Wheel spray:** Driving on dirt, mud, sand, gravel, grass or snow throws material onto the body behind each
@@ -36,6 +40,8 @@ liveries untouched.
 - Dirt lies on top of scratches and cracks. Dust stays on the car until water washes it off.
 
 ![Mud thrown onto the body behind the wheels](screenshots/screenshot_mud.png)
+
+![Dust & washing](branding/out/grit-header-dust.png)
 
 ### Washing, wetness & drying ✅
 - **Washing:** Drive into water and everything below the waterline gets cleaner step by step. A quick splash
