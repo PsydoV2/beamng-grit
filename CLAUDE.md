@@ -3,7 +3,7 @@
 Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Code, Pfade und Konsolenbefehle heißen seit 2026-11-06 `grit` (vorher Patina; Repo-Ordner heißt noch „Dynamic Patina“).
 Autor im Release: **Psydo** (nicht Sebastian). Lizenz: CC BY-NC-SA 4.0 (`LICENSE`). `README.md` ist die öffentliche Beschreibung (Englisch), bei neuen Features mitpflegen.
 
-Übergabe für neue Sessions. Stand: 2026-11-06, letzter Commit siehe `git log -1`.
+Übergabe für neue Sessions. Stand: 2026-11-07, letzter Commit siehe `git log -1`.
 Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Änderungen den passenden Abschnitt lesen).
 
 ## Personen und Zusammenarbeit
@@ -127,11 +127,13 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - M2.1 Radspritzer
   - M2.2 Staub (ruckelfrei dank Spike 6)
   - M2.3 Kontakt-Dreck (Größe passt)
-- **Nächster Schritt: M3**
-  - Nässe, Trocknen, Waschen, Reset.
-  - Vorher den M2-Status ins Konzeptdokument eintragen, falls noch nicht geschehen.
-  - Den M3-Abschnitt im Konzeptdokument lesen.
-- **Danach:** M4 Risse, M5 Einstellungen/UI, M6 Release.
+- **M3 Zustand ✅** (Tag `m3-zustand`, 2026-11-07), von Sebastian bestätigt:
+  - Spike 7 Radierer: große synthetische Box nur in die Maske (schwarz, Alpha = Stärke), Kratzer danach neu darüber.
+  - M3.1 Waschen im Wasser: Sensor `obj:inWater` → Wasserlinie, 1 Schritt/s à 40 %, 4 Schritte pro Höhe.
+  - M3.2 Nässe dunkler (ohne Glanz), Trocknen in zwei Stufen (45/90 s Spielzeit, Fahrtwind bis 4×), nur Farbe neu.
+  - Staub auf Asphalt bleibt (Sebastian), nur Wasser wäscht. Reset löscht alles.
+- **Nächster Schritt: M4 Risse.** Vorher den M4-Abschnitt im Konzeptdokument lesen.
+- **Danach:** M5 Einstellungen/UI, M6 Release.
 
 ## Offene Punkte
 - Chrom- und helle Teile: helle Kratzer und heller Staub auf hellem Lack kaum sichtbar.
@@ -139,7 +141,8 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 - Die D-Serie hat Kontaktknoten nur tief (Schweller und Stoßstangen-Ecken), deshalb Leitplanken-Kratzer nur unten.
   Möglicher Ausbau: bei Dauerkontakt größere oder tiefere Kratzer. Mit Sebastian noch nicht entschieden.
 - Zierleiste der D-Serie verschmiert im UV (optional mit dem Vanilla-Decal-Editor prüfen).
-- Später: Layer zusammenführen und Persistenz.
+- Später: Layer zusammenführen und Persistenz. **Budget beobachten** (Sebastian 2026-11-07): nach einer Sitzung mit
+  Waschen 337/500 Ebenen (jeder Waschschritt = 1 Layer, Waschen setzt Mengen-Grenzen zurück).
 - Später (optional, Sebastian 2026-11-07): **Regen wäscht Dreck langsam ab** (`core_environment.getPrecipitation()`).
   Erst nach M3.1–M3.3, jetzt keine Arbeit hinein.
 - Ungetestet:

@@ -961,3 +961,8 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Sebastian: nass sichtbar dunkler, wird in Stufen heller, kein Aufblitzen/Ruckler, Kratzer bleiben beim Trocknen.
 - Log: 102 Spritzer nass → 18 nass / 83 halb → 0/0; 106 Trocknungs-Bakes Ø 0.60 ms, max 1.35 ms;
   render:update CPU max 2.0 ms im zweiten Abschnitt.
+
+### M3.3 Staub auf Asphalt – gestrichen (2026-11-07) ✅ M3 Zustand abgeschlossen
+- Sebastian: Staub soll auf Asphalt **nicht** verschwinden, „erst Wasser wäscht es weg“. Abweichung vom Konzept,
+  dort und im Zustandsmodell eingetragen.
+- M3 = M3.1 Waschen + M3.2 Nässe/Trocknen + Reset (seit M1) → abgeschlossen, Tag `m3-zustand`.
