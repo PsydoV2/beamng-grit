@@ -39,9 +39,14 @@ liveries untouched.
 - **Wet dirt:** Mud, and any dirt picked up shortly after driving through water, goes on dark and wet.
 - **Drying:** Wet dirt turns lighter in two steps over about a minute and a half, faster with airflow at speed.
 
+### Cracks ✅
+- **Plastic cracks:** When a plastic part such as a bumper gets dented or breaks, hairline cracks or spiderweb
+  cracks appear right at that spot. Bigger dents give bigger cracks.
+- Cracks show on painted plastic parts. Unpainted black plastic and glass stay as they are.
+- Like scratches, cracks stay when the car is washed.
+
 ### Planned
 - **Rain:** Rain slowly washes the car (optional).
-- **Cracks:** Glass and plastic parts get cracks that follow the real damage.
 - **Settings & UI:** Intensity, build-up speed and features can be adjusted in the game.
 
 ---

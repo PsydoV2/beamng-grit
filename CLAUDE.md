@@ -132,8 +132,13 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - M3.1 Waschen im Wasser: Sensor `obj:inWater` → Wasserlinie, 1 Schritt/s à 40 %, 4 Schritte pro Höhe.
   - M3.2 Nässe dunkler (ohne Glanz), Trocknen in zwei Stufen (45/90 s Spielzeit, Fahrtwind bis 4×), nur Farbe neu.
   - Staub auf Asphalt bleibt (Sebastian), nur Wasser wäscht. Reset löscht alles.
-- **Nächster Schritt: M4 Risse.** Vorher den M4-Abschnitt im Konzeptdokument lesen.
-- **Danach:** M5 Einstellungen/UI, M6 Release.
+- **M4 Risse ✅** (Tag `m4-risse`, 2026-11-07), nur Kunststoff (Sebastian), Glas bleibt Vanilla:
+  - Auslöser: Delle an Kunststoff-Knoten (`nodeMaterial 3`), je 3 cm Eindrückung gegen die Ausgangslage, oder
+    Beam-Bruch an einem Kunststoff-Knoten. `perpendicularVel` ist dort immer 0, also unbrauchbar.
+  - Haarriss bzw. ab 8 cm / Bruch Spinnennetz, mittelgrau, bleibt beim Waschen/Trocknen (`render.isDamage`).
+  - Nur auf lackierten Teilen (z. B. ETK-Stoßstange), nicht auf unlackiertem Kunststoff (Covet-Stoßstange).
+- **Nächster Schritt: M5 Einstellungen/UI.** Vorher den M5-Abschnitt im Konzeptdokument lesen.
+- **Danach:** M6 Release.
 
 ## Offene Punkte
 - Chrom- und helle Teile: helle Kratzer und heller Staub auf hellem Lack kaum sichtbar.

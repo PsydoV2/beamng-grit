@@ -1012,3 +1012,8 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   Strahl traf y −0.6 → verworfen).
 - Screenshot 10-01-11: nur kleine graue Punkte sichtbar, die feinen Linien gehen in der Grit-Textur
   (2048×1024 fürs ganze Auto) verloren → Linien in `crack_*.png` dicker.
+
+### M4.1, Lauf 4 (2026-11-07, ETK I-Series) ✅ M4 Risse abgeschlossen
+- Dickere Linien: Risse als Linien klar sichtbar (Screenshot 10-04-30), Sebastian: „Alles passt“ (Sichtbarkeit,
+  Mittelgrau, Menge). Log: `riss:delle=8`, Delle bis 0.47 m.
+- M4 = Kunststoff-Risse; Glas bleibt Vanilla (Konzept, Sebastian). Tag `m4-risse`.
