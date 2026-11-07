@@ -45,9 +45,15 @@ liveries untouched.
 - Cracks show on painted plastic parts. Unpainted black plastic and glass stay as they are.
 - Like scratches, cracks stay when the car is washed.
 
+### Settings & in-game app ✅
+- Open the UI apps menu and add the **Grit** app. It sits as a small "Grit ▾" tab and folds out on click.
+- Switch dirt, scratches and cracks on or off, set dirt strength (0.25–2) and drying speed (0.25–4).
+- **Wash** cleans the whole car at once (scratches and cracks stay), **Clear all** removes everything.
+- Settings are saved in `settings/grit.json` in your user folder and kept across restarts.
+
 ### Planned
 - **Rain:** Rain slowly washes the car (optional).
-- **Settings & UI:** Intensity, build-up speed and features can be adjusted in the game.
+- **Quality levels and AI traffic:** Layer budget per quality setting, optional dirt on AI cars.
 
 ---
 

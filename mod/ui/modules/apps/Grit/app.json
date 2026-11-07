@@ -1,0 +1,22 @@
+{
+  "domElement": "<grit-app></grit-app>",
+  "name": "Grit",
+  "types": [
+    "ui.apps.categories.utility"
+  ],
+  "description": "Grit: dynamic dirt, scratches and cracks – settings",
+  "css": {
+    "left": "200px",
+    "top": "200px",
+    "width": "280px",
+    "height": "28px",
+    "min-width": "240px",
+    "min-height": "24px"
+  },
+  "author": "Psydo",
+  "version": "0.3",
+  "directive": "gritApp",
+  "category": "General",
+  "isAuxiliary": false,
+  "interactive": "required"
+}

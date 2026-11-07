@@ -1088,3 +1088,36 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
   (beim Entladen Skin zurücksetzen).
 - Nebenbefund: nach Strg+L steht die alte Kopie `etki_mechanicals.grit.v108000` noch im Szenenbaum (unlackiert-Liste)
   und wird vom Skin genutzt; frisch gestartet entsteht sie nicht.
+
+### M5.2 UI-App – Bau (2026-11-07)
+- Belege:
+  - Apps werden über `FS:findFiles("/ui/modules/apps/", "app.json", -1, …)` gefunden (`ge/extensions/ui/apps.lua:7,121`),
+    also auch aus dem Mod-Ordner. Pflicht: `domElement` + `directive` (`apps.lua:154`), `app.js` daneben (`:155-156`).
+    `simplemenu` weglassen = überall sichtbar (`apps.lua:32-34`). `interactive: "required"` (`:176`, wie AIControl).
+  - Angular-Direktive in `beamng.apps`, `md-slider` (`ui/modules/apps/Winds/app.js:1-7`), `md-checkbox`
+    (`ForceFeedbackGraph/app.js:9`), `md-button class="md-raised"` (`ESCStiffness/app.js:6`).
+  - `bngApi.engineLua(ausdruck, function(data) …)` liefert den Lua-Rückgabewert (`threedexport/app.js:18-28`).
+- Bau: `mod/ui/modules/apps/Grit/` (app.json, app.js). Schalter Dreck/Kratzer/Risse, Regler Dreck-Stärke
+  (0.25–2) und Trocknungstempo (0.25–4, setzen erst nach 300 ms Ruhe), Knöpfe Wash (`grit_main.washNow()`: Radierer
+  über das ganze Auto, Stärke 1) und Clear all (`grit_main.clear()`), Anzeige Ebenen x/500. Abfrage
+  `grit_main.uiState()` alle 2 s. Beschriftung Englisch (Release).
+- Lauf 1: App erscheint, Schalter/Regler/Wash/Clear all funktionieren, Werte nach Strg+L da ✅ (Sebastian).
+  Wunsch: nicht dauerhaft sichtbar → auf- und zuklappbar. Bau: Kopfzeile „Grit ▴/▾“ per Klick, Inhalt `ng-show`,
+  Hintergrund `.bngApp` (`ui/entrypoints/main/main.css:29`) nur an Kopf und Inhalt; Zustand in localStorage
+  (try/catch, ohne Speicher zu). Abfrage alle 2 s nur, wenn offen.
+- Lauf 2 ❌ (Screenshot 11-42-43): zugeklappt großer halbtransparenter Kasten in App-Größe, aufgeklappt nur orange
+  Rechtecke in den unteren Ecken (vermutlich die md-buttons), Einstellungen unsichtbar. Kein Fehler im Log.
+  Änderung: `ng-if` statt `ng-show` (Inhalt wird beim Öffnen neu aufgebaut, md-slider in verstecktem Container ist
+  ein bekanntes Problem), offen wieder exakt das Layout von Lauf 1, Pfeile als HTML-Entities.
+- Lauf 3: aufgeklappt alles richtig ✅, zugeklappt weiter großer Kasten (Screenshots 11-46-28/31). Ursache: der Kasten
+  kommt vom Spiel, `overlay-item-editor__hover-bg` (`ui/ui-vue/src/common/modules/overlay/components/OverlayItemEditor.vue:225-232`)
+  über den ganzen App-Rahmen (Größe aus app.json `css`). Änderung: Rahmen 28 px hoch, offenes Fenster
+  `position: absolute` ragt darunter heraus (`.overlay-item` ohne overflow-Begrenzung, `OverlayItem.vue` Style).
+  Gespeicherte Layouts behalten die alte Größe → App einmal entfernen und neu hinzufügen.
+- Lauf 4: zugeklappt klein ✅, aufgeklappt abgeschnitten mit Scrollbalken. Ursache `.ui-app-host { overflow: hidden }`
+  (`ui/ui-vue/src/modules/apps/components/AppHost.vue` Style). Änderung: offenes Fenster `position: fixed` an der
+  Lage der Kopfzeile (getBoundingClientRect, alle 2 s nachgeführt), unten am Bildschirm nach oben ausweichen.
+- Lauf 5 (Screenshot 11-53-18): Fenster wandert mit ✅, aber bis 80vh lang (leerer Bereich unten) und die
+  Schalter zeigten `true` als leeres Kästchen (grit.json: alle true). Änderung: `height: auto`, `display: block`,
+  eigene Schalter (Kästchen orange = an) statt md-checkbox.
+- Lauf 6 ✅: Fenster so lang wie der Inhalt, Schalter richtig (Sebastian). **M5.2 UI-App bestätigt.**

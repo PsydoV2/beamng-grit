@@ -140,7 +140,9 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
     Beam-Bruch an einem Kunststoff-Knoten. `perpendicularVel` ist dort immer 0, also unbrauchbar.
   - Haarriss bzw. ab 8 cm / Bruch Spinnennetz, mittelgrau, bleibt beim Waschen/Trocknen (`render.isDamage`).
   - Nur auf lackierten Teilen (z. B. ETK-Stoßstange), nicht auf unlackiertem Kunststoff (Covet-Stoßstange).
-- **Nächster Schritt: M5 Einstellungen/UI.** Vorher den M5-Abschnitt im Konzeptdokument lesen.
+- **M5 Einstellungen/UI:** M5.1 Einstellungen ✅ (`settings.lua`, `settings/grit.json`), M5.2 UI-App ✅
+  (`mod/ui/modules/apps/Grit/`, klappbar, offenes Fenster `position: fixed` wegen `overflow: hidden` am App-Rahmen).
+  **Nächster Schritt: M5.3** Qualitätsstufen (Budget, Layer zusammenführen), KI-Verkehr (`aiVehicles`, Standard aus).
 - **Danach:** M6 Release.
 
 ## Offene Punkte

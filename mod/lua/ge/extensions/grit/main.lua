@@ -764,6 +764,27 @@ M.set = function(key, value)
   return ok
 end
 M.get = function(key) return settings.get(key) end
+
+-- M5.2 UI-App (ui/modules/apps/Grit): Rückgabe geht als JSON an den Callback von bngApi.engineLua
+-- (Muster ui/modules/apps/threedexport/app.js:18-28)
+M.uiState = function()
+  local out = { settings = {} }
+  for _, k in ipairs(settings.ORDER) do out.settings[k] = settings.get(k) end
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]
+  out.active = car ~= nil and car.r ~= nil
+  out.layers = out.active and #car.r.layers or 0
+  out.maxLayers = render.MAX_LAYERS
+  return out
+end
+-- Knopf „Waschen“: ganzes Auto, volle Stärke (Radierer wie M3.1, Kratzer und Risse bleiben)
+M.washNow = function()
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
+  if not (car and car.r and veh) then L("W", "washNow: Grit ist für dieses Fahrzeug (noch) nicht aktiv"); return false end
+  local aabb = veh:getSpawnLocalAABB()
+  local ok, info = washBelow(car, veh, vec3(aabb.maxExtents).z + 0.3, 1)
+  L("I", "washNow: %s – %s", ok and "ok" or "abgebrochen", tostring(info))
+  return ok
+end
 M.resetSettings = function() settings.reset(); L("I", "Einstellungen zurückgesetzt: %s", settings.describe()) end
 -- Test M5.1 Lauf 4: nur Meshes, deren Name das Muster enthält (nil = alle); löscht Dreck und Kratzer
 M.onlyMeshes = function(pattern)
