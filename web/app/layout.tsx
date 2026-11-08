@@ -37,11 +37,18 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
+const UMAMI_ID = "0f81300a-7f50-4152-af6d-26b6d5d4a305";
+
 export const viewport: Viewport = { themeColor: "#121417" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${body.variable} ${display.variable}`}>
+      <head>
+        {/* Umami (selbst gehostet, cookielos): Seitenaufrufe und Sitzungsaufzeichnung. */}
+        <script defer src="https://webstats.sfalter.de/recorder.js" data-website-id={UMAMI_ID} />
+        <script defer src="https://webstats.sfalter.de/script.js" data-website-id={UMAMI_ID} />
+      </head>
       <body>{children}</body>
     </html>
   );

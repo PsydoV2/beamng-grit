@@ -27,10 +27,10 @@ export default function Privacy() {
 
       <h2>2. In short</h2>
       <p>
-        This is a plain information page. It sets <strong>no cookies</strong>, uses{" "}
-        <strong>no tracking or analytics</strong> and embeds no third-party content. Fonts and images are served from the
-        same server as the page, so your browser does not connect to Google or any other service. Personal data is only
-        processed in the technically necessary server log files.
+        This is a plain information page. It sets <strong>no cookies</strong> and embeds no third-party content. Fonts and
+        images are served from the same server as the page, so your browser does not connect to Google or any other
+        service. Besides the technically necessary server log files, I use a self-hosted, cookieless instance of Umami
+        for anonymous visitor statistics (see section 4).
       </p>
 
       <h2>3. Hosting and server log files</h2>
@@ -48,19 +48,32 @@ export default function Privacy() {
         provider.
       </p>
 
-      <h2>4. External links</h2>
+      <h2>4. Visitor statistics (Umami)</h2>
+      <p>
+        This website uses Umami, an open-source analytics tool that I host myself at webstats.sfalter.de. No data is
+        passed to third parties. Umami sets no cookies and does not store your full IP address. It records which pages are
+        visited, the referrer, browser, operating system, device type, screen size, language and country (derived from the
+        IP address). In addition, the session recording records how the page is used (scrolling, mouse movements and
+        clicks) so that I can improve the page.
+      </p>
+      <p>
+        The legal basis is Art. 6 (1) (f) GDPR (legitimate interest in understanding how the website is used and improving
+        it). You can prevent the collection by blocking JavaScript or the domain webstats.sfalter.de in your browser.
+      </p>
+
+      <h2>5. External links</h2>
       <p>
         This website links to the BeamNG forum (beamng.com) and to creativecommons.org. You only leave this website when you
         click such a link. From then on, the privacy policy of the respective provider applies.
       </p>
 
-      <h2>5. Contact by email</h2>
+      <h2>6. Contact by email</h2>
       <p>
         If you email me, I process your address and message only to answer your request (Art. 6 (1) (f) GDPR). The data is
         deleted once the request has been dealt with, unless statutory retention obligations apply.
       </p>
 
-      <h2>6. Your rights</h2>
+      <h2>7. Your rights</h2>
       <p>You have the right at any time to</p>
       <ul>
         <li>access the data stored about you (Art. 15 GDPR),</li>
@@ -75,7 +88,7 @@ export default function Privacy() {
         example the authority where you live.
       </p>
 
-      <h2>7. The mod itself</h2>
+      <h2>8. The mod itself</h2>
       <p>
         Grit runs locally inside BeamNG.drive. The mod sends no data to the internet; settings are stored only on your
         computer in <code>settings/grit.json</code>.
