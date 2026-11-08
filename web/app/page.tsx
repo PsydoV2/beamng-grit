@@ -1,6 +1,66 @@
 import BeforeAfter from "./BeforeAfter";
 import { AlphaBar, SiteFooter, SiteHeader } from "./Chrome";
-import { asset, FORUM_URL, GAME_VERSION, STAGE, VERSION } from "./site";
+import { FAQ, plain } from "./faq";
+import { asset, FORUM_URL, GAME_VERSION, SITE_URL, STAGE, UPDATED, VERSION } from "./site";
+
+// Strukturierte Daten für Suchmaschinen und KI-Antworten.
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: `${SITE_URL}/`,
+      name: "Grit",
+      inLanguage: "en",
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${SITE_URL}/#software`,
+      name: "Grit",
+      alternateName: "Grit – Dynamic Dirt, Scratches & Cracks for every vehicle",
+      description:
+        "Free BeamNG.drive mod that adds dynamic dirt, mud, dust, scratches and plastic cracks to every vehicle, vanilla and modded, based on what happens while you drive.",
+      applicationCategory: "GameApplication",
+      applicationSubCategory: "Game mod",
+      operatingSystem: "Windows",
+      softwareVersion: VERSION,
+      releaseNotes: `${STAGE} release`,
+      softwareRequirements: `BeamNG.drive ${GAME_VERSION}`,
+      dateModified: UPDATED,
+      url: `${SITE_URL}/`,
+      downloadUrl: FORUM_URL,
+      image: `${SITE_URL}/img/og.jpg`,
+      screenshot: [`${SITE_URL}/img/mud-after.webp`, `${SITE_URL}/img/scratch-after.webp`, `${SITE_URL}/img/dust.webp`],
+      license: "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      isAccessibleForFree: true,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+      author: { "@type": "Person", name: "Psydo" },
+      featureList: [
+        "Scratches where the body scrapes, in three depths",
+        "Wheel spray and contact dirt colored by the surface",
+        "Dust on fast runs over dusty ground",
+        "Washing in water and drying of wet dirt",
+        "Hairline and spiderweb cracks in dented painted plastic",
+        "Works on vanilla and modded vehicles, keeps paint and liveries",
+      ],
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
+      mainEntity: FAQ.map(({ q, a }) => ({
+        "@type": "Question",
+        name: q,
+        acceptedAnswer: { "@type": "Answer", text: plain(a) },
+      })),
+    },
+  ],
+};
+
+// `code` in FAQ-Antworten als <code> darstellen.
+function withCode(s: string) {
+  return s.split("`").map((part, i) => (i % 2 ? <code key={i}>{part}</code> : part));
+}
 
 function DownloadButton({ label = "Download on BeamNG.com" }: { label?: string }) {
   return (
@@ -17,7 +77,7 @@ function Shot({ src, alt, caption }: { src: string; alt: string; caption?: strin
   return (
     <figure className="shot">
       <a href={asset(src)} target="_blank" rel="noopener">
-        <img src={asset(src)} alt={alt} loading="lazy" />
+        <img src={asset(src)} alt={alt} width={1600} height={670} loading="lazy" />
       </a>
       {caption && <figcaption>{caption}</figcaption>}
     </figure>
@@ -34,6 +94,7 @@ const stats = [
 export default function Home() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <AlphaBar />
       <SiteHeader />
 
@@ -52,8 +113,8 @@ export default function Home() {
                 Dynamic dirt, scratches <span className="nowrap">&amp; cracks</span> for every vehicle.
               </h1>
               <p className="lead">
-                Scrape along a guardrail and the paint shows it. Drive off-road and mud piles up behind the wheels. Grit
-                gives every car a history, in the color of the ground you drive on.
+                Grit is a free BeamNG.drive mod that gives every car a history. Scrape along a guardrail and the paint
+                shows it. Drive off-road and mud piles up behind the wheels, in the color of the ground you drive on.
               </p>
               <div className="cta-row">
                 <DownloadButton />
@@ -87,7 +148,8 @@ export default function Home() {
         <section id="features" className="wrap intro">
           <h2>Not a preset. Not a skin.</h2>
           <p>
-            Grit reacts to what actually happens to your car. It works on <strong>every vehicle</strong>, finds the
+            Unlike a static dirt skin, this dirt and scratch mod reacts to what actually happens to your car. It works
+            on <strong>every vehicle</strong>, finds the
             painted parts on its own and puts everything on its own texture layer, so your paint, liveries and paint
             designs stay untouched.
           </p>
@@ -118,7 +180,9 @@ export default function Home() {
         {/* Kratzer */}
         <section className="feature">
           <div className="wrap">
-            <img className="feature-head" src={asset("/img/header-scratches.webp")} alt="Scratches" width={1600} height={360} loading="lazy" />
+            <h2 className="feature-title">
+              <img className="feature-head" src={asset("/img/header-scratches.webp")} alt="Scratches" width={1600} height={360} loading="lazy" />
+            </h2>
             <div className="feature-body">
               <ul className="bullets">
                 <li>Scrapes against walls, guardrails, rocks and other hard surfaces leave scratches exactly where the contact happened.</li>
@@ -139,7 +203,9 @@ export default function Home() {
         {/* Dreck */}
         <section className="feature">
           <div className="wrap">
-            <img className="feature-head" src={asset("/img/header-dirt.webp")} alt="Dirt & mud" width={1600} height={360} loading="lazy" />
+            <h2 className="feature-title">
+              <img className="feature-head" src={asset("/img/header-dirt.webp")} alt="Dirt & mud" width={1600} height={360} loading="lazy" />
+            </h2>
             <div className="feature-body">
               <ul className="bullets">
                 <li><strong>Wheel spray:</strong> dirt, mud, sand, gravel, grass or snow lands on the body behind each wheel and on the rear.</li>
@@ -158,7 +224,9 @@ export default function Home() {
         {/* Staub & Waschen */}
         <section className="feature">
           <div className="wrap">
-            <img className="feature-head" src={asset("/img/header-dust.webp")} alt="Dust & washing" width={1600} height={360} loading="lazy" />
+            <h2 className="feature-title">
+              <img className="feature-head" src={asset("/img/header-dust.webp")} alt="Dust & washing" width={1600} height={360} loading="lazy" />
+            </h2>
             <div className="feature-body">
               <ul className="bullets">
                 <li><strong>Dust:</strong> at speed on dusty ground a fine layer settles on the rear, the lower sides and the top.</li>
@@ -262,37 +330,21 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Einschränkungen */}
-        <section id="limits" className="wrap limits">
-          <p className="eyebrow">{STAGE} · known issues</p>
-          <h2>Good to know</h2>
-          <details>
-            <summary>Light scratches are hard to see on white or chrome</summary>
-            <p>They are light on light. On dark paint they show up clearly.</p>
-          </details>
-          <details>
-            <summary>Some cars only scratch low on the body</summary>
-            <p>Vehicles with collision points only near the sills and bumper corners keep guardrail scratches down there.</p>
-          </details>
-          <details>
-            <summary>Shared texture areas on some models</summary>
-            <p>
-              Some models reuse the same spot of their decal texture (UV1) for several parts. On the Ibishu Covet both
-              bumpers share one stretched area, so a scratch there can show up on both. <code>grit_main.uvCheck()</code>{" "}
-              in the Lua console shows the layout of any car, <code>grit_main.clear()</code> turns it off.
-            </p>
-          </details>
-          <details>
-            <summary>Player car only, nothing saved yet</summary>
-            <p>
-              AI traffic gets no Grit for now. Dirt and damage are gone after a reset, a repair or a restart. Other dirt or
-              scratch mods may conflict, use one at a time.
-            </p>
-          </details>
-          <details>
-            <summary>What&apos;s planned?</summary>
-            <p>Rain that slowly washes the car, and optional dirt and scratches on AI traffic.</p>
-          </details>
+        {/* FAQ inkl. bekannter Einschränkungen, Inhalt aus faq.ts (auch für JSON-LD) */}
+        <section id="faq" className="wrap limits">
+          <p className="eyebrow">FAQ · {STAGE} known issues</p>
+          <h2>Questions &amp; answers</h2>
+          {FAQ.map(({ q, a }) => (
+            <details key={q}>
+              <summary>
+                <h3 className="faq-q">{q}</h3>
+              </summary>
+              <p>{withCode(a)}</p>
+            </details>
+          ))}
+          <p className="note">
+            <time dateTime={UPDATED}>Last updated {UPDATED}</time> · Grit v{VERSION}
+          </p>
         </section>
       </main>
 

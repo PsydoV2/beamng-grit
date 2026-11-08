@@ -1,0 +1,15 @@
+# Grit
+
+> Grit is a free mod for BeamNG.drive that adds dynamic dirt, mud, dust, scratches and plastic cracks to every vehicle, vanilla and modded, based on what actually happens while you drive. Alpha, version 0.5.0, by Psydo, licensed CC BY-NC-SA 4.0.
+
+- Scratches appear exactly where the body scrapes hard surfaces, in three depths (clear coat, primer, bare metal), along the direction of the slide.
+- Wheel spray and body contact leave dirt colored by the surface (mud, dirt, sand, gravel, grass, snow). Fast runs on dusty ground leave a dust layer.
+- Driving into water washes dirt off below the waterline. Wet dirt dries lighter over about 90 seconds.
+- Dented or broken painted plastic parts get hairline or spiderweb cracks.
+- Paint and liveries stay untouched; no game files are changed. Performance: about 1 ms per new decal, under 1 ms per idle frame.
+- Limitations: player car only, nothing is saved across resets or restarts.
+
+## Links
+
+- [Landing page](https://grit.sfalter.de/): features, installation, FAQ
+- [Download and forum thread on BeamNG.com](https://www.beamng.com/resources/grit-%E2%80%93-dynamic-dirt-scratches-cracks-for-every-vehicle.40240/)

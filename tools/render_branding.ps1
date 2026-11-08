@@ -13,7 +13,7 @@ if (-not $browser) { throw "Weder Chrome noch Edge gefunden" }
 
 $assets = [ordered]@{
   "logo" = "1024,1024"; "logo-transparent" = "1024,1024"; "wordmark" = "2000,760"
-  "banner" = "1920,640"; "thumbnail" = "1280,720"
+  "banner" = "1920,640"; "thumbnail" = "1280,720"; "og" = "1200,630"
   "header-scratches" = "1600,360"; "header-dirt" = "1600,360"; "header-dust" = "1600,360"
 }
 $profile = Join-Path $env:TEMP "grit-render-profile"

@@ -5,6 +5,7 @@ import { LEGAL } from "../site";
 export const metadata: Metadata = {
   title: "Privacy Policy – Grit",
   robots: { index: false },
+  alternates: { canonical: "/privacy/" },
 };
 
 // Datenschutzerklärung nach DSGVO, auf Englisch.

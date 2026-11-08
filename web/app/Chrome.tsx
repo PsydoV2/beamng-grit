@@ -26,14 +26,14 @@ export function SiteHeader({ home = true }: { home?: boolean }) {
     <header className="nav">
       <div className="wrap nav-inner">
         <Link className="brand" href="/" aria-label="Grit home">
-          <img src={asset("/img/logo.png")} alt="" width={24} height={32} />
+          <img src={asset("/img/logo.png")} alt="" width={24} height={33} />
           <span>Grit</span>
           <span className="alpha-chip alpha-chip-sm">{STAGE}</span>
         </Link>
         <nav className="nav-links" aria-label="Sections">
           <Link href={`${base}#features`}>Features</Link>
           <Link href={`${base}#install`}>Install</Link>
-          <Link href={`${base}#limits`}>Limitations</Link>
+          <Link href={`${base}#faq`}>FAQ</Link>
         </nav>
         <a className="btn btn-small" href={FORUM_URL} target="_blank" rel="noopener">
           Download
@@ -48,7 +48,7 @@ export function SiteFooter() {
     <footer className="footer">
       <div className="wrap footer-inner">
         <div className="brand">
-          <img src={asset("/img/logo.png")} alt="" width={24} height={32} />
+          <img src={asset("/img/logo.png")} alt="" width={24} height={33} />
           <span>Grit</span>
           <span className="alpha-chip alpha-chip-sm">{STAGE}</span>
         </div>

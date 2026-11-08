@@ -5,6 +5,7 @@ import { LEGAL } from "../site";
 export const metadata: Metadata = {
   title: "Legal Notice – Grit",
   robots: { index: false },
+  alternates: { canonical: "/legal-notice/" },
 };
 
 // Impressum nach deutschem Recht (§ 5 DDG, § 18 Abs. 2 MStV), auf Englisch.

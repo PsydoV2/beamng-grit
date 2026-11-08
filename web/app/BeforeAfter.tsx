@@ -16,8 +16,8 @@ export default function BeforeAfter({ before, after, alt, start = 50 }: Props) {
 
   return (
     <div className="ba" style={{ ["--pos" as string]: `${pos}%` }}>
-      <img className="ba-img" src={after} alt={`${alt}, with Grit`} loading="lazy" />
-      <img className="ba-img ba-before" src={before} alt={`${alt}, clean`} loading="lazy" aria-hidden="true" />
+      <img className="ba-img" src={after} alt={`${alt}, with Grit`} width={1600} height={670} loading="lazy" />
+      <img className="ba-img ba-before" src={before} alt={`${alt}, clean`} width={1600} height={670} loading="lazy" aria-hidden="true" />
       <span className="ba-label ba-label-l">Clean</span>
       <span className="ba-label ba-label-r">With Grit</span>
       <span className="ba-handle" aria-hidden="true">

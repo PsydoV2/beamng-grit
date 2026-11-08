@@ -920,3 +920,24 @@ mark.todo {
   color: var(--text-2);
   font-style: italic;
 }
+
+/* Abschnittsköpfe als Bild innerhalb einer echten h2 (SEO/Gliederung) */
+.feature-title {
+  margin: 0;
+  font-size: inherit;
+  line-height: 0;
+}
+
+.feature-title .feature-head {
+  display: block;
+}
+
+/* FAQ-Fragen sind h3 für die Gliederung, sehen aber aus wie der Summary-Text */
+.faq-q {
+  display: inline;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  color: inherit;
+}

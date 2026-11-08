@@ -21,3 +21,8 @@ export const GAME_VERSION = "0.40.5.0";
 // Bilder liegen in public/, beim Export unter einem Unterpfad (GitHub Pages) braucht es das Präfix.
 export const asset = (p: string) =>
   `${process.env.NEXT_PUBLIC_BASE_PATH || ""}${p}`;
+
+// Öffentliche Adresse (Canonical, Open Graph, Sitemap, JSON-LD). Sitemap in public/sitemap.xml mitpflegen.
+export const SITE_URL = "https://grit.sfalter.de";
+// Stand der Seite / der aktuellen Version (ISO-Datum), für JSON-LD und „Last updated“.
+export const UPDATED = "2026-11-08";
