@@ -44,6 +44,9 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
     nach `branding/out/` (prozedural, Seed 7, Schrift Bahnschrift). Optik beurteilt Sebastian.
   - `tools/build_release.ps1 -Version X.Y.Z` baut `build/grit_vX.Y.Z.zip` (Inhalt von `mod/` + README + LICENSE,
     schaltet `M.debugLog` und Sensor-`DIAG` aus, prüft das ZIP). Version auch in README.md eintragen.
+  - `web/`: Landingpage (Next.js 16, statischer Export nach `web/out/`). `npm run dev` bzw. `npm run build`;
+    `scripts/prepare-assets.mjs` erzeugt `public/img/` aus `branding/out` und `screenshots/` (nicht im Git).
+    Download-Link zeigt auf den Forum-Eintrag (`app/site.ts`), Version dort mitpflegen.
   - `mod/art/grit/*.png`: Texturen, erzeugt von `tools/gen_textures.ps1` mit festen Seeds.
     Aufruf: `powershell.exe -ExecutionPolicy Bypass -File tools/gen_textures.ps1`
 - Shell: Git Bash. `cd` in Bash springt manchmal zurück, deshalb absolute Pfade benutzen.
