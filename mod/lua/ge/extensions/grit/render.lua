@@ -136,7 +136,15 @@ function R:clear(veh)
   self:refresh(veh, true)   -- Reparatur kann die Form ändern
   self.layers, self.queue, self.dryQueue, self.baked, self.committed = {}, {}, {}, 0, 0
   self.cells = {}            -- Oberflächen-Abstände neu lernen
-  self:rebake(veh)
+  -- Test 2026-11-13: das zuletzt projizierte Decal blieb sichtbar, obwohl exportTextures danach leere Texturen
+  -- zeigte. Der Editor leert beim Abschalten die dynamischen Texturen und kombiniert sofort
+  -- (editor/api/dynamicDecals.lua:2242-2247) → hier ebenso für alle vier Projektionen.
+  local all = { { self.color, self.colorSet }, { self.mask, self.maskSet }, { self.dcolor, self.dcolorSet },
+                { self.dmask, self.dmaskSet } }
+  for _, x in ipairs(all) do x[1]:flushDynamicTextures() end
+  local ms = self:rebake(veh)
+  for _, x in ipairs(all) do x[1]:combineTextures(x[2]) end
+  return ms
 end
 
 -- Spike 6: Decals ohne Projektion. projectDynamicDecals kostet 12–15 ms CPU je Aufruf (M2.2 Lauf 5). Layer-Daten

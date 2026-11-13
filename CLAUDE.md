@@ -1,6 +1,6 @@
 # Grit – BeamNG.drive-Mod für dynamischen Dreck und Kratzer (früher Patina)
 
-Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Code, Pfade und Konsolenbefehle heißen seit 2026-11-06 `grit` (vorher Patina; Repo-Ordner heißt noch „Dynamic Patina“).
+Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Code, Pfade und Konsolenbefehle heißen seit 2026-11-06 `grit` (vorher Patina; Repo-Ordner seit 2026-11-13 `E:\BeamNGMods\Grit`, vorher „Dynamic Patina“).
 Autor im Release: **Psydo** (nicht Sebastian). Lizenz: CC BY-NC-SA 4.0 (`LICENSE`). `README.md` ist die öffentliche Beschreibung (Englisch), bei neuen Features mitpflegen.
 
 Übergabe für neue Sessions. Stand: 2026-11-07, letzter Commit siehe `git log -1`.
@@ -30,11 +30,13 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 ## Pfade
 - Spiel: `F:\SteamLibrary\steamapps\common\BeamNG.drive`, Version 0.40.5.0, Lua unter `lua/`.
 - User-Ordner: `C:\Users\sebfa\AppData\Local\BeamNG\BeamNG.drive\current`
-  - `mods/unpacked/grit` ist eine **Junction** auf `E:\BeamNGMods\Dynamic Patina\mod`.
+  - `mods/unpacked/grit` ist eine **Junction** auf `E:\BeamNGMods\Grit\mod` (seit 2026-11-13). Eine
+    `.lnk`-Verknüpfung funktioniert nicht, neu anlegen mit
+    `New-Item -ItemType Junction -Path <User>\mods\unpacked\grit -Target E:\BeamNGMods\Grit\mod`.
     Änderungen wirken nach **Strg+L** im Spiel (Lua neu laden).
   - **`grit.log`** ist unser eigenes Log, wird sofort geschrieben (`M.debugLog`). `beamng.log` puffert minutenlang.
   - Screenshots (Strg+P) liegen unter `screenshots/2026-11/`.
-- Repo `E:\BeamNGMods\Dynamic Patina`:
+- Repo `E:\BeamNGMods\Grit`:
   - `mod/scripts/grit/modScript.lua` lädt `grit_main`.
   - `mod/lua/ge/extensions/grit/main.lua`: GE-Extension, Fahrzeug-Lebenszyklus, Ereignis → Decal, Konsolenbefehle.
   - `mod/lua/ge/extensions/grit/render.lua`: Decal-Renderer pro Fahrzeug (Projektion, Synthese, Backen).
@@ -117,11 +119,12 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   - Frametime getrennt nach „arbeitet“ und Leerlauf, dazu die CPU-Zeit von `render:update`
 
   Danach werden die Messwerte zurückgesetzt.
-- `grit_main.testScratch("left"|"right"|"top", level 1–3, tiltGrad)`: Test-Kratzer.
+- `grit_main.testScratch("left"|"right"|"top", level 1–3, tiltGrad, along 0–1, variante 1–3)`: Test-Kratzer.
 - `grit_main.testWash(höhe_m, stärke 0–1)`: Spike 7, Radierer bis höhe m über der Unterkante.
 - `grit_main.settings()`, `grit_main.set("dirtStrength", 1.5)`, `grit_main.resetSettings()`: Einstellungen (M5.1),
   gespeichert in `<User>/settings/grit.json`.
 - `grit_main.clear()`: Dreck und Kratzer am aktuellen Auto löschen. Ein Fahrzeug-Reset löscht ebenfalls.
+- `grit_main.exportTex("tag")`: die vier Texturen als PNG nach `<User>/grit_export/tag/` (Diagnose).
 - `grit_main.synthetic(true|false)`
 - Log lesen: `grep … "$USER/AppData/Local/BeamNG/BeamNG.drive/current/grit.log"`, ab der letzten Zeile
   „Grit geladen“.

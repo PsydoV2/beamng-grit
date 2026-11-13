@@ -1233,3 +1233,44 @@ isoliert zu beweisen. Danach Spike 2 = Weg A′ auf einem Fahrzeug **ohne** Pres
 - Bau 3: Init-Decal 10 Frames nach „aktiv“ aus onUpdate anfragen, Log „Init-Decal angefragt“.
 - Lauf 4 (Sebastian): ≈ 15× Strg+L ohne Streifen. Einmal kurz eine Hälfte matt, die andere metallisch, normal
   sobald man losfährt. Sebastian: kein weiterer Fokus nötig. → bekannter kleiner Restpunkt.
+
+## Nach Release: Low Hanging Fruits (Notion, 2026-11-13)
+
+Anlass: ein Reupload mit Änderungen (mehr Kratzer-Texturen, Risse, Dreck je Untergrund, „upscaled textures“).
+Reupload weder angesehen noch übernommen.
+
+### Kratzer-Varianten – Bau 1 (2026-11-13)
+- `tools/gen_textures.ps1`: je Stufe 3 Varianten `scratch_<stufe>_1..3.png` (1024²). Variante 1 = alte Textur,
+  per `cmp` bytegleich geprüft (gleicher Seed, `Draw-Streak` unverändert). Neu `Draw-StreakEx` (freier Anfang/Ende,
+  Drift = schräge Linie) und `Get-Span` (Linie setzt später ein / bricht ab).
+  - leicht 2: wenige, teils abgebrochene Haarlinien; leicht 3: schräges Bündel
+  - mittel 2: kräftige Linien teils abgebrochen; mittel 3: schräges Bündel mit zwei kräftigen Linien
+  - tief 2: eine breite durchgehende + eine kurze Riefe; tief 3: zwei leicht zusammenlaufende Riefen
+- `main.lua`: `SCRATCH.levels[i].textures` (Liste), Auswahl `math.random(#t)`, dazu `up` zu 50 % negiert (180°
+  gedreht) → 6 Ansichten pro Stufe. `-dir`: `LuaVec3.__unm` (`lua/common/mathlib.lua:136`).
+- Spike 6 bleibt gültig: `R:synth` setzt `decalColorTexturePath = d.texture` pro Anfrage (`render.lua:293`), der
+  Zellschlüssel (`render.lua:151-154`) enthält keine Textur.
+- `testScratch(side, level, tilt, along, variant)`: 5. Argument wählt die Variante, Log nennt die Textur.
+- Texturauflösung bewusst **nicht** erhöht (Schätzung, nicht gemessen): Ein Kratzer (0.12 × 0.3–1.0 m) belegt in der Zieltextur 2048×1024 nur
+  einige zehn bis wenige hundert Texel, die 1024²-Quelle ist also schon 3- bis 20-fach überabgetastet. Eine
+  2048²-Quelle wäre nicht schärfer, kostet aber das 4-Fache an Speicher. Der Engpass ist die Zielauflösung
+  (`render.lua:11`), die Sebastian in M5.3 Lauf 2 bewusst bei 2048×1024 gelassen hat.
+
+### Kratzer-Varianten – Lauf 1 (2026-11-13, Gavril Barstow, schwarz)
+- `testScratch("left", 3, 0, 0.3|0.5|0.7, 1|2|3)`, Screenshot 17-25-25: drei verschiedene Riefen-Bilder (3 Riefen /
+  lang+kurz / 2 Riefen). Sebastian: Varianten 2 und 3 „gefühlt gleich“ (beide zwei Linien).
+- **Bug (alt, nicht durch die Varianten):** Nach Clear all (6×, Log „clear: 0 Ebenen … Voll-Bake 0.4 ms“) bleibt das
+  zuletzt **echt projizierte** Decal stehen (Screenshot 17-25-45), die beiden davor sind weg. Vermutung: Live-Vorschau
+  der Projektion `self.color`, die `clearBakedTextures`/`bakeLayers` nicht berührt; Alpha 0 der Vorschau reicht nicht.
+- Bau 2: `grit_main.testHidePreview("enable"|"project")` (`R:hidePreview`): aus/ein per `setEnabled`
+  (`editor/api/dynamicDecals.lua:2242-2243`) bzw. winziges Decal an der letzten Projektionsstelle.
+- Lauf 2: `testHidePreview("enable")` und `("project")` → Kratzer bleibt. Vorschau-These damit unwahrscheinlich.
+- Lauf 3: `grit_main.exportTex(tag)` (exportTextures, `editor/api/dynamicDecals.lua:2070-2071`). Vor clear: Kratzer
+  in `dcolor_d`/`dmask_d` (UV 790–936 × 882–896), `color`/`mask` leer. **Nach clear sind alle vier `_d` leer**, der
+  Kratzer ist im Spiel aber noch sichtbar → gebackene Texturen stimmen, die angezeigte (kombinierte) hinkt hinterher.
+  `_m`/`_r` überall 255, `_cp` überall 0.
+- Editor beim Abschalten: `flushDynamicTextures()` + sofort `combineTextures(set)` (`dynamicDecals.lua:2242-2247`).
+  Bau 4: `R:clear` leert die dynamischen Texturen aller vier Projektionen, backt neu und kombiniert sofort.
+- Lauf 4 (Sebastian) ✅: ein Kratzer und danach drei Kratzer, Clear all löscht jeweils alles (Log 17:38). Ursache
+  also die nicht geleerten dynamischen Texturen bzw. das fehlende sofortige Kombinieren. `testHidePreview` wieder
+  entfernt, `exportTex(tag)` bleibt als Diagnose.

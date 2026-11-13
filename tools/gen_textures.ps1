@@ -2,7 +2,8 @@
 # Erzeugt Graustufen-Masken (weiß, Form im Alphakanal) für Kratzer in drei Tiefen.
 # Eingefärbt wird zur Laufzeit (Konzept: Assets). Quadratisch wie die Spiel-Decals (art/dynamicDecals/textures, 2048²).
 # Aufruf:  powershell -ExecutionPolicy Bypass -File tools\gen_textures.ps1
-# Ausgabe: mod/art/grit/scratch_light.png, scratch_medium.png, scratch_deep.png
+# Ausgabe: mod/art/grit/scratch_light_1..3.png, scratch_medium_1..3.png, scratch_deep_1..3.png (Variante 1 = alter Stand),
+#          dirt_splash.png, dust.png, solid.png, crack_hair.png, crack_web.png, uvcheck.png
 # Linien laufen senkrecht = Länge des Decals (Decal-„oben“ = Schleifrichtung).
 
 Add-Type -AssemblyName System.Drawing
@@ -40,6 +41,34 @@ function Draw-Streak($g, $rnd, [double]$x, [double]$width, [int]$alphaMax, [doub
   }
 }
 
+# Variante für die Kratzer-Varianten: freier Anfang/Ende (y0, y1) und Drift (Versatz in x über die ganze Länge,
+# schräge Linie). Draw-Streak bleibt unverändert, damit Variante 1 jeder Stufe pixelgleich zum alten Stand bleibt.
+function Draw-StreakEx($g, $rnd, [double]$x, [double]$y0, [double]$y1, [double]$drift, [double]$width, [int]$alphaMax, [double]$wobble, [int]$segments) {
+  $prevX = $x; $prevY = $y0; $off = 0.0          # $off = aufsummiertes Wackeln wie bei Draw-Streak
+  for ($i = 1; $i -le $segments; $i++) {
+    $t = $i / $segments
+    $y = $y0 + ($y1 - $y0) * $t
+    $off += ($rnd.NextDouble() - 0.5) * $wobble
+    $nx = [Math]::Max($size * 0.05, [Math]::Min($size * 0.95, $x + $drift * $t + $off))
+    $fade = [Math]::Sin([Math]::PI * $t)
+    $a = [int]([Math]::Max(0, [Math]::Min(255, $alphaMax * (0.55 + 0.45 * $fade) * (0.8 + 0.2 * $rnd.NextDouble()))))
+    $w = [single]([Math]::Max(0.6, $width * (0.6 + 0.4 * $fade) * (0.85 + 0.3 * $rnd.NextDouble())))
+    $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb($a, 255, 255, 255), $w)
+    $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawLine($pen, [single]$prevX, [single]$prevY, [single]$nx, [single]$y)
+    $pen.Dispose()
+    $prevX = $nx; $prevY = $y
+  }
+}
+
+# zufälliger Teilabschnitt der Länge: Linie setzt später ein und/oder bricht früher ab (mind. 35 % der Höhe)
+function Get-Span($rnd) {
+  $len = $size * (0.35 + 0.55 * $rnd.NextDouble())
+  $y0 = $size * 0.04 + $rnd.NextDouble() * ($size * 0.92 - $len)
+  return @($y0, ($y0 + $len))
+}
+
 function Save($bmp, $g, $name) {
   $g.Dispose()
   $path = Join-Path $outDir $name
@@ -54,7 +83,26 @@ $c = New-Canvas
 for ($i = 0; $i -lt 14; $i++) {
   Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (6 + 6 * $rnd.NextDouble()) (170 + $rnd.Next(85)) 6 40
 }
-Save $c[0] $c[1] "scratch_light.png"
+Save $c[0] $c[1] "scratch_light_1.png"
+
+# leicht 2: wenige Haarlinien, die mittendrin einsetzen oder abbrechen
+$rnd = New-Object System.Random(1101)
+$c = New-Canvas
+for ($i = 0; $i -lt 9; $i++) {
+  $sp = Get-Span $rnd
+  Draw-StreakEx $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) $sp[0] $sp[1] 0 (6 + 6 * $rnd.NextDouble()) (170 + $rnd.Next(85)) 6 40
+}
+Save $c[0] $c[1] "scratch_light_2.png"
+
+# leicht 3: dichtes, leicht schräges Bündel feiner Linien (Schleifspur einer Kante)
+$rnd = New-Object System.Random(1201)
+$c = New-Canvas
+$cx = $size * (0.40 + 0.2 * $rnd.NextDouble()); $drift = $size * (0.06 + 0.08 * $rnd.NextDouble()) * $(if ($rnd.NextDouble() -lt 0.5) { -1 } else { 1 })
+for ($i = 0; $i -lt 18; $i++) {
+  $y0 = $rnd.NextDouble() * $size * 0.15; $y1 = $size - $rnd.NextDouble() * $size * 0.15
+  Draw-StreakEx $c[1] $rnd ($cx - $drift / 2 + ($rnd.NextDouble() - 0.5) * $size * 0.3) $y0 $y1 $drift (4 + 5 * $rnd.NextDouble()) (150 + $rnd.Next(100)) 5 40
+}
+Save $c[0] $c[1] "scratch_light_3.png"
 
 # mittel: weniger, kräftigere Linien (Grundierung)
 $rnd = New-Object System.Random(2002)
@@ -65,7 +113,32 @@ for ($i = 0; $i -lt 10; $i++) {
 for ($i = 0; $i -lt 14; $i++) {
   Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (5 + 4 * $rnd.NextDouble()) (150 + $rnd.Next(80)) 6 40
 }
-Save $c[0] $c[1] "scratch_medium.png"
+Save $c[0] $c[1] "scratch_medium_1.png"
+
+# mittel 2: kräftige Linien teils abgebrochen, feine Linien durchgehend
+$rnd = New-Object System.Random(2102)
+$c = New-Canvas
+for ($i = 0; $i -lt 6; $i++) {
+  $sp = Get-Span $rnd
+  Draw-StreakEx $c[1] $rnd ($size * (0.12 + 0.76 * $rnd.NextDouble())) $sp[0] $sp[1] 0 (14 + 12 * $rnd.NextDouble()) (210 + $rnd.Next(45)) 10 40
+}
+for ($i = 0; $i -lt 12; $i++) {
+  Draw-Streak $c[1] $rnd ($size * (0.08 + 0.84 * $rnd.NextDouble())) (5 + 4 * $rnd.NextDouble()) (150 + $rnd.Next(80)) 6 40
+}
+Save $c[0] $c[1] "scratch_medium_2.png"
+
+# mittel 3: schräges Bündel, zwei kräftige Linien in der Mitte
+$rnd = New-Object System.Random(2202)
+$c = New-Canvas
+$cx = $size * (0.40 + 0.2 * $rnd.NextDouble()); $drift = $size * (0.06 + 0.08 * $rnd.NextDouble()) * $(if ($rnd.NextDouble() -lt 0.5) { -1 } else { 1 })
+for ($i = 0; $i -lt 2; $i++) {
+  Draw-StreakEx $c[1] $rnd ($cx - $drift / 2 + ($rnd.NextDouble() - 0.5) * $size * 0.12) ($size * 0.06) ($size * 0.94) $drift (16 + 10 * $rnd.NextDouble()) (220 + $rnd.Next(35)) 10 40
+}
+for ($i = 0; $i -lt 14; $i++) {
+  $sp = Get-Span $rnd
+  Draw-StreakEx $c[1] $rnd ($cx - $drift / 2 + ($rnd.NextDouble() - 0.5) * $size * 0.4) $sp[0] $sp[1] $drift (5 + 4 * $rnd.NextDouble()) (150 + $rnd.Next(80)) 6 40
+}
+Save $c[0] $c[1] "scratch_medium_3.png"
 
 # tief: wenige breite Riefen mit ausgefransten Rändern (blankes Metall)
 $rnd = New-Object System.Random(3003)
@@ -77,7 +150,37 @@ for ($i = 0; $i -lt 3; $i++) {
     Draw-Streak $c[1] $rnd ($x + ($rnd.NextDouble() - 0.5) * 40) (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
   }
 }
-Save $c[0] $c[1] "scratch_deep.png"
+Save $c[0] $c[1] "scratch_deep_1.png"
+
+# tief 2: eine breite durchgehende Riefe + eine kurze daneben
+$rnd = New-Object System.Random(3103)
+$c = New-Canvas
+$x = $size * (0.35 + 0.3 * $rnd.NextDouble())
+Draw-StreakEx $c[1] $rnd $x ($size * 0.05) ($size * 0.95) 0 (34 + 14 * $rnd.NextDouble()) 255 14 60
+for ($k = 0; $k -lt 8; $k++) {
+  Draw-StreakEx $c[1] $rnd ($x + ($rnd.NextDouble() - 0.5) * 56) ($size * 0.06) ($size * 0.94) 0 (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
+}
+$x2 = $x + $(if ($x -lt $size / 2) { 1 } else { -1 }) * $size * (0.15 + 0.1 * $rnd.NextDouble())
+$sp = Get-Span $rnd
+Draw-StreakEx $c[1] $rnd $x2 $sp[0] $sp[1] 0 (18 + 10 * $rnd.NextDouble()) 245 12 50
+for ($k = 0; $k -lt 4; $k++) {
+  Draw-StreakEx $c[1] $rnd ($x2 + ($rnd.NextDouble() - 0.5) * 36) $sp[0] $sp[1] 0 (3 + 3 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
+}
+Save $c[0] $c[1] "scratch_deep_2.png"
+
+# tief 3: zwei Riefen, die leicht schräg zusammenlaufen, beide nicht ganz durchgehend
+$rnd = New-Object System.Random(3203)
+$c = New-Canvas
+$xa = $size * (0.30 + 0.1 * $rnd.NextDouble()); $xb = $size * (0.60 + 0.1 * $rnd.NextDouble())
+$conv = ($xb - $xa) * (0.35 + 0.2 * $rnd.NextDouble())
+foreach ($p in @(@($xa, ($conv / 2)), @($xb, (-$conv / 2)))) {   # Komma bindet stärker als „/“
+  $sp = Get-Span $rnd
+  Draw-StreakEx $c[1] $rnd $p[0] $sp[0] $sp[1] $p[1] (24 + 16 * $rnd.NextDouble()) 255 14 60
+  for ($k = 0; $k -lt 6; $k++) {
+    Draw-StreakEx $c[1] $rnd ($p[0] + ($rnd.NextDouble() - 0.5) * 40) $sp[0] $sp[1] $p[1] (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
+  }
+}
+Save $c[0] $c[1] "scratch_deep_3.png"
 
 # Dreck-Spritzer: weiche Kleckse (radialer Verlauf) + kleine Tropfen, Mitte dichter (M2)
 function Draw-Blob($g, [double]$cx, [double]$cy, [double]$r, [int]$alpha) {

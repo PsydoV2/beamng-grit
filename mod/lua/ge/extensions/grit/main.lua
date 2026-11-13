@@ -32,12 +32,20 @@ local SENSOR_FILE, SENSOR_NAME = "grit/sensor", "gritSensor"
 -- Masken aus tools/gen_textures.ps1. Dauerschrammen desselben Knotens: Treffer 1–2 leicht, 3–4 mittel, ab 5 tief;
 -- jeder Treffer etwas versetzt entlang der Schleifrichtung → lange Spuren statt eines Flecks (M1.2 Lauf 1:
 -- „schwer Kratzer zu bekommen“, alle Ebenen lagen genau übereinander). Harte Schramme mindestens mittel.
+-- Varianten (Notion „Kratzer-Varianten“, 2026-11-13): je Stufe 3 Texturen, Auswahl zufällig, dazu zufällig um 180°
+-- gedreht (up = −Richtung) → 6 Ansichten pro Stufe. Variante 1 = alte Textur. Spike 6 setzt die Textur pro Anfrage
+-- (render.lua R:synth), der Zellschlüssel enthält keine Textur → keine zusätzlichen echten Projektionen.
+local function variants(name, n)
+  local t = {}
+  for i = 1, n do t[i] = string.format("/art/grit/%s_%d.png", name, i) end
+  return t
+end
 local SCRATCH = {
   depth = 0.25, minLen = 0.3, lenPerMs = 0.06, maxLen = 1.0,
   levels = {
-    { texture = "/art/grit/scratch_light.png",  color = { 0.95, 0.95, 0.93 }, strength = 0.85, width = 0.12 },
-    { texture = "/art/grit/scratch_medium.png", color = { 0.45, 0.45, 0.43 }, strength = 1.00, width = 0.12 },
-    { texture = "/art/grit/scratch_deep.png",   color = { 0.75, 0.76, 0.78 }, strength = 1.00, width = 0.10 },
+    { textures = variants("scratch_light", 3),  color = { 0.95, 0.95, 0.93 }, strength = 0.85, width = 0.12 },
+    { textures = variants("scratch_medium", 3), color = { 0.45, 0.45, 0.43 }, strength = 1.00, width = 0.12 },
+    { textures = variants("scratch_deep", 3),   color = { 0.75, 0.76, 0.78 }, strength = 1.00, width = 0.10 },
   },
   levelAt = { 1, 3, 5 }, -- ab diesem Treffer pro Knoten gilt Stufe 1/2/3
   hardSlip = 8,          -- m/s: ab hier mindestens mittel
@@ -601,10 +609,11 @@ M.onSensorEvents = function(vid, ev)
       if hits > 0 and dir:length() > 1e-3 then   -- erster Treffer genau am Knoten, weitere versetzt
         pos = pos + dir:normalized() * ((math.random() - 0.5) * len * SCRATCH.jitter)
       end
+      local up = math.random() < 0.5 and dir or -dir   -- 180° gedreht: Kratzer haben keine Vorzugsrichtung
       local ok = car.r:request({
-        pos = pos, normal = vec3(s.nx, s.ny, s.nz), up = dir,
+        pos = pos, normal = vec3(s.nx, s.ny, s.nz), up = up,
         tolAlong = 0.1, region = "k",   -- M1.3 Lauf 2: Spiegel-Knoten stehen ab → Strahl trifft Motorhaube/Kotflügel 0.12–0.2 m innen
-        width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.texture,
+        width = lv.width, length = len, depth = SCRATCH.depth, texture = lv.textures[math.random(#lv.textures)],
         color = lv.color, strength = lv.strength, name = "Grit Kratzer " .. level,
       })
       if ok then car.scrapes = (car.scrapes or 0) + 1; car.nodeHits[s.c] = hits + 1 end
@@ -758,7 +767,7 @@ M.status = function()
   perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 end
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
-M.testScratch = function(side, level, tilt, along)   -- tilt: Grad (Vorzeichen-Test); along: 0 = vorne … 1 = hinten (UV-Test M5.1)
+M.testScratch = function(side, level, tilt, along, variant)   -- tilt: Grad (Vorzeichen-Test); along: 0 = vorne … 1 = hinten (UV-Test M5.1); variant: 1–3, sonst zufällig
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
   if not (car and car.r and veh) then L("W", "testScratch: Grit ist für dieses Fahrzeug (noch) nicht aktiv"); return end
   local aabb = veh:getSpawnLocalAABB()
@@ -770,9 +779,10 @@ M.testScratch = function(side, level, tilt, along)   -- tilt: Grad (Vorzeichen-T
   local lv = SCRATCH.levels[level or 3] or SCRATCH.levels[3]
   local a = math.rad(tilt or 0)
   local up = n.z > 0.5 and vec3(-math.sin(a), -math.cos(a), 0) or vec3(0, -math.cos(a), math.sin(a))
+  local tex = lv.textures[variant] or lv.textures[math.random(#lv.textures)]
   car.r:request({ pos = pos, normal = n, up = up, width = 0.2, length = 0.6, depth = 0.4,
-    texture = lv.texture, color = lv.color, strength = lv.strength, name = "Grit Test" })
-  L("I", "testScratch(%s): pos %s", tostring(side), tostring(pos))
+    texture = tex, color = lv.color, strength = lv.strength, name = "Grit Test" })
+  L("I", "testScratch(%s): pos %s, %s", tostring(side), tostring(pos), tex)
 end
 
 -- Spike 7: Waschen von Hand. Alles bis height m über der Fahrzeug-Unterkante verliert den Anteil strength
@@ -804,7 +814,26 @@ M.synthetic = function(on) render.SYNTHETIC = on and true or false; L("I", "Synt
 
 M.clear = function()
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]
-  if car and car.r then car.r:clear(be:getObjectByID(vid)); car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil, car.crackCount, car.cracks = {}, {}, {}, 0, {}, 0, nil, nil, {}, 0 end
+  if car and car.r then
+    local nl, nq = #car.r.layers, #car.r.queue
+    local ms = car.r:clear(be:getObjectByID(vid))
+    L("I", "clear: %d Ebenen, %d in Warteschlange gelöscht, Voll-Bake %.1f ms", nl, nq, ms or -1)
+  else
+    L("W", "clear: Grit ist für Fahrzeug %s nicht aktiv", tostring(vid))
+  end
+  if car and car.r then car.nodeHits, car.sprayCount, car.dirtLevel, car.dusts, car.contactCount, car.contacts, car.wash, car.wetUntil, car.crackCount, car.cracks = {}, {}, {}, 0, {}, 0, nil, nil, {}, 0 end
+end
+
+-- Diagnose 2026-11-13: alle vier Texturen als PNG nach <User>/grit_export/<tag>/ (exportTextures wie
+-- editor/api/dynamicDecals.lua:2070-2071, 2083; Spike 2b Lauf 4)
+M.exportTex = function(tag)
+  local vid = be:getPlayerVehicleID(0); local car = cars[vid]
+  if not (car and car.r) then L("W", "exportTex: Grit nicht aktiv"); return end
+  local dir = "/grit_export/" .. tostring(tag or "a") .. "/"
+  for name, p in pairs({ color = car.r.color, mask = car.r.mask, dcolor = car.r.dcolor, dmask = car.r.dmask }) do
+    local ok, e = pcall(function() return p:exportTextures(dir, name, "png") end)
+    L("I", "exportTex %s%s: %s %s", dir, name, ok and "ok" or "Fehler", tostring(e))
+  end
 end
 
 -- M5.1 Einstellungen (settings.lua). Konsole: grit_main.settings(), grit_main.set("dirtStrength", 1.5),
@@ -855,7 +884,7 @@ M.testAt = function(kind, x, y, z, nx, ny, nz)
     local n = vec3(nx, ny, nz)
     local lv = SCRATCH.levels[3]
     car.r:request({ pos = vec3(x, y, z), normal = n, up = vec3(0, 1, 0), width = 0.2, length = 0.6, depth = 0.4,
-      texture = lv.texture, color = lv.color, strength = lv.strength, name = "Grit Test" })
+      texture = lv.textures[1], color = lv.color, strength = lv.strength, name = "Grit Test" })
   else
     car.crackCount, car.cracks = {}, 0
     handleCracks(car, { { c = -1, k = kind == "netz" and "bruch" or "delle", v = 0.04, px = x, py = y, pz = z,
