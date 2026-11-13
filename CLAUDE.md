@@ -3,7 +3,7 @@
 Name: **Grit**, Forum-Titel „Grit – Dynamic Dirt, Scratches & Cracks for every vehicle“. Code, Pfade und Konsolenbefehle heißen seit 2026-11-06 `grit` (vorher Patina; Repo-Ordner seit 2026-11-13 `E:\BeamNGMods\Grit`, vorher „Dynamic Patina“).
 Autor im Release: **Psydo** (nicht Sebastian). Lizenz: CC BY-NC-SA 4.0 (`LICENSE`). `README.md` ist die öffentliche Beschreibung (Englisch), bei neuen Features mitpflegen.
 
-Übergabe für neue Sessions. Stand: 2026-11-07, letzter Commit siehe `git log -1`.
+Übergabe für neue Sessions. Stand: 2026-11-13 (Release 0.6.0), letzter Commit siehe `git log -1`.
 Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Änderungen den passenden Abschnitt lesen).
 
 ## Personen und Zusammenarbeit
@@ -124,6 +124,8 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
 - `grit_main.settings()`, `grit_main.set("dirtStrength", 1.5)`, `grit_main.resetSettings()`: Einstellungen (M5.1),
   gespeichert in `<User>/settings/grit.json`.
 - `grit_main.clear()`: Dreck und Kratzer am aktuellen Auto löschen. Ein Fahrzeug-Reset löscht ebenfalls.
+- `grit_main.report()`: Diagnose für Bug-Meldungen nach `<User>/grit_report.txt` (auch im Release): Fahrzeug,
+  Lackmaterialien mit Erkennungsgrund, Zähler. Version aus `grit/version.lua` („dev“, Release setzt sie).
 - `grit_main.exportTex("tag")`: die vier Texturen als PNG nach `<User>/grit_export/tag/` (Diagnose).
 - `grit_main.synthetic(true|false)`
 - Log lesen: `grep … "$USER/AppData/Local/BeamNG/BeamNG.drive/current/grit.log"`, ab der letzten Zeile
@@ -152,7 +154,9 @@ Ausführliche Belege, Messwerte und jede Testrunde: **`FINDINGS.md`** (vor Ände
   Bake 7 ms statt 1 ms); KI-Verkehr später. Schäden im eigenen Paar `@GritDamage`/`@GritDamageMask` unter dem Dreck
   (Stage s, Dreck s+1), Waschschritt 0.5 ms statt 120 ms ✅. Grundebene deckend schwarz gegen Datenreste. Dellen über
   0.4 m (abgerissen) und in den ersten 2 s ignoriert. Diagnose `grit_main.uvCheck()` zeigt die UV1-Belegung.
-- **Danach:** M6 Release.
+- **M6 Release:** 0.5.0 (2026-11-08), 0.6.0 (2026-11-13): Kratzer-Varianten (3 je Stufe), `scratchSensitivity`
+  0.5–2, Liveries ohne Farbpalette (`<basis>.skin_<name>` über mapTo-Grundmaterial, z. B. Polizei), `report()`.
+- Aufgaben/Bugs/Features in Notion (Coding / Grit: Grit Bugs, Grit Funktionsanfragen, Grit Aufgaben).
 
 ## Offene Punkte
 - Chrom- und helle Teile: helle Kratzer und heller Staub auf hellem Lack kaum sichtbar.

@@ -1,7 +1,7 @@
 export const FORUM_URL =
   "https://www.beamng.com/resources/grit-%E2%80%93-dynamic-dirt-scratches-cracks-for-every-vehicle.40240/";
 
-export const VERSION = "0.5.0";
+export const VERSION = "0.6.0";
 export const STAGE = "Alpha";
 
 // Angaben für Impressum und Datenschutz. Platzhalter in eckigen Klammern werden auf den
@@ -25,4 +25,4 @@ export const asset = (p: string) =>
 // Öffentliche Adresse (Canonical, Open Graph, Sitemap, JSON-LD). Sitemap in public/sitemap.xml mitpflegen.
 export const SITE_URL = "https://grit.sfalter.de";
 // Stand der Seite / der aktuellen Version (ISO-Datum), für JSON-LD und „Last updated“.
-export const UPDATED = "2026-11-08";
+export const UPDATED = "2026-11-13";

@@ -9,7 +9,7 @@ gradually, and the dirt takes its color from the ground you drive on.
 Grit is not a preset or a skin. It works on **every vehicle**, including modded ones, and it leaves your paint and
 liveries untouched.
 
-> **Version 0.5.0** (scratches, dirt, cracks, washing, in-game app) · **Status:** early development, test release. Built and tested on BeamNG.drive **0.40.5.0**.
+> **Version 0.6.0** (scratch variants, scratch sensitivity, fixed-color liveries such as police skins, bug report command) · **Status:** early development, test release. Built and tested on BeamNG.drive **0.40.5.0**.
 
 ---
 
@@ -22,7 +22,10 @@ liveries untouched.
   happened.
 - Three depths, from a light clear-coat scuff and a primer scratch to bare metal. A longer or harder slide cuts
   deeper.
-- Scratches follow the direction of the slide.
+- Scratches follow the direction of the slide. Each depth comes in three shapes and is randomly turned, so long
+  scrapes do not repeat the same pattern.
+- **Scratch sensitivity** (0.5–2) in the app: higher values scratch at lower sliding speed and allow more scratches
+  per contact point.
 - Soft things like bushes, fabric and water never scratch.
 
 ![Scratches on the front bumper after a scrape](screenshots/screenshot_scratch.png)
@@ -59,7 +62,8 @@ liveries untouched.
 
 ### Settings & in-game app ✅
 - Open the UI apps menu and add the **Grit** app. It sits as a small "Grit ▾" tab and folds out on click.
-- Switch dirt, scratches and cracks on or off, set dirt strength (0.25–2) and drying speed (0.25–4).
+- Switch dirt, scratches and cracks on or off, set dirt strength (0.25–2), drying speed (0.25–4) and scratch
+  sensitivity (0.5–2).
 - **Wash** cleans the whole car at once (scratches and cracks stay), **Clear all** removes everything.
 - Settings are saved in `settings/grit.json` in your user folder and kept across restarts.
 
@@ -71,10 +75,10 @@ liveries untouched.
 
 ## Compatibility
 - **Any vehicle:** Vanilla and modded cars work out of the box. Grit finds the painted materials of each vehicle
-  automatically. It has been tested on the ETK I-Series, Gavril D-Series, Ibishu Covet and the modded Gavril
-  Vertex NA2.
+  automatically. It has been tested on the ETK I-Series, Gavril D-Series, Gavril Grand Marshal (including the
+  police livery), Ibishu Covet and the modded Gavril Vertex NA2.
 - **Paint and liveries:** Grit uses its own texture layer and skin slot, so your paint, liveries and paint designs
-  stay as they are.
+  stay as they are. Since 0.6.0 this includes liveries with fixed colors, such as police skins.
 - **Per vehicle:** Every car has its own dirt and scratches, even several copies of the same model.
 - **Other scratch or dirt mods:** These may conflict. Use only one of them at a time.
 
@@ -100,11 +104,13 @@ Console commands (open the Lua console, GE context) for testing:
 
 | Command | What it does |
 |---|---|
+| `grit_main.report()` | Writes a diagnosis of the current vehicle to `grit_report.txt` in your user folder (see below) |
 | `grit_main.status()` | Writes layer count, events and performance to the log |
 | `grit_main.clear()` | Removes all dirt and scratches from the current vehicle |
 | `grit_main.testScratch("left", 3)` | Places a test scratch (`"left"`, `"right"` or `"top"`, depth 1–3) |
 | `grit_main.testWash(0.6, 0.5)` | Washes everything up to 0.6 m above the bottom of the car by 50 % |
 | `grit_main.uvCheck()` | Paints the decal texture layout over the car (diagnosis); `clear()` removes it |
+| `grit_main.exportTex("a")` | Saves Grit's four textures as PNG to `grit_export/a/` in your user folder (diagnosis) |
 
 ## Known limitations
 - Light scratches and dust are hard to see on white or chrome parts, because they are light on light. They show
@@ -115,7 +121,22 @@ Console commands (open the Lua console, GE context) for testing:
   both bumpers share one small, stretched area, so a scratch there can show up on both bumpers as a large patch.
   `grit_main.uvCheck()` shows the layout of any car
   (`grit_main.clear()` turns it off).
+- Only the player vehicle gets Grit for now.
+- Modded and Automation-exported cars depend on how the model was built. Some get dirt only on a few parts or not
+  at all. If that happens, please report it (see below).
 - Dirt and scratches are not saved yet. They are gone after a reset, a repair or a restart.
+
+## Reporting a bug
+1. Sit in the affected car and open the Lua console (GE context).
+2. Run `grit_main.report()`. It writes `grit_report.txt` to `%LOCALAPPDATA%\BeamNG\BeamNG.drive\current\`.
+3. Post the vehicle, configuration or livery and what you saw (a screenshot helps), and attach `grit_report.txt`.
+   For performance issues, add your FPS with and without Grit.
+
+## Changelog
+- **0.6.0:** Three scratch shapes per depth, randomly turned. New scratch sensitivity setting. Liveries with fixed
+  colors (for example police skins) now get dirt and scratches. New `grit_main.report()` for bug reports. Fixed:
+  Clear all left the most recent decal visible.
+- **0.5.0:** First public test release with scratches, dirt, dust, washing, drying, cracks and the in-game app.
 
 ---
 

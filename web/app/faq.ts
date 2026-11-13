@@ -18,7 +18,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Does Grit change my paint or livery?",
-    a: "No. Grit draws dirt and damage on its own texture layer on top of the paint, so your paint, liveries and paint designs stay untouched. It also changes no game files.",
+    a: "No. Grit draws dirt and damage on its own texture layer on top of the paint, so your paint, liveries (including fixed-color ones like police skins) and paint designs stay untouched. It also changes no game files.",
   },
   {
     q: "Does Grit hurt FPS?",
@@ -47,6 +47,10 @@ export const FAQ: { q: string; a: string }[] = [
   {
     q: "Does Grit work on AI traffic, and is dirt saved?",
     a: "Not yet. Grit currently runs on the player car only, and dirt and damage are gone after a reset, a repair or a restart. Other dirt or scratch mods may conflict, so use one at a time.",
+  },
+  {
+    q: "Grit doesn't work on my car. How do I report it?",
+    a: "Sit in the car, open the Lua console (GE context) and run `grit_main.report()`. It writes `grit_report.txt` to your BeamNG user folder. Post the vehicle, configuration or livery and a screenshot in the forum thread and attach that file.",
   },
   {
     q: "What's planned for Grit?",

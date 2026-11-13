@@ -186,7 +186,7 @@ export default function Home() {
             <div className="feature-body">
               <ul className="bullets">
                 <li>Scrapes against walls, guardrails, rocks and other hard surfaces leave scratches exactly where the contact happened.</li>
-                <li>Three depths: light clear-coat scuff, primer, bare metal. A longer or harder slide cuts deeper.</li>
+                <li>Three depths: light clear-coat scuff, primer, bare metal. A longer or harder slide cuts deeper. Each depth comes in three shapes, randomly turned.</li>
                 <li>Scratches follow the direction of the slide. Bushes, fabric and water never scratch.</li>
               </ul>
               <div className="media">
@@ -261,7 +261,7 @@ export default function Home() {
             </p>
             <ul className="bullets compact">
               <li>Dirt, scratches and cracks on or off</li>
-              <li>Dirt strength 0.25–2, drying speed 0.25–4</li>
+              <li>Dirt strength 0.25–2, drying speed 0.25–4, scratch sensitivity 0.5–2</li>
               <li><strong>Wash</strong> (damage stays) and <strong>Clear all</strong></li>
               <li>Saved in <code>settings/grit.json</code></li>
             </ul>

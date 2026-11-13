@@ -1322,3 +1322,8 @@ Reupload weder angesehen noch übernommen.
   character_primary“, „aktiv: 2/2“, Neuspawn 543 ms (vorher ≈ 400–500 ms). Optik der Livery noch zu bestätigen.
 - Kratzer-Empfindlichkeit: Wert 2.0 wird geladen und wirkt (Einstellungen-Zeile, Schrammen entstehen); der
   Vergleich 0.5 ↔ 2.0 über `status()` steht noch aus.
+
+### Release 0.6.0 (2026-11-13)
+- Sebastian: Polizei-Livery sieht mit Grit normal aus, alles klappt. Inhalt: Kratzer-Varianten, Kratzer-Empfindlichkeit,
+  Liveries ohne Farbpalette, `grit_main.report()`, Clear-Fix. README (Changelog, „Reporting a bug“),
+  `release/forum_post.md` (inkl. Update-Text) und Website (Version, FAQ) nachgezogen.
