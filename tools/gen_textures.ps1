@@ -152,33 +152,36 @@ for ($i = 0; $i -lt 3; $i++) {
 }
 Save $c[0] $c[1] "scratch_deep_1.png"
 
-# tief 2: eine breite durchgehende Riefe + eine kurze daneben
-$rnd = New-Object System.Random(3103)
+# tief 2 (Lauf 1: 2 und 3 „gefühlt gleich“): EINE breite Riefe, die schräg ausläuft. Kräftiger Teil oben, danach
+# eine schmalere Fortsetzung, die weiter zur Seite driftet und dünn ausläuft.
+$rnd = New-Object System.Random(3113)
 $c = New-Canvas
-$x = $size * (0.35 + 0.3 * $rnd.NextDouble())
-Draw-StreakEx $c[1] $rnd $x ($size * 0.05) ($size * 0.95) 0 (34 + 14 * $rnd.NextDouble()) 255 14 60
+$dir = $(if ($rnd.NextDouble() -lt 0.5) { -1 } else { 1 })
+$x = $size * (0.5 - $dir * 0.18)
+$d1 = $dir * $size * 0.12; $d2 = $dir * $size * 0.16
+Draw-StreakEx $c[1] $rnd $x ($size * 0.05) ($size * 0.72) $d1 (40 + 10 * $rnd.NextDouble()) 255 14 50
 for ($k = 0; $k -lt 8; $k++) {
-  Draw-StreakEx $c[1] $rnd ($x + ($rnd.NextDouble() - 0.5) * 56) ($size * 0.06) ($size * 0.94) 0 (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
+  Draw-StreakEx $c[1] $rnd ($x + ($rnd.NextDouble() - 0.5) * 60) ($size * 0.06) ($size * 0.70) $d1 (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 45
 }
-$x2 = $x + $(if ($x -lt $size / 2) { 1 } else { -1 }) * $size * (0.15 + 0.1 * $rnd.NextDouble())
-$sp = Get-Span $rnd
-Draw-StreakEx $c[1] $rnd $x2 $sp[0] $sp[1] 0 (18 + 10 * $rnd.NextDouble()) 245 12 50
-for ($k = 0; $k -lt 4; $k++) {
-  Draw-StreakEx $c[1] $rnd ($x2 + ($rnd.NextDouble() - 0.5) * 36) $sp[0] $sp[1] 0 (3 + 3 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
+Draw-StreakEx $c[1] $rnd ($x + $d1 * 0.85) ($size * 0.60) ($size * 0.95) $d2 (16 + 6 * $rnd.NextDouble()) 220 10 30
+for ($k = 0; $k -lt 3; $k++) {
+  Draw-StreakEx $c[1] $rnd ($x + $d1 * 0.85 + ($rnd.NextDouble() - 0.5) * 30) ($size * 0.62) ($size * 0.93) $d2 (2 + 3 * $rnd.NextDouble()) (110 + $rnd.Next(90)) 10 30
 }
 Save $c[0] $c[1] "scratch_deep_2.png"
 
-# tief 3: zwei Riefen, die leicht schräg zusammenlaufen, beide nicht ganz durchgehend
-$rnd = New-Object System.Random(3203)
+# tief 3: Bündel aus vielen feinen Linien, in der Mitte eine kräftige Riefe (Schleifspur einer rauen Fläche)
+$rnd = New-Object System.Random(3213)
 $c = New-Canvas
-$xa = $size * (0.30 + 0.1 * $rnd.NextDouble()); $xb = $size * (0.60 + 0.1 * $rnd.NextDouble())
-$conv = ($xb - $xa) * (0.35 + 0.2 * $rnd.NextDouble())
-foreach ($p in @(@($xa, ($conv / 2)), @($xb, (-$conv / 2)))) {   # Komma bindet stärker als „/“
+$cx = $size * (0.45 + 0.1 * $rnd.NextDouble())
+Draw-StreakEx $c[1] $rnd $cx ($size * 0.06) ($size * 0.94) 0 (30 + 10 * $rnd.NextDouble()) 255 14 60
+for ($k = 0; $k -lt 5; $k++) {   # Fransen der Hauptriefe
+  Draw-StreakEx $c[1] $rnd ($cx + ($rnd.NextDouble() - 0.5) * 44) ($size * 0.07) ($size * 0.93) 0 (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
+}
+for ($i = 0; $i -lt 22; $i++) {  # feine Linien links und rechts, teils abgebrochen
+  $off = ($rnd.NextDouble() - 0.5) * $size * 0.7
+  if ([Math]::Abs($off) -lt $size * 0.06) { $off = [Math]::Sign($off + 0.001) * $size * 0.06 }
   $sp = Get-Span $rnd
-  Draw-StreakEx $c[1] $rnd $p[0] $sp[0] $sp[1] $p[1] (24 + 16 * $rnd.NextDouble()) 255 14 60
-  for ($k = 0; $k -lt 6; $k++) {
-    Draw-StreakEx $c[1] $rnd ($p[0] + ($rnd.NextDouble() - 0.5) * 40) $sp[0] $sp[1] $p[1] (3 + 4 * $rnd.NextDouble()) (120 + $rnd.Next(100)) 12 50
-  }
+  Draw-StreakEx $c[1] $rnd ($cx + $off) $sp[0] $sp[1] 0 (4 + 5 * $rnd.NextDouble()) (140 + $rnd.Next(90)) 6 40
 }
 Save $c[0] $c[1] "scratch_deep_3.png"
 
