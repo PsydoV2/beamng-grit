@@ -13,9 +13,12 @@ local DEFS = {
   cracks       = { default = true,  kind = "bool" },
   dirtStrength = { default = 1.0,   kind = "number", min = 0.25, max = 2.0 },
   dryingSpeed  = { default = 1.0,   kind = "number", min = 0.25, max = 4.0 },
+  -- Notion „Kratzer häufiger / Empfindlichkeit einstellbar“ (2026-11-13): 1.0 = bisheriges Verhalten.
+  -- Höher = schon bei langsamerem Schleifen, kürzere Pause pro Knoten, mehr Kratzer pro Knoten.
+  scratchSensitivity = { default = 1.0, kind = "number", min = 0.5, max = 2.0 },
   aiVehicles   = { default = false, kind = "bool" },          -- wirkt ab M5.3
 }
-S.ORDER = { "dirt", "scratches", "cracks", "dirtStrength", "dryingSpeed", "aiVehicles" }   -- quality gestrichen (M5.3 Lauf 2)
+S.ORDER = { "dirt", "scratches", "cracks", "dirtStrength", "dryingSpeed", "scratchSensitivity", "aiVehicles" }   -- quality gestrichen (M5.3 Lauf 2)
 
 local values = {}
 

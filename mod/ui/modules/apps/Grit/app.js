@@ -27,6 +27,8 @@ angular.module('beamng.apps')
         '<md-slider aria-label="_" min="0.25" max="2" step="0.05" ng-model="s.dirtStrength" ng-change="setNum(\'dirtStrength\')" style="margin: 0 6px;"></md-slider>' +
         '<div>Drying speed: {{ s.dryingSpeed | number:2 }}</div>' +
         '<md-slider aria-label="_" min="0.25" max="4" step="0.05" ng-model="s.dryingSpeed" ng-change="setNum(\'dryingSpeed\')" style="margin: 0 6px;"></md-slider>' +
+        '<div>Scratch sensitivity: {{ s.scratchSensitivity | number:2 }}</div>' +
+        '<md-slider aria-label="_" min="0.5" max="2" step="0.05" ng-model="s.scratchSensitivity" ng-change="setNum(\'scratchSensitivity\')" style="margin: 0 6px;"></md-slider>' +
         '<div style="display: flex; margin-top: 6px;">' +
           '<md-button flex class="md-raised" md-no-ink style="margin: 2px; min-width: 0;" ng-click="wash()">Wash</md-button>' +
           '<md-button flex class="md-raised" md-no-ink style="margin: 2px; min-width: 0;" ng-click="clearAll()">Clear all</md-button>' +

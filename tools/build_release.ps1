@@ -21,6 +21,7 @@ $utf8 = New-Object System.Text.UTF8Encoding($false)
 $patches = @{
   "lua/ge/extensions/grit/main.lua"         = @("M.debugLog = true", "M.debugLog = false")
   "lua/vehicle/controller/grit/sensor.lua"  = @("local DIAG = true", "local DIAG = false")
+  "lua/ge/extensions/grit/version.lua"      = @('return "dev"', ('return "{0}"' -f $Version))   # für grit_main.report()
 }
 
 New-Item -ItemType Directory -Force $outDir | Out-Null

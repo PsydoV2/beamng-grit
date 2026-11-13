@@ -1274,3 +1274,51 @@ Reupload weder angesehen noch übernommen.
 - Lauf 4 (Sebastian) ✅: ein Kratzer und danach drei Kratzer, Clear all löscht jeweils alles (Log 17:38). Ursache
   also die nicht geleerten dynamischen Texturen bzw. das fehlende sofortige Kombinieren. `testHidePreview` wieder
   entfernt, `exportTex(tag)` bleibt als Diagnose.
+
+### Kratzer-Varianten – Bau 2 (2026-11-13)
+- Lauf 1 „2 und 3 gefühlt gleich“ → tief 2 neu: eine breite Riefe, die schräg ausläuft (Seed 3113); tief 3 neu:
+  Bündel feiner, teils abgebrochener Linien mit kräftiger Mitte (Seed 3213). Leicht/mittel unverändert.
+
+### Kratzer-Empfindlichkeit – Bau 1 (2026-11-13)
+- Einstellung `scratchSensitivity` 0.5–2.0 (Standard 1.0 = bisher), App-Regler „Scratch sensitivity“.
+- Sensor: Schwelle `1.5 / k` m/s, Pause `0.15 / k` s pro Knoten (`setSensitivity`). Startwert per controllerData
+  an `init(data)` (`vehicle/controller.lua:314-318`), Änderung zur Laufzeit per `controller.getController`
+  (`controller.lua:232`, Export `:1041`).
+- GE: Kratzer pro Knoten `round(8 · k)` → 4–16. Ebenen-Budget beobachten.
+
+### Diagnose grit_main.report() – Bau 1 (2026-11-13)
+- Schreibt `<User>/grit_report.txt` (immer, auch im Release) und jede Zeile ins beamng.log. Setzt nichts zurück.
+- Inhalt: Grit-/Spielversion, Einstellungen, Fahrzeug (jbeam, `veh.partConfig`, paint_design), Grit-Phase; je
+  lackiertem bzw. Grit-Material mapTo, Mesh, Erkennungsgrund, activeLayers, version, translucent und Ergebnis
+  (Ziel / nur Dreck / übersprungen / nicht in der Decal-Form / ausgeschlossen); übrige Materialien mit Grund;
+  Zähler (Ebenen, Schrammen, verworfen, ohne Treffer, synthetisch, Bake) und Frametime seit dem letzten `status()`.
+- Quellen: `beamng_versiond` (`core/chat.lua:67`), `veh.partConfig` (`core/vehicle/partmgmt.lua:376`),
+  paint_design über `config.partsTree` (`partmgmt.lua:875-877`), `core_vehicle_manager.getVehicleData`
+  (`manager.lua:252,400`).
+- `isPaintable` liefert jetzt zusätzlich den Grund. Version aus `grit/version.lua` („dev“), `build_release.ps1`
+  setzt dort die Release-Version.
+- Lauf 1 (Sebastian, Gavril Grand Marshal Police, Empfindlichkeit 2.0): Report funktioniert. Befund: einziges
+  Grit-Material `character_primary` (Fahrer); Karosserie `fullsize.skin_sedan.police` „v1.5 ohne colorPaletteMap“
+  → Polizei-Lackierung ohne Dreck/Kratzer (Sebastian bestätigt im Spiel). `veh.partConfig` ist hier die ganze
+  Konfiguration als Text, kein Dateiname → im Report nur noch `.pc`-Namen, sonst „(eigene Konfiguration)“.
+
+### Bug Liveries (Polizei) – Bau 1 (2026-11-13)
+- `fullsize.zip` `vehicles/fullsize/skin.materials.json:541-601`: `fullsize.skin_sedan.police` Stage 0 Basis,
+  Stage 1 `baseColorMap fullsize_skin_police.color.png` mit `diffuseMapUseUV 1`, Klarlack, **activeLayers 2**;
+  keine `colorPaletteMap`. Grundmaterial `fullsize` (`main.materials.json`) hat `colorPaletteMap` → lackiert.
+- Regel in `isPaintable(m, objName)`: `<basis>.skin_<name>` ist lackiert, wenn `scenetree.findObject(<basis>)`
+  lackiert ist. Report nennt den Grund („Skin von lackiertem …“ bzw. „Grundmaterial … nicht lackiert/geladen“).
+- Lauf 2 (Sebastian): weiter ohne Grit. Report: „Grundmaterial fullsize nicht lackiert“ – das Material **namens**
+  `fullsize` ist ein altes Legacy-Material (translucent, mapTo `fullsize_old`, `main.materials.json:2-38`), die
+  Karosserie ist `fullsize_main` mit mapTo `fullsize` (`:702`).
+- Bau 2: Grundmaterial über mapTo suchen. Verzeichnis mapTo → Materialnamen per
+  `scenetree.findClassObjects('Material')` (`editor/materialEditor.lua:870`), neu aufgebaut je findTargets/report.
+  Lackiert, wenn irgendein Nicht-Skin-Material mit mapTo `<basis>` lackiert ist.
+- Lauf 3 (Sebastian): weiter ohne Grit. Log: „2 Lackmaterialien → Skin“ (Polizei-Karosserie erkannt, Kopie
+  `fullsize.grit.v47464` mit Grit-Stage 2), nach dem Neuspawn aber „aktiv: 1/1“ → `attach` ruft `findTargets` erneut,
+  die Kopie hat weder Palette noch `.skin_` im Namen und fiel heraus.
+- Bau 3: `isPaintable` erkennt Materialien mit Grit-Stage (baseColorMap `@GritTexture…`/`@GritDamage…`) als lackiert.
+- Lauf 4 (Sebastian) ✅: Polizei-Lackierung bekommt Dreck und Kratzer. Log „lackierte Meshes: fullsize,
+  character_primary“, „aktiv: 2/2“, Neuspawn 543 ms (vorher ≈ 400–500 ms). Optik der Livery noch zu bestätigen.
+- Kratzer-Empfindlichkeit: Wert 2.0 wird geladen und wirkt (Einstellungen-Zeile, Schrammen entstehen); der
+  Vergleich 0.5 ↔ 2.0 über `status()` steht noch aus.

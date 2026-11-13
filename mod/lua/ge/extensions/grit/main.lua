@@ -70,16 +70,62 @@ local cars = {}   -- vehId → { phase = "respawn"|"active", skinMats = {}, r = 
 local function isTrue(v) return v == "1" or v == "true" end
 -- lackiert: Material v1.5 mit colorPaletteMap in irgendeiner Stage, sonst Legacy mit instanceDiffuse; nie Glas
 -- (Spike 2b Lauf 1–3)
-local function isPaintable(m)
-  if isTrue(m:getField("translucent", 0)) then return false end
+-- zweiter Rückgabewert: Grund (für grit_main.report)
+-- Bug „Lackierungen (Polizei)“, 2026-11-13: Liveries wie fullsize.skin_sedan.police haben feste Farben statt Palette
+-- (fullsize.zip skin.materials.json:541-601, Stage 1 baseColorMap auf UV1, activeLayers 2) → nicht erkannt.
+-- Regel: Material <basis>.skin_<name> gilt als lackiert, wenn das Grundmaterial <basis> lackiert ist
+-- (fullsize.zip main.materials.json: "fullsize" mit colorPaletteMap).
+-- Lauf 2: Das Grundmaterial findet man über mapTo, nicht über den Namen: „fullsize“ ist ein altes durchsichtiges
+-- Legacy-Material (mapTo fullsize_old), die Karosserie ist „fullsize_main“ mit mapTo „fullsize“
+-- (fullsize.zip main.materials.json:2-38, :702). Verzeichnis mapTo → Materialnamen über
+-- scenetree.findClassObjects('Material') (editor/materialEditor.lua:870), einmal pro findTargets/report.
+local mapToIndex
+local function resetMapToIndex() mapToIndex = nil end
+local function materialsByMapTo(mapTo)
+  if not mapToIndex then
+    mapToIndex = {}
+    for _, n in ipairs(scenetree.findClassObjects("Material") or {}) do
+      local o = scenetree.findObject(n)
+      local mt = o and o:getField("mapTo", 0)
+      if mt and mt ~= "" then
+        mapToIndex[mt] = mapToIndex[mt] or {}
+        table.insert(mapToIndex[mt], n)
+      end
+    end
+  end
+  return mapToIndex[mapTo] or {}
+end
+
+local function isPaintable(m, objName)
+  if isTrue(m:getField("translucent", 0)) then return false, "durchsichtig" end
+  -- Lauf 3: Grit-Kopie einer Livery (fullsize.grit.v<ID>) hat weder Palette noch „.skin_“ im Namen → nach dem
+  -- Neuspawn fiel sie in attach/findTargets heraus. Material mit Grit-Stage = schon als lackiert erkannt.
+  for s = 0, 3 do
+    local b = m:getField("baseColorMap", s)
+    if b == render.COLOR_PREFIX .. "BaseColor" or b == render.DMG_COLOR_PREFIX .. "BaseColor" then
+      return true, "Grit-Stage " .. s
+    end
+  end
   for s = 0, 3 do
     local cp = m:getField("colorPaletteMap", s)
-    if cp and cp ~= "" then return true end
+    if cp and cp ~= "" then return true, "colorPaletteMap Stage " .. s end
   end
   if m:getField("version", 0) ~= "1.5" then
-    for s = 0, 3 do if isTrue(m:getField("instanceDiffuse", s)) then return true end end
+    for s = 0, 3 do if isTrue(m:getField("instanceDiffuse", s)) then return true, "instanceDiffuse Stage " .. s end end
   end
-  return false
+  local base = objName and objName:match("^(.-)%.skin_")
+  if base and base ~= "" then
+    local found = {}
+    for _, n in ipairs(materialsByMapTo(base)) do
+      if n ~= objName and not n:find("%.skin_") and not n:find("%." .. SLOT .. "%.") then
+        local bm = scenetree.findObject(n)
+        if bm and isPaintable(bm) then return true, "Skin von lackiertem " .. n end
+        found[#found + 1] = n
+      end
+    end
+    return false, "Skin, Grundmaterial für " .. base .. (#found > 0 and (" nicht lackiert: " .. table.concat(found, "/")) or " nicht gefunden")
+  end
+  return false, m:getField("version", 0) == "1.5" and "v1.5 ohne colorPaletteMap" or "Legacy ohne instanceDiffuse"
 end
 
 local function meshStem(mapTo) return mapTo and mapTo:match("^([^%.]+)") or nil end
@@ -97,6 +143,7 @@ end
 
 -- lackierte Materialien des Fahrzeugs mit Index in der Decal-Form
 local function findTargets(veh)
+  resetMapToIndex()   -- Materialliste kann sich seit dem letzten Mal geändert haben
   local probe = DecalProjection("", Point2I(16, 16), 1, 0)
   probe:setShape(veh:getDecalProjectionShape())
   local idxByMesh = {}
@@ -109,7 +156,7 @@ local function findTargets(veh)
       local mapTo = m:getField("mapTo", 0)
       local mesh = idxByMesh[mapTo] and mapTo or meshStem(mapTo)
       local idx = mesh and idxByMesh[mesh]
-      if idx and isPaintable(m) and not excluded(mesh) then
+      if idx and isPaintable(m, objName) and not excluded(mesh) then
         if (tonumber(m:getField("activeLayers", 0)) or 1) >= 4 and not objName:find("%." .. SLOT .. "%.") then
           table.insert(skipped, objName)
         else
@@ -225,8 +272,21 @@ local function prepare(veh)
   if not respawn(veh) then L("E", "Fahrzeug %d: Neuspawn nicht möglich", vid); car.phase = nil end
 end
 
+-- Empfindlichkeit geht als controllerData an sensor.init (vehicle/controller.lua:314-318)
 local function loadSensor(veh)
-  veh:queueLuaCommand(string.format('controller.loadControllerExternal(%q, %q, {})', SENSOR_FILE, SENSOR_NAME))
+  veh:queueLuaCommand(string.format('controller.loadControllerExternal(%q, %q, {sensitivity = %.3f})', SENSOR_FILE,
+    SENSOR_NAME, settings.get("scratchSensitivity") or 1))
+end
+-- Änderung zur Laufzeit an alle aktiven Fahrzeuge (controller.getController, vehicle/controller.lua:232,1041)
+local function pushSensitivity()
+  local k = settings.get("scratchSensitivity") or 1
+  for vid, _ in pairs(cars) do
+    local veh = be:getObjectByID(vid)
+    if veh then
+      veh:queueLuaCommand(string.format('local c = controller.getController(%q); if c and c.setSensitivity then c.setSensitivity(%.3f) end',
+        SENSOR_NAME, k))
+    end
+  end
 end
 
 -- M6 Lauf 2: nach Strg+L zeigten frische Texturen manchmal Datenreste (weiße Streifen), die die Grundebene nicht
@@ -598,7 +658,8 @@ M.onSensorEvents = function(vid, ev)
     end
     car.nodeHits = car.nodeHits or {}
     local hits = car.nodeHits[s.c] or 0
-    if hits < SCRATCH.maxPerNode then
+    -- Empfindlichkeit 0.5–2.0 → 4–16 Kratzer pro Knoten (1.0 = 8 wie bisher)
+    if hits < math.floor(SCRATCH.maxPerNode * (settings.get("scratchSensitivity") or 1) + 0.5) then
       local level = 1
       for i, at in ipairs(SCRATCH.levelAt) do if hits + 1 >= at then level = i end end
       if s.v >= SCRATCH.hardSlip and level < 2 then level = 2 end
@@ -766,6 +827,92 @@ M.status = function()
   L("I", "Frametime Grit arbeitet: %s | Leerlauf: %s | render:update CPU: %s", fmt(perf.busy), fmt(perf.idle), fmt(perf.upd))
   perf = { busy = { n = 0, sum = 0, max = 0 }, idle = { n = 0, sum = 0, max = 0 }, upd = { n = 0, sum = 0, max = 0 } }
 end
+
+-- Diagnose für Nutzer (Notion „grit_main.report()“, 2026-11-13): Fahrzeug, Materialien und Messwerte des
+-- Spielerfahrzeugs in <User>/grit_report.txt (auch im Release, unabhängig von M.debugLog) und ins beamng.log.
+-- Setzt keine Messwerte zurück (anders als status). Quellen: beamng_versiond (core/chat.lua:67),
+-- veh.partConfig (core/vehicle/partmgmt.lua:376), paint_design über config.partsTree[*].id/.chosenPartName
+-- (partmgmt.lua:875-877), core_vehicle_manager.getVehicleData (manager.lua:252,400).
+local REPORT_FILE = "/grit_report.txt"
+local GRIT_VERSION = require("ge/extensions/grit/version")
+local function paintDesign(vd)
+  local function rec(node)
+    if type(node) ~= "table" then return nil end
+    if node.id == "paint_design" then return node.chosenPartName or "" end
+    for _, ch in pairs(node.children or {}) do local r = rec(ch); if r then return r end end
+  end
+  return vd and vd.config and rec(vd.config.partsTree)
+end
+M.report = function()
+  local lines = {}
+  local function add(fmt, ...) lines[#lines + 1] = string.format(fmt, ...) end
+  add("Grit-Report %s", os.date("%Y-%m-%d %H:%M:%S"))
+  add("Grit %s, BeamNG %s", tostring(GRIT_VERSION), tostring(beamng_versiond))
+  add("Einstellungen: %s", settings.describe())
+  local vid = be:getPlayerVehicleID(0)
+  local veh = vid and vid >= 0 and be:getObjectByID(vid)
+  if not veh then
+    add("Kein Spielerfahrzeug.")
+  else
+    local car = cars[vid]
+    local vd = core_vehicle_manager.getVehicleData(vid)
+    -- veh.partConfig ist ein Dateiname oder (bei geänderter Konfiguration) die ganze Konfiguration als Text
+    local pc = veh.partConfig
+    pc = (type(pc) == "string" and pc:sub(-3) == ".pc") and pc or "(eigene Konfiguration)"
+    add("Fahrzeug %d: %s, Konfiguration %s, paint_design %s", vid, tostring(veh.jbeam), pc,
+      tostring(paintDesign(vd) or "– (kein Slot)"))
+    add("Grit-Phase %s, %d Skin-Materialien", tostring(car and car.phase or "nicht aktiv"), car and #(car.skinMats or {}) or 0)
+    -- Materialien: lackierte ausführlich, die übrigen nur als Namensliste
+    resetMapToIndex()
+    local probe = DecalProjection("", Point2I(16, 16), 1, 0)
+    probe:setShape(veh:getDecalProjectionShape())
+    local inShape = {}
+    for _, n in pairs(probe:getShapeMaterialNames()) do inShape[n] = true end
+    local other, seen = {}, {}
+    for _, objName in ipairs(veh:getMaterialNames() or {}) do
+      local m = not seen[objName] and scenetree.findObject(objName)
+      seen[objName] = true
+      if m then
+        local mapTo = m:getField("mapTo", 0)
+        local mesh = inShape[mapTo] and mapTo or meshStem(mapTo)
+        local paint, why = isPaintable(m, objName)
+        local isGrit = objName:find("%." .. SLOT .. "%.") ~= nil
+        if paint or isGrit then
+          local note
+          if isGrit then note = "Grit-Kopie, Grit-Stage " .. tostring(gritStage(m))
+          elseif not (mesh and inShape[mesh]) then note = "NICHT in der Decal-Form (Mesh " .. tostring(mesh) .. ")"
+          elseif excluded(mesh) then note = "ausgeschlossen (mechanical)"
+          elseif (tonumber(m:getField("activeLayers", 0)) or 1) >= 4 then note = "übersprungen (4 Ebenen belegt)"
+          elseif (tonumber(m:getField("activeLayers", 0)) or 1) >= 3 then note = "Ziel, nur Dreck (3 Ebenen belegt)"
+          else note = "Ziel" end
+          add("  %s: mapTo %s, Mesh %s, %s, activeLayers %s, version %s, translucent %s → %s", objName, tostring(mapTo),
+            tostring(mesh), why, tostring(m:getField("activeLayers", 0)), tostring(m:getField("version", 0)),
+            tostring(m:getField("translucent", 0)), note)
+        else
+          other[#other + 1] = objName .. " (" .. why .. ")"
+        end
+      end
+    end
+    add("Nicht lackiert (%d): %s", #other, table.concat(other, ", "))
+    if car and car.r then
+      add("Ebenen %d/%d (+%d nur in der Textur), Warteschlange %d, Schrammen %d, Spritzer %d, Staub %d, Kontakt %d, Risse %d",
+        #car.r.layers, render.MAX_LAYERS, car.r.baked or 0, #car.r.queue, car.scrapes or 0, car.sprays or 0,
+        car.dusts or 0, car.contacts or 0, car.cracks or 0)
+      add("Verworfen (Budget) %d, ohne Treffer %d, synthetisch %d, übersprungen %d", car.r.dropped or 0,
+        car.r.misses or 0, car.r.synthN or 0, car.r.skipped or 0)
+      if (car.r.bakeN or 0) > 0 then add("Bake Ø %.2f ms, max %.2f ms", car.r.bakeSum / car.r.bakeN, car.r.bakeMax) end
+    end
+  end
+  local function fmt(t) return t.n > 0 and string.format("Ø %.1f ms max %.1f ms", t.sum / t.n, t.max) or "–" end
+  add("Frametime seit letztem status(): arbeitet %s | Leerlauf %s | render:update %s", fmt(perf.busy), fmt(perf.idle), fmt(perf.upd))
+  local text = table.concat(lines, "\n")
+  local f = io.open(REPORT_FILE, "w")
+  if f then f:write(text, "\n"); f:close() end
+  for _, l in ipairs(lines) do log("I", logTag, l) end
+  L("I", "Report geschrieben: <User>%s (%d Zeilen)", REPORT_FILE, #lines)
+  return text
+end
+
 -- Diagnose: künstlicher Kratzer mitten auf einer Seite (ohne Sensor). side = "left" | "right" | "top"
 M.testScratch = function(side, level, tilt, along, variant)   -- tilt: Grad (Vorzeichen-Test); along: 0 = vorne … 1 = hinten (UV-Test M5.1); variant: 1–3, sonst zufällig
   local vid = be:getPlayerVehicleID(0); local car = cars[vid]; local veh = be:getObjectByID(vid)
@@ -841,7 +988,9 @@ end
 M.settings = function() L("I", "Einstellungen: %s", settings.describe()) end
 M.set = function(key, value)
   local ok, v = settings.set(key, value)
-  if ok then L("I", "Einstellung %s = %s (gespeichert)", tostring(key), tostring(v))
+  if ok then
+    L("I", "Einstellung %s = %s (gespeichert)", tostring(key), tostring(v))
+    if key == "scratchSensitivity" then pushSensitivity() end
   else L("W", "Einstellung %s nicht gesetzt: %s", tostring(key), tostring(v)) end
   return ok
 end

@@ -10,8 +10,12 @@
 local M = {}
 M.type = "auxiliary"
 
-local SCRAPE_SLIP = 1.5        -- m/s Gleitgeschwindigkeit
-local NODE_COOLDOWN = 0.15     -- s pro Knoten (M1.1: Budget nach 300 Schrammen voll)
+-- Grundwerte bei Empfindlichkeit 1.0 (Einstellung scratchSensitivity, 0.5–2.0): Schwelle und Pause werden durch
+-- die Empfindlichkeit geteilt (setSensitivity). Startwert kommt über controllerData an init
+-- (vehicle/controller.lua:314-318), Änderungen zur Laufzeit über controller.getController (controller.lua:232,1041).
+local SCRAPE_SLIP_BASE = 1.5   -- m/s Gleitgeschwindigkeit
+local NODE_COOLDOWN_BASE = 0.15 -- s pro Knoten (M1.1: Budget nach 300 Schrammen voll)
+local SCRAPE_SLIP, NODE_COOLDOWN = SCRAPE_SLIP_BASE, NODE_COOLDOWN_BASE
 local SEND_INTERVAL = 0.1      -- s
 local MAX_PER_SEND = 12
 local RUBBER = 4
@@ -312,7 +316,13 @@ local function reset()
   dentAge, dentBase = 0, nil
 end
 
-local function init()
+local function setSensitivity(k)
+  k = math.max(0.5, math.min(2.0, tonumber(k) or 1))
+  SCRAPE_SLIP, NODE_COOLDOWN = SCRAPE_SLIP_BASE / k, NODE_COOLDOWN_BASE / k
+end
+
+local function init(data)
+  setSensitivity(data and data.sensitivity)
   local rn = v.data.refNodes and v.data.refNodes[0]
   local n = rn and v.data.nodes[rn.ref]
   refPos = n and vec3(n.pos) or nil
@@ -343,5 +353,6 @@ M.reset = reset
 M.updateGFX = updateGFX
 M.nodeCollision = nodeCollision
 M.beamBroken = beamBroken
+M.setSensitivity = setSensitivity
 
 return M
